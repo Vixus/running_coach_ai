@@ -1,0 +1,88 @@
+{
+  "schema_version": "1.0",
+  "extensions": {
+    "reconcile": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:e1674fb7e16923c0e9e32eee78ef5a04626d05f092c56cc7c59e26fab07c210b",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.reconcile.run"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-03T04:04:57.423806+00:00"
+    },
+    "retrospective": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:43dbaba249c6e7322de1130446632197bbcb21c3c9f08fbe16654e86f6d5d922",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.retrospective.analyze"
+        ],
+        "gemini": [
+          "speckit.retrospective.analyze"
+        ],
+        "copilot": [
+          "speckit.retrospective.analyze"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-04T18:57:18.210988+00:00"
+    },
+    "learn": {
+      "version": "1.1.0",
+      "source": "local",
+      "manifest_hash": "sha256:1d78c414d8e71ffa163d3b3f2a0c94a02c6418e88577e68081123ebf892e704a",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.learn.review",
+          "speckit.learn.clarify",
+          "speckit.learn.diagrams"
+        ],
+        "gemini": [
+          "speckit.learn.review",
+          "speckit.learn.clarify",
+          "speckit.learn.diagrams"
+        ],
+        "copilot": [
+          "speckit.learn.review",
+          "speckit.learn.clarify",
+          "speckit.learn.diagrams"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-04T18:57:52.677908+00:00"
+    },
+    "iterate": {
+      "version": "2.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:f69d92321c68c54afb56b77947e34b0431e41a0b923e4e69e432abcf5957d95a",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.iterate.define",
+          "speckit.iterate.apply"
+        ],
+        "gemini": [
+          "speckit.iterate.define",
+          "speckit.iterate.apply"
+        ],
+        "copilot": [
+          "speckit.iterate.define",
+          "speckit.iterate.apply"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-04-04T19:17:48.475014+00:00"
+    }
+  }
+}

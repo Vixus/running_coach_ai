@@ -1,0 +1,12 @@
+services:
+  coach:
+    build: .
+    restart: unless-stopped
+    user: "0"
+    env_file: .env
+    environment:
+      # Override the relative paths from .env with the container's /data mount point
+      - DB_PATH=/data/coach.db
+      - GARMIN_SESSION_DIR=/data/garmin_sessions/
+    volumes:
+      - ./data:/data

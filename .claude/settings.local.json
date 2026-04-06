@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe -NonInteractive -Command \"& ''.specify/scripts/powershell/create-new-feature.ps1'' -Json -ShortName ''ai-running-coach'' ''AI Running Coach application with Garmin integration, adaptive training plans, and Slack coaching interface''\")",
+      "Bash(powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"& ''.specify/scripts/powershell/create-new-feature.ps1'' -Json -ShortName ''ai-running-coach'' ''AI Running Coach application with Garmin integration, adaptive training plans, and Slack coaching interface''\")",
+      "Bash(ls:*)",
+      "Bash(powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"& ''.specify/scripts/powershell/check-prerequisites.ps1'' -Json -PathsOnly\")",
+      "Bash(powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"& ''.specify/scripts/powershell/setup-plan.ps1'' -Json\")",
+      "Bash(powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"& ''.specify/scripts/powershell/update-agent-context.ps1'' -AgentType claude\")",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.synology.com)",
+      "WebFetch(domain:www.synoforum.com)",
+      "WebFetch(domain:community.synology.com)",
+      "WebFetch(domain:www.synology-forum.de)",
+      "WebFetch(domain:www.blackvoid.club)",
+      "WebFetch(domain:archive.synology.com)",
+      "Bash(powershell.exe -NonInteractive -ExecutionPolicy Bypass -Command \"& ''.specify/scripts/powershell/check-prerequisites.ps1'' -Json\")",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks 2>&1)",
+      "Bash(pip install:*)",
+      "Bash(python3.exe -m venv .venv)",
+      "Bash(.venv/Scripts/python.exe -m pip install --quiet sqlalchemy alembic pydantic-settings cryptography)",
+      "Bash(ls /c/Python*/python.exe)",
+      "Read(//c/Users/vixus/AppData/Local/Programs/**)",
+      "Bash(where python:*)",
+      "Bash(py --list)",
+      "Bash(/c/Users/vixus/AppData/Local/Microsoft/WindowsApps/python.exe --version 2>&1)",
+      "Bash(pip show:*)",
+      "Bash(python3:*)",
+      "Bash(powershell:*)",
+      "Bash(docker compose exec coach python -c ':*)",
+      "Bash(wsl:*)",
+      "Bash(/c/Users/vixus/AppData/Local/Programs/Python/Python311/python.exe:*)",
+      "Bash(python -c \"import garminconnect; g = garminconnect.Garmin; print\\([m for m in dir\\(g\\) if 'workout' in m.lower\\(\\) or 'delete' in m.lower\\(\\) or 'schedule' in m.lower\\(\\)]\\)\")",
+      "Bash(python:*)",
+      "Bash(bash /c/Users/vixus/.claude/statusline-command.sh)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(bash --version)"
+    ]
+  }
+}
