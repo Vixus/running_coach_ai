@@ -104,11 +104,19 @@ Send these as DMs from the `ADMIN_SLACK_USER_ID` account:
 
 | Command | Effect |
 |---------|--------|
-| `!admin add <uid>` | Grant access; create athlete row |
-| `!admin remove <uid>` | Revoke access (data retained) |
-| `!admin list` | List all athletes and status |
-| `!admin resync-garmin [<uid>]` | Re-upload all upcoming workouts to Garmin |
-| `!admin clean-garmin [<uid>]` | Wipe Garmin library, clear DB IDs, re-sync fresh |
+| `!admin add <uid>` | Grant access; create athlete row (or re-enable a removed athlete) |
+| `!admin remove <uid>` | Revoke access (data retained; reversible with `add`) |
+| `!admin list` | List all athletes with name and onboarding status |
+| `!admin resync-garmin [<uid>]` | Preview resync; add `--confirm` to execute; add `--confirm --verify` to also verify after |
+| `!admin clean-garmin [<uid>]` | Preview full wipe + re-sync; add `--confirm` to execute (deletes manual Garmin workouts too) |
+| `!admin verify-garmin [<uid>]` | Compare DB plan against live Garmin — reports missing or unscheduled workouts |
+| `!admin reset-onboarding <uid>` | Clear onboarding state and conversation history so an athlete can re-onboard from scratch |
+| `!admin test-start` | Become a fresh new runner in the current DM channel (creates isolated test athlete) |
+| `!admin test-stop` | Return to the normal admin account |
+
+**Resync vs. clean:**
+- `resync-garmin` — deletes only app-created workouts (preserves manually added Garmin workouts), then re-uploads from DB. Use this first.
+- `clean-garmin` — wipes the entire Garmin workout library including manually created workouts, then re-uploads. Use only when resync doesn't fix the problem.
 
 ## Coach Personas
 
