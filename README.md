@@ -8,7 +8,7 @@ A self-hosted AI running coach that integrates Slack, Garmin Connect, and Claude
 - **Multiple coach personas** — choose from Coach Alex (elite/data-driven), Coach Maya (consistency-first), or Coach Jordan (resilience/injury-prevention)
 - **Garmin Connect integration** — training plans are pushed directly to the athlete's watch; completed workouts are automatically pulled and analyzed
 - **Daily morning check-ins** — automated readiness assessments using live HRV, sleep, body battery, and weather data
-- **Activity feedback** — post-run biomechanics and telemetry analysis delivered via Slack within 30 minutes of completing a run
+- **Activity feedback** — post-run biomechanics and telemetry analysis delivered via Slack within 10 minutes of completing a run
 - **Weekly plan reviews** — automated Sunday review that adapts the upcoming week and re-syncs to Garmin
 - **Onboarding flow** — fully conversational intake covering race goals, experience, timezone, and Garmin credentials
 
@@ -27,7 +27,7 @@ Key modules:
 | Path | Responsibility |
 |------|---------------|
 | `running_coach_ai/slack/bot.py` | Message routing and event handler registration |
-| `running_coach_ai/slack/onboarding.py` | 8-step conversational athlete intake |
+| `running_coach_ai/slack/onboarding.py` | Conversational athlete intake (name, race, goal, fitness, coach selection) |
 | `running_coach_ai/slack/conversation.py` | Per-turn coaching conversation and system prompt assembly |
 | `running_coach_ai/coach/personas.py` | Coach persona registry (Alex, Maya, Jordan) |
 | `running_coach_ai/coach/planner.py` | Training plan generation |
@@ -132,16 +132,17 @@ Athletes can switch coaches at any time by asking the bot.
 
 | Job | Schedule | Action |
 |-----|----------|--------|
-| Morning check-in | Daily 07:00 (athlete local time) | Fetch health data + weather → adapt plan → DM athlete |
-| Activity poll | Every 30 min, 06:00–22:00 | Poll new Garmin activities → telemetry analysis → feedback DM |
-| Weekly review | Sunday 20:00 (system time) | Aggregate week → adapt next week → sync Garmin → DM summary |
+| Morning check-in | Every 30 min from 06:00 (athlete local time) | Fetch health data + weather → adapt plan → DM athlete |
+| Activity poll | Every 10 min | Poll new Garmin activities → telemetry analysis → feedback DM |
+| Weekly review | Sunday 20:00 (system time) | Aggregate week → adapt next week → sync next 2 weeks to Garmin → DM summary |
+| Garmin reconciliation | Daily 08:30 (system time) | Find future workouts missing Garmin IDs and re-sync them (self-healing) |
 
 ## Key Constraints
 
 - **Garmin MFA must be disabled** — TOTP/push MFA cannot be automated
 - **Encryption key** — losing `ENCRYPTION_KEY` makes all stored Garmin passwords unreadable; back it up
 - **Garmin session files** — stored at `GARMIN_SESSION_DIR/{athlete_id}/`; loss forces re-authentication
-- **Access control** — only Slack user IDs listed in `ALLOWED_SLACK_USER_IDS` can interact with the bot
+- **Access control** — only Slack user IDs listed in `ALLOWED_SLACK_USER_IDS` can interact with the bot; leave it empty to enable open enrollment (any user can self-onboard)
 
 ## Development
 
