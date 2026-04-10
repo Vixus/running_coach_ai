@@ -6,7 +6,8 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
-from running_coach_ai.coach.persona import COACH_PERSONA, call_claude, format_miles, format_pace_mi, km_to_mi
+from running_coach_ai.coach.persona import call_claude, format_miles, format_pace_mi, km_to_mi
+from running_coach_ai.coach.personas import get_persona
 from running_coach_ai.database.models import Athlete, HealthSnapshot, PlannedWorkout
 from running_coach_ai.database.session import scoped_query
 from running_coach_ai.slack.conversation import extract_and_apply_plan
@@ -73,22 +74,22 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, slack_client) -> 
         except Exception as e:
             logger.error("Live health data fetch failed for athlete %d: %s", athlete.id, e)
 
-    # Health-data gate (FR-031, FR-032): check whether Garmin has posted today's key metrics.
-    # If not, either silently retry (before 10:00am) or skip entirely for today (at/after 10:00am).
+    # Health-data gate (FR-031, FR-032): wait for Garmin to post today's key metrics before sending.
+    # Only applies to athletes WITH Garmin — no-Garmin athletes always get a workout/weather check-in.
     no_usable_data = snapshot is None or all(
         getattr(snapshot, f) is None for f in _HEALTH_KEY_FIELDS
     )
-    if no_usable_data:
-        tz_name = athlete.timezone or "UTC"
+    if no_usable_data and athlete.garmin_email:
+        tz_name = athlete.timezone or "America/New_York"
         now_local = datetime.now(ZoneInfo(tz_name))
-        if now_local.hour < 10:
+        if now_local.hour < 12:
             logger.debug(
                 "No health data yet for athlete %d at %s local — will retry on next tick",
                 athlete.id, now_local.strftime("%H:%M"),
             )
             return
         logger.info(
-            "No health data for athlete %d by 10:00am (%s local) — skipping morning check-in for today",
+            "No health data for athlete %d by 12:00pm (%s local) — skipping morning check-in for today",
             athlete.id, now_local.strftime("%H:%M"),
         )
         return
@@ -112,14 +113,18 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, slack_client) -> 
 
     if snapshot:
         date_label = "today" if snapshot.date == today else snapshot.date.isoformat()
-        health_text = (
-            f"HRV: {snapshot.hrv_score} ({snapshot.hrv_status or 'N/A'}), "
-            f"Sleep score: {snapshot.sleep_score}, "
-            f"Resting HR: {snapshot.resting_hr} bpm, "
-            f"Body battery: {snapshot.body_battery_start}, "
-            f"Stress avg: {snapshot.stress_avg}"
-            + (f" (data from {date_label})" if snapshot.date != today else "")
-        )
+        health_parts = [
+            f"HRV: {snapshot.hrv_score} ({snapshot.hrv_status or 'N/A'})",
+            f"Sleep score: {snapshot.sleep_score}",
+            f"Resting HR: {snapshot.resting_hr} bpm",
+            f"Body battery: {snapshot.body_battery_start}",
+            f"Stress avg: {snapshot.stress_avg}",
+        ]
+        if snapshot.training_readiness is not None:
+            health_parts.append(f"Training readiness: {snapshot.training_readiness}")
+        health_text = ", ".join(health_parts)
+        if snapshot.date != today:
+            health_text += f" (data from {date_label})"
 
     # Fetch weather
     weather_text = "Weather data unavailable."
@@ -167,7 +172,7 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, slack_client) -> 
     )
 
     try:
-        response = call_claude(COACH_PERSONA, [{"role": "user", "content": prompt}])
+        response = call_claude(get_persona(athlete.coach_key).persona_block, [{"role": "user", "content": prompt}])
     except Exception as e:
         logger.error("Claude morning check-in failed for athlete %d: %s", athlete.id, e)
         return
@@ -193,7 +198,7 @@ def adapt_next_week(athlete: Athlete, week_summary: dict, db_session: Session) -
     If athlete completed all sessions with positive signals → allow increment.
     Applies changes via <plan> mutations.
     """
-    from running_coach_ai.coach.persona import call_claude, COACH_PERSONA
+    from running_coach_ai.coach.persona import call_claude
     from running_coach_ai.slack.conversation import extract_and_apply_plan
 
     completion_pct = week_summary.get("completion_pct", 100)
@@ -249,7 +254,7 @@ Rules:
 Output a <plan> tag with action "regenerate_week" if changes needed, or just explain why no changes are needed."""
 
     try:
-        response = call_claude(COACH_PERSONA, [{"role": "user", "content": adapt_prompt}])
+        response = call_claude(get_persona(athlete.coach_key).persona_block, [{"role": "user", "content": adapt_prompt}])
         extract_and_apply_plan(athlete.id, response, db_session)
         logger.info("Next-week plan adaptation complete for athlete %d", athlete.id)
     except Exception as e:

@@ -14,6 +14,28 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Auth error detection
+# ---------------------------------------------------------------------------
+
+def is_garmin_auth_error(exc: Exception) -> bool:
+    """Return True if exc is a Garmin authentication failure (bad credentials)."""
+    try:
+        import garminconnect as _gc
+        if isinstance(exc, _gc.GarminConnectAuthenticationError):
+            return True
+    except (ImportError, AttributeError):
+        pass
+    try:
+        import garth.exc as _garth
+        if isinstance(exc, _garth.GarthHTTPError) and "401" in str(exc):
+            return True
+    except (ImportError, AttributeError):
+        pass
+    err = str(exc).lower()
+    return any(kw in err for kw in ("401", "unauthorized", "authentication failed", "invalid credentials"))
+
+
+# ---------------------------------------------------------------------------
 # Exponential backoff retry decorator
 # ---------------------------------------------------------------------------
 
@@ -312,60 +334,51 @@ def _has_hrv_data(resp) -> bool:
         return False
     if isinstance(resp, dict):
         summary = resp.get("hrvSummary") or {}
-        return summary.get("lastNight") is not None
+        return (summary.get("lastNightAvg") or summary.get("lastNight")) is not None
     return False
+
+
+def _has_body_battery_data(resp) -> bool:
+    """Return True if the body battery response contains at least one readable level."""
+    if not resp or not isinstance(resp, list) or not resp:
+        return False
+    vals = resp[0].get("bodyBatteryValuesArray") or []
+    return any(
+        isinstance(v, (list, tuple)) and len(v) >= 2 and v[1] is not None
+        for v in vals
+    )
 
 
 def get_health_snapshot(garmin: Garmin, date_str: str) -> dict:
     """Fetch all available health metrics for a given date.
 
-    Sleep and HRV are stored by Garmin under the date the sleep SESSION STARTED
-    (typically yesterday evening). We always try today first, then fall back to
-    yesterday so overnight data is not missed at the morning check-in.
+    All metrics are fetched for the requested date only — no fallback to
+    yesterday. The morning check-in retries every 30 minutes until data is
+    available, so stale fallback data is never surfaced.
 
     Each metric is fetched independently — exceptions are caught per field so a
     single failing endpoint does not block the others.
 
     Returns a dict with raw response values (None if unavailable).
     """
-    from datetime import date as _date, timedelta
-    yesterday = (_date.fromisoformat(date_str) - timedelta(days=1)).isoformat()
-
     raw: dict = {}
 
-    # --- Sleep: try today first, fall back to yesterday ---
     try:
         sleep = garmin.get_sleep_data(date_str)
-        if not _has_sleep_data(sleep):
-            logger.debug("No sleep data for %s, trying yesterday (%s)", date_str, yesterday)
-            sleep = garmin.get_sleep_data(yesterday)
-        raw["sleep"] = sleep
+        raw["sleep"] = sleep if _has_sleep_data(sleep) else None
     except Exception as e:
         logger.warning("Sleep data unavailable for %s: %s", date_str, e)
         raw["sleep"] = None
 
-    # --- HRV: same yesterday fallback ---
     try:
         hrv = garmin.get_hrv_data(date_str)
-        if not _has_hrv_data(hrv):
-            logger.debug("No HRV data for %s, trying yesterday (%s)", date_str, yesterday)
-            hrv = garmin.get_hrv_data(yesterday)
-        raw["hrv"] = hrv
+        raw["hrv"] = hrv if _has_hrv_data(hrv) else None
     except Exception as e:
         logger.warning("HRV data unavailable for %s: %s", date_str, e)
         raw["hrv"] = None
 
     try:
         rhr = garmin.get_rhr_day(date_str)
-        # Garmin may not publish today's RHR until end of day — fall back to yesterday
-        rhr_value = (
-            ((rhr.get("allMetrics") or {}).get("metricsMap") or {})
-            .get("WELLNESS_RESTING_HEART_RATE", [{}])[0].get("value")
-            if isinstance(rhr, dict) else None
-        )
-        if rhr_value is None:
-            logger.debug("No RHR for %s, trying yesterday (%s)", date_str, yesterday)
-            rhr = garmin.get_rhr_day(yesterday)
         raw["rhr"] = rhr
         logger.debug("RHR raw response for %s: %s", date_str, rhr)
     except Exception as e:
@@ -374,12 +387,11 @@ def get_health_snapshot(garmin: Garmin, date_str: str) -> dict:
 
     try:
         bb = garmin.get_body_battery(date_str, date_str)
-        raw["body_battery"] = bb
+        raw["body_battery"] = bb if _has_body_battery_data(bb) else None
     except Exception as e:
         logger.warning("Body battery unavailable for %s: %s", date_str, e)
         raw["body_battery"] = None
 
-    # --- Stress: try today, fall back to yesterday for morning runs ---
     try:
         stress = garmin.get_stress_data(date_str)
         raw["stress"] = stress
@@ -403,6 +415,12 @@ def get_health_snapshot(garmin: Garmin, date_str: str) -> dict:
     except Exception as e:
         logger.warning("SpO2 data unavailable for %s: %s", date_str, e)
         raw["spo2"] = None
+
+    try:
+        raw["training_readiness"] = garmin.get_morning_training_readiness(date_str)
+    except Exception as e:
+        logger.warning("Training readiness unavailable for %s: %s", date_str, e)
+        raw["training_readiness"] = None
 
     return raw
 

@@ -3,17 +3,90 @@
 import json
 import logging
 import re
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from running_coach_ai.coach.persona import COACH_PERSONA, call_claude, format_miles, format_pace_mi
+from running_coach_ai.coach.persona import call_claude, format_miles, format_pace_mi
+from running_coach_ai.coach.personas import (
+    DEFAULT_COACH_KEY,
+    PERSONAS,
+    get_persona,
+    is_valid_coach_key,
+    resolve_coach_key,
+)
 from running_coach_ai.database.models import Athlete, CoachMemory, ConversationMessage, Goal
 from running_coach_ai.garmin.client import encrypt_password
 
+PENDING_DATA_TTL_HOURS = 24
+
+
+def _is_pending_data_expired(athlete: Athlete) -> bool:
+    """Return True if the athlete's pending onboarding data has exceeded the TTL."""
+    ts = athlete.pending_onboarding_data_created_at
+    if ts is None:
+        return True
+    return (datetime.utcnow() - ts).total_seconds() > PENDING_DATA_TTL_HOURS * 3600
+
+
+def _send_garmin_credential_button(channel: str, client, *, include_skip: bool = False) -> None:
+    """Send a Block Kit button message prompting the athlete to enter Garmin credentials.
+
+    include_skip: show a 'Skip for now' button alongside the connect button.
+    Use True during onboarding; False for post-onboarding credential-update prompts.
+    """
+    if include_skip:
+        section_text = (
+            "Your profile is all set! Connect your Garmin account to:\n"
+            "• Sync your training plan to your watch\n"
+            "• Get daily check-ins based on your sleep and HRV\n"
+            "• Receive post-run feedback\n\n"
+            "Or skip for now and chat with your coach without Garmin features."
+        )
+    else:
+        section_text = (
+            "Re-enter your Garmin Connect credentials to restore full training integration."
+        )
+
+    buttons = [
+        {
+            "type": "button",
+            "text": {"type": "plain_text", "text": "Connect Garmin"},
+            "action_id": "open_garmin_creds_modal",
+            "style": "primary",
+        }
+    ]
+    if include_skip:
+        buttons.append({
+            "type": "button",
+            "text": {"type": "plain_text", "text": "Skip for now"},
+            "action_id": "skip_garmin_creds",
+        })
+
+    client.chat_postMessage(
+        channel=channel,
+        text="Connect your Garmin account or skip for now.",
+        blocks=[
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": section_text},
+            },
+            {
+                "type": "actions",
+                "elements": buttons,
+            },
+        ],
+    )
+
+
+_EXPIRY_MESSAGE_ONBOARDING = (
+    "It's been a while — your profile session has expired. "
+    "Send me a message and we'll pick up where we left off!"
+)
+
 logger = logging.getLogger(__name__)
 
-_SYSTEM_PROMPT = """You are an AI running coach onboarding a new athlete for the first time. Collect the information you need to build their training plan through natural, warm conversation.
+_SYSTEM_PROMPT_BASE = """You are an AI running coach onboarding a new athlete for the first time. Collect the information you need to build their training plan through natural, warm conversation.
 
 You need to learn:
 - Name and age
@@ -24,9 +97,11 @@ You need to learn:
 - Running experience level: beginner (first year of structured training), intermediate (1–3 years), or advanced (4+ years competing)
 - Any injuries or health conditions ("none" is fine)
 - City they train in (for weather forecasts)
-- Garmin Connect email and password — before asking, briefly mention the password is encrypted on receipt and never stored in plain text
+- Coach selection: present the available coaches below and ask the athlete which one they'd like to work with. If they don't have a preference or are unclear, default to "classic".
 
 Use miles and min/mile paces throughout this conversation. Round numbers: 30, 45, 60 min; 8, 10, 12 miles.
+
+{coach_roster}
 
 Conversation style:
 - Warm, direct, and genuinely interested — you're meeting a real athlete, not filling a form
@@ -38,7 +113,7 @@ Conversation style:
 Profile confirmation: once you have everything, present it as a clear, readable summary and ask the athlete to confirm or correct it. After they confirm, write a warm closing line that kicks off their coaching journey and signals you're building their plan now — then end with the completion tag.
 
 <onboarding_complete>
-{"name":"ATHLETE_NAME","age":99,"race_type":"marathon","race_name":"EVENT NAME OR null","race_date":"YYYY-MM-DD","target_time_seconds":99999,"weekly_mileage_km":99.9,"training_days":9,"experience_level":"intermediate","injuries":"none","city":"CITY_NAME","garmin_email":"EMAIL","garmin_password":"PASSWORD"}
+{{"name":"ATHLETE_NAME","age":99,"race_type":"marathon","race_name":"EVENT NAME OR null","race_date":"YYYY-MM-DD","target_time_seconds":99999,"weekly_mileage_km":99.9,"training_days":9,"experience_level":"intermediate","injuries":"none","city":"CITY_NAME","coach_key":"classic"}}
 </onboarding_complete>
 
 Field rules:
@@ -49,15 +124,25 @@ Field rules:
 - weekly_mileage_km: float km (convert miles: × 1.60934)
 - experience_level: beginner | intermediate | advanced
 - injuries: athlete's own words, or "none"
+- coach_key: the registry key of the chosen coach ("classic", "maya", or "jordan"); default to "classic" if the athlete does not express a preference
 
 Only output the completion tag after the athlete has explicitly confirmed their profile."""
+
+
+def _build_onboarding_system_prompt() -> str:
+    """Build the onboarding system prompt with the dynamic coach roster."""
+    roster_lines = ["## Available Coaches\n"]
+    for p in PERSONAS.values():
+        roster_lines.append(f"- **{p.name}** (`{p.key}`): {p.description}")
+    coach_roster = "\n".join(roster_lines)
+    return _SYSTEM_PROMPT_BASE.format(coach_roster=coach_roster)
 
 
 def generate_welcome() -> str:
     """Generate a dynamic first greeting via Claude."""
     try:
         return call_claude(
-            _SYSTEM_PROMPT,
+            _build_onboarding_system_prompt(),
             [{"role": "user", "content": "(start)"}],
         )
     except Exception as e:
@@ -68,6 +153,17 @@ def generate_welcome() -> str:
 def handle(athlete: Athlete, text: str, db_session: Session, say_fn,
            *, client=None, channel: str | None = None, msg_ts: str | None = None) -> None:
     """Process one message in the conversational onboarding flow."""
+
+    # US2 guard: if the athlete has pending onboarding data awaiting modal submission,
+    # do not invoke Claude — just remind them to submit the button.
+    if athlete.pending_onboarding_data is not None:
+        if _is_pending_data_expired(athlete):
+            say_fn(_EXPIRY_MESSAGE_ONBOARDING)
+        else:
+            say_fn("You're all set — just click the button below to enter your Garmin credentials securely.")
+            if client and channel:
+                _send_garmin_credential_button(channel, client)
+        return
 
     # Load conversation history for this athlete
     history = (
@@ -91,7 +187,7 @@ def handle(athlete: Athlete, text: str, db_session: Session, say_fn,
 
     # Call Claude
     try:
-        response = call_claude(_SYSTEM_PROMPT, messages)
+        response = call_claude(_build_onboarding_system_prompt(), messages)
     except Exception as e:
         logger.error("Claude API error during onboarding for athlete %d: %s", athlete.id, e)
         say_fn("Lost my train of thought there — could you say that again?")
@@ -122,48 +218,22 @@ def handle(athlete: Athlete, text: str, db_session: Session, say_fn,
             say_fn(clean_response or "Something went sideways on my end — let me pick that up again.")
             return
 
-        # Send Claude's closing message first, then kick off plan generation
+        # Send Claude's closing message (if any) before presenting the credentials button
         if clean_response:
             say_fn(clean_response)
 
-        # --- Scrub Garmin credentials from stored history and Slack ---
-        _scrub_credentials(athlete.id, data, db_session, client, channel, msg_ts)
+        # Store profile data and prompt the athlete to submit Garmin credentials via modal
+        athlete.pending_onboarding_data = data
+        athlete.pending_onboarding_data_created_at = datetime.utcnow()
+        db_session.flush()
+        logger.info("Stored pending onboarding data for athlete %d — awaiting modal submission", athlete.id)
 
-        _complete_onboarding(athlete, data, db_session, say_fn)
+        if client and channel:
+            _send_garmin_credential_button(channel, client, include_skip=True)
+        else:
+            logger.warning("No client/channel available for athlete %d — garmin button not sent", athlete.id)
     else:
         say_fn(clean_response)
-
-
-def _scrub_credentials(athlete_id: int, data: dict, db_session: Session,
-                       client, channel: str | None, msg_ts: str | None) -> None:
-    """Remove Garmin password from conversation history and delete the Slack message."""
-    password = data.get("garmin_password")
-    if not password:
-        return
-
-    # Scrub password from all stored conversation messages
-    msgs_with_creds = (
-        db_session.query(ConversationMessage)
-        .filter(
-            ConversationMessage.athlete_id == athlete_id,
-            ConversationMessage.content.contains(password),
-        )
-        .all()
-    )
-    for msg in msgs_with_creds:
-        msg.content = msg.content.replace(password, "********")
-    db_session.commit()
-    logger.info("Scrubbed Garmin password from %d stored messages for athlete %d",
-                len(msgs_with_creds), athlete_id)
-
-    # Delete the Slack message that contained the credentials
-    if client and channel and msg_ts:
-        try:
-            client.chat_delete(channel=channel, ts=msg_ts)
-            logger.info("Deleted Slack message containing credentials for athlete %d", athlete_id)
-        except Exception as e:
-            logger.warning("Could not delete Slack credential message for athlete %d: %s",
-                           athlete_id, e)
 
 
 def _parse_city_to_coords(city: str) -> tuple[float | None, float | None, str | None]:
@@ -281,12 +351,12 @@ def _complete_onboarding(athlete: Athlete, data: dict, db_session: Session, say_
                 athlete.timezone = derived
             else:
                 logger.warning(
-                    "Could not derive timezone for athlete %d from coords (%.4f, %.4f) — defaulting to UTC",
+                    "Could not derive timezone for athlete %d from coords (%.4f, %.4f) — defaulting to America/New_York",
                     athlete.id, athlete.home_lat, athlete.home_lon,
                 )
-                athlete.timezone = "UTC"
+                athlete.timezone = "America/New_York"
         else:
-            athlete.timezone = "UTC"
+            athlete.timezone = "America/New_York"
 
     # Store Garmin credentials
     garmin_email = data.get("garmin_email")
@@ -294,6 +364,16 @@ def _complete_onboarding(athlete: Athlete, data: dict, db_session: Session, say_
     if garmin_email and garmin_password:
         athlete.garmin_email = garmin_email
         athlete.garmin_password_encrypted = encrypt_password(garmin_password)
+
+    # Set coach persona
+    coach_key = resolve_coach_key(data.get("coach_key", DEFAULT_COACH_KEY))
+    if coach_key is None or not is_valid_coach_key(coach_key):
+        logger.warning(
+            "Invalid coach_key '%s' for athlete %d — defaulting to '%s'",
+            data.get("coach_key"), athlete.id, DEFAULT_COACH_KEY,
+        )
+        coach_key = DEFAULT_COACH_KEY
+    athlete.coach_key = coach_key
 
     db_session.flush()
 
@@ -429,7 +509,7 @@ def _send_week1_summary(athlete: Athlete, plan, goal: Goal, db_session: Session,
     )
 
     try:
-        response = call_claude(COACH_PERSONA, [{"role": "user", "content": prompt}])
+        response = call_claude(get_persona(athlete.coach_key).persona_block, [{"role": "user", "content": prompt}])
         say_fn(response)
     except Exception as e:
         logger.error("Week 1 summary generation failed for athlete %d: %s", athlete.id, e)

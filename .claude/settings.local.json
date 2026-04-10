@@ -35,7 +35,10 @@
       "Bash(python:*)",
       "Bash(bash /c/Users/vixus/.claude/statusline-command.sh)",
       "Bash(echo \"EXIT: $?\")",
-      "Bash(bash --version)"
+      "Bash(bash --version)",
+      "Bash(grep -n \"^revision\\\\|^down_revision\" C:/Users/vixus/Projects/running_coach_ai/running_coach_ai/database/migrations/versions/*.py)",
+      "Bash(alembic upgrade:*)",
+      "Bash(ruff check:*)"
     ]
   }
 }

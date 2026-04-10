@@ -1,18 +1,40 @@
 """Admin commands: add/remove/list athletes."""
 
 import logging
+import os
 import re
+import shutil
 from datetime import date
 
 from sqlalchemy.orm import Session
 
 from running_coach_ai.config import settings
-from running_coach_ai.database.models import Athlete, PlannedWorkout
+from running_coach_ai.database.models import (
+    Athlete,
+    CoachMemory,
+    CompletedWorkout,
+    ConversationMessage,
+    Goal,
+    PlannedWorkout,
+    RunningProfile,
+    TrainingPlan,
+)
+
+# In-memory test mode registry: admin_slack_user_id → test Athlete.id
+# Activated by !admin test-start; cleared by !admin test-stop.
+_test_mode: dict[str, int] = {}
+
+
+def get_test_athlete_id(admin_slack_id: str) -> int | None:
+    """Return the test athlete ID if the admin is currently in test mode, else None."""
+    return _test_mode.get(admin_slack_id)
 
 logger = logging.getLogger(__name__)
 
 
-def handle_admin_command(sender_id: str, text: str, db_session: Session) -> str | None:
+def handle_admin_command(
+    sender_id: str, text: str, db_session: Session, *, channel: str | None = None
+) -> str | None:
     """Parse and execute an admin command.
 
     Only executes if sender_id matches ADMIN_SLACK_USER_ID.
@@ -28,6 +50,8 @@ def handle_admin_command(sender_id: str, text: str, db_session: Session) -> str 
       !admin clean-garmin [<uid>]                        — show clean warning
       !admin clean-garmin [<uid>] --confirm              — execute clean
       !admin verify-garmin [<uid>]                       — compare DB plan vs live Garmin
+      !admin test-start                                  — become a fresh new runner for testing
+      !admin test-stop                                   — return to normal admin account
     """
     if sender_id != settings.ADMIN_SLACK_USER_ID:
         return None  # Silently ignore non-admin
@@ -47,6 +71,9 @@ def handle_admin_command(sender_id: str, text: str, db_session: Session) -> str 
     resync_match = re.match(r"!admin\s+resync-garmin(?:\s+(<@)?([A-Z0-9]+)>?)?", text, re.IGNORECASE)
     clean_match = re.match(r"!admin\s+clean-garmin(?:\s+(<@)?([A-Z0-9]+)>?)?", text, re.IGNORECASE)
     verify_match = re.match(r"!admin\s+verify-garmin(?:\s+(<@)?([A-Z0-9]+)>?)?", text, re.IGNORECASE)
+    reset_match = re.match(r"!admin\s+reset-onboarding(?:\s+(<@)?([A-Z0-9]+)>?)?", text, re.IGNORECASE)
+    test_start_match = re.match(r"!admin\s+test-start", text, re.IGNORECASE)
+    test_stop_match = re.match(r"!admin\s+test-stop", text, re.IGNORECASE)
 
     if add_match:
         user_id = add_match.group(2)
@@ -65,10 +92,20 @@ def handle_admin_command(sender_id: str, text: str, db_session: Session) -> str 
     elif verify_match:
         user_id = verify_match.group(2) if verify_match.group(2) else None
         return _verify_garmin(sender_id, user_id, db_session)
+    elif reset_match:
+        user_id = reset_match.group(2) if reset_match.group(2) else None
+        if not user_id:
+            return "Usage: `!admin reset-onboarding <user_id>` — uid is required."
+        return _reset_onboarding_athlete(user_id, db_session)
+    elif test_start_match:
+        return _test_start(sender_id, channel, db_session)
+    elif test_stop_match:
+        return _test_stop(sender_id)
     else:
         return ("Unknown admin command. Try: `!admin add <user_id>`, `!admin remove <user_id>`, "
                 "`!admin list`, `!admin resync-garmin [<user_id>]`, `!admin clean-garmin [<user_id>]`, "
-                "`!admin verify-garmin [<user_id>]`")
+                "`!admin verify-garmin [<user_id>]`, `!admin reset-onboarding <user_id>`, "
+                "`!admin test-start`, `!admin test-stop`")
 
 
 def _add_athlete(slack_user_id: str, db_session: Session) -> str:
@@ -597,3 +634,120 @@ def _list_athletes(db_session: Session) -> str:
         lines.append(f"• <@{a.slack_user_id}> — {name} — {status}")
 
     return "\n".join(lines)
+
+
+def _test_start(admin_slack_id: str, channel: str | None, db_session: Session) -> str:
+    """Create (or reset) a shadow test athlete and activate test mode for the admin.
+
+    The test athlete uses a synthetic slack_user_id so it never collides with a real
+    athlete. Its slack_dm_channel_id is set to the admin's real DM channel so all
+    bot replies appear in the admin's conversation window.
+    """
+    if not channel:
+        return "Could not determine your DM channel — try sending this from the DM with the bot."
+
+    test_user_id = f"__test_{admin_slack_id}__"
+
+    athlete = (
+        db_session.query(Athlete)
+        .filter(Athlete.slack_user_id == test_user_id)
+        .first()
+    )
+
+    if athlete:
+        # Full wipe: unlink completed workouts first (FK is nullable)
+        db_session.query(CompletedWorkout).filter(
+            CompletedWorkout.athlete_id == athlete.id
+        ).update({"planned_workout_id": None})
+
+        db_session.query(PlannedWorkout).filter(PlannedWorkout.athlete_id == athlete.id).delete()
+        db_session.query(TrainingPlan).filter(TrainingPlan.athlete_id == athlete.id).delete()
+        db_session.query(Goal).filter(Goal.athlete_id == athlete.id).delete()
+        db_session.query(CoachMemory).filter(CoachMemory.athlete_id == athlete.id).delete()
+        db_session.query(RunningProfile).filter(RunningProfile.athlete_id == athlete.id).delete()
+        db_session.query(ConversationMessage).filter(ConversationMessage.athlete_id == athlete.id).delete()
+
+        token_path = os.path.join(settings.GARMIN_SESSION_DIR, str(athlete.id))
+        if os.path.isdir(token_path):
+            try:
+                shutil.rmtree(token_path)
+            except Exception as e:
+                logger.warning("Could not delete test Garmin session dir %s: %s", token_path, e)
+
+        athlete.name = None
+        athlete.age = None
+        athlete.home_lat = None
+        athlete.home_lon = None
+        athlete.timezone = None
+        athlete.garmin_email = None
+        athlete.garmin_password_encrypted = None
+        athlete.lthr_bpm = None
+        athlete.coach_key = None
+        athlete.last_morning_checkin_date = None
+        athlete.pending_onboarding_data = None
+        athlete.pending_onboarding_data_created_at = None
+        athlete.onboarding_complete = False
+        athlete.onboarding_step = 0
+        athlete.slack_dm_channel_id = channel
+        logger.info("Test athlete reset for admin %s (id=%d)", admin_slack_id, athlete.id)
+    else:
+        athlete = Athlete(
+            slack_user_id=test_user_id,
+            slack_dm_channel_id=channel,
+            allowed=True,
+            onboarding_complete=False,
+            onboarding_step=0,
+        )
+        db_session.add(athlete)
+        db_session.flush()
+        logger.info("Test athlete created for admin %s (id=%d)", admin_slack_id, athlete.id)
+
+    db_session.commit()
+    _test_mode[admin_slack_id] = athlete.id
+
+    return (
+        "*Test mode ON* — you're now a fresh new runner. "
+        "Send me any message to start onboarding. "
+        "Run `!admin test-stop` when you're done."
+    )
+
+
+def _test_stop(admin_slack_id: str) -> str:
+    """Deactivate test mode — admin messages route back to their real athlete record."""
+    if admin_slack_id not in _test_mode:
+        return "Test mode is not currently active."
+    del _test_mode[admin_slack_id]
+    logger.info("Test mode deactivated for admin %s", admin_slack_id)
+    return "*Test mode OFF* — you're back to your normal account."
+
+
+def _reset_onboarding_athlete(slack_user_id: str, db_session: Session) -> str:
+    """Reset an athlete's onboarding state so they can re-onboard from scratch."""
+    athlete = (
+        db_session.query(Athlete)
+        .filter(Athlete.slack_user_id == slack_user_id)
+        .first()
+    )
+
+    if not athlete:
+        return f"No athlete found with Slack ID {slack_user_id}."
+
+    deleted = (
+        db_session.query(ConversationMessage)
+        .filter(ConversationMessage.athlete_id == athlete.id)
+        .delete()
+    )
+
+    athlete.pending_onboarding_data = None
+    athlete.pending_onboarding_data_created_at = None
+    athlete.onboarding_complete = False
+    athlete.onboarding_step = 0
+    db_session.commit()
+
+    logger.info("Admin reset onboarding for athlete %s (id=%d); deleted %d conversation messages",
+                slack_user_id, athlete.id, deleted)
+    return (
+        f"Onboarding reset for <@{slack_user_id}>. "
+        f"Deleted {deleted} conversation message(s). "
+        f"They can re-onboard by messaging the bot."
+    )

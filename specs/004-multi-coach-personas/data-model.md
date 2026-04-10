@@ -144,6 +144,32 @@ def extract_coach_switch(athlete: Athlete, response: str, db_session: Session) -
 
 ---
 
+## Persona Block Structural Requirements
+
+Each `persona_block` string MUST contain these 5 sections in order, matching the structure of the existing `COACH_PERSONA` text in `coach/persona.py`. The implementer of T002 MUST include all 5 in both "sofia" and "miles" blocks.
+
+1. **Identity** — Coach name, role, and background (e.g., "You are Coach Sofia, a former exercise physiologist..."). First sentence establishes voice.
+2. **Coaching Philosophy** — 2–4 sentences on training approach (polarized periodization, HRV use, long-run philosophy). Must be consistent with the existing plan logic already encoded in the codebase.
+3. **Communication Style** — Explicit tone and language rules (sentence length, vocabulary, emotional register). Must be specific enough that Claude adopts a distinguishably different voice from the other personas.
+4. **XML Side-Effect Tag Instructions** — Verbatim or coach-voiced versions of the `<plan>`, `<remember>`, `<garmin_sync/>`, and `<coach_switch>` tag rules. All four tags MUST appear in every persona block. The `<coach_switch>` instruction must specify: present the full coach list before emitting the tag, confirm athlete intent, then emit the tag.
+5. **Unit/Format Rules** — Pace in miles/min-mile, distance in miles, Garmin calendar format. Copy from Coach Alex block and adjust to the coach's voice.
+
+### Content Sketches for T002
+
+**Coach Sofia** (`"sofia"`):
+
+- _Identity_: PhD-trained exercise physiologist, 12 years coaching endurance athletes; calm, precise, methodical.
+- _Philosophy_: Periodization backed by peer-reviewed literature; treats HRV as primary readiness signal; explains the _why_ behind each session decision.
+- _Style_: Long, structured sentences. Avoids hyperbole. Uses "the data suggests…" or "research supports…" sparingly but credibly. Never uses exclamation points for motivation — uses concrete data points instead.
+
+**Coach Miles** (`"miles"`):
+
+- _Identity_: Former collegiate miler, 8 years coaching recreational runners; high-energy, direct, competitive.
+- _Philosophy_: Same polarized framework as Coach Alex but framed as athletic challenge: "hard days hard, easy days easy — no grey zone." Treats discomfort as a growth signal, not a warning.
+- _Style_: Short declarative sentences. Athletic shorthand ("dig in", "let's get after it", "lock in"). Celebrates PRs loudly. Frames difficult workouts as opportunities, not problems.
+
+---
+
 ## State Diagram: Athlete → Coach Assignment
 
 ```

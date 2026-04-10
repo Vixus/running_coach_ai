@@ -42,6 +42,9 @@ class Athlete(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     last_morning_checkin_date = Column(Date, nullable=True)
     lthr_bpm = Column(Integer, nullable=True)       # Lactate Threshold HR from Garmin profile
+    coach_key = Column(Text, nullable=True)          # Key into PERSONAS registry; NULL treated as "classic"
+    pending_onboarding_data = Column(JSON, nullable=True)           # Profile JSON awaiting Garmin creds modal
+    pending_onboarding_data_created_at = Column(DateTime, nullable=True)  # UTC timestamp for TTL check
 
     goals = relationship("Goal", back_populates="athlete")
     health_snapshots = relationship("HealthSnapshot", back_populates="athlete")
@@ -227,6 +230,7 @@ class HealthSnapshot(Base):
     stress_avg = Column(Integer, nullable=True)
     steps = Column(Integer, nullable=True)
     spo2_avg = Column(Float, nullable=True)
+    training_readiness = Column(Integer, nullable=True)
 
     athlete = relationship("Athlete", back_populates="health_snapshots")
 

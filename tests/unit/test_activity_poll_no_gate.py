@@ -55,6 +55,7 @@ class TestActivityPollNoGate:
             patch("running_coach_ai.database.session.get_session", return_value=mock_db),
             patch("running_coach_ai.garmin.client.get_garmin_client") as mock_get_garmin,
             patch("running_coach_ai.garmin.client.poll_new_activities", return_value=["act1"]),
+            patch("os.path.isfile", return_value=True),
             patch.object(jobs, "_ingest_and_feedback") as mock_ingest,
         ):
             mock_garmin = MagicMock()

@@ -173,28 +173,29 @@ class TestNoHealthDataBefore10am:
 
 
 # ---------------------------------------------------------------------------
-# (c) All key health fields None at/after 10:00am → INFO log, no DM
+# (c) All key health fields None → silent retry before noon, INFO skip at/after noon
 # ---------------------------------------------------------------------------
 
-class TestNoHealthDataAtOrAfter10am:
+class TestNoHealthDataCutoff:
     @patch("running_coach_ai.slack.bot.send_dm")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
-    def test_no_dm_at_10am_cutoff(
+    def test_silent_retry_before_noon(
         self,
         mock_garmin_client,
         mock_health_raw,
         mock_parse,
         mock_send_dm,
     ):
+        """Before 12pm with no data: silent DEBUG retry — no INFO log, no DM."""
         mock_parse.return_value = _make_empty_snapshot()
 
         athlete = _make_athlete()
         db = _make_db()
         slack_client = MagicMock()
 
-        # Exactly 10:00am local
+        # 10:00am — before the 12pm cutoff
         fake_local = datetime(TODAY.year, TODAY.month, TODAY.day, 10, 0, tzinfo=timezone.utc)
         with patch(f"{_ADAPTER}.datetime") as mock_dt, \
              patch(f"{_ADAPTER}.logger") as mock_logger:
@@ -204,11 +205,10 @@ class TestNoHealthDataAtOrAfter10am:
             from running_coach_ai.coach.adapter import run_morning_checkin
             run_morning_checkin(athlete, db, slack_client)
 
-            # INFO log must be emitted (not just debug)
+            # Must NOT emit an INFO "skipping" log — that only fires at/after noon
             info_calls = [str(c) for c in mock_logger.info.call_args_list]
-            assert any("skipping morning check-in" in msg.lower() or "skipping" in msg.lower()
-                       for msg in info_calls), \
-                f"Expected INFO skip log, got: {mock_logger.info.call_args_list}"
+            assert not any("skipping" in msg.lower() for msg in info_calls), \
+                f"Unexpected skip INFO log before noon: {mock_logger.info.call_args_list}"
 
         mock_send_dm.assert_not_called()
         assert athlete.last_morning_checkin_date != TODAY
@@ -217,7 +217,42 @@ class TestNoHealthDataAtOrAfter10am:
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
-    def test_no_dm_after_10am(
+    def test_info_skip_log_at_noon(
+        self,
+        mock_garmin_client,
+        mock_health_raw,
+        mock_parse,
+        mock_send_dm,
+    ):
+        """At/after 12pm with no data: INFO 'skipping' log emitted, no DM sent."""
+        mock_parse.return_value = _make_empty_snapshot()
+
+        athlete = _make_athlete()
+        db = _make_db()
+        slack_client = MagicMock()
+
+        # Exactly noon — at the cutoff
+        fake_local = datetime(TODAY.year, TODAY.month, TODAY.day, 12, 0, tzinfo=timezone.utc)
+        with patch(f"{_ADAPTER}.datetime") as mock_dt, \
+             patch(f"{_ADAPTER}.logger") as mock_logger:
+            mock_dt.now.return_value = fake_local
+            mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+            from running_coach_ai.coach.adapter import run_morning_checkin
+            run_morning_checkin(athlete, db, slack_client)
+
+            info_calls = [str(c) for c in mock_logger.info.call_args_list]
+            assert any("skipping" in msg.lower() for msg in info_calls), \
+                f"Expected INFO skip log at noon, got: {mock_logger.info.call_args_list}"
+
+        mock_send_dm.assert_not_called()
+        assert athlete.last_morning_checkin_date != TODAY
+
+    @patch("running_coach_ai.slack.bot.send_dm")
+    @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
+    @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
+    @patch("running_coach_ai.garmin.client.get_garmin_client")
+    def test_no_dm_after_noon(
         self,
         mock_garmin_client,
         mock_health_raw,
@@ -230,8 +265,8 @@ class TestNoHealthDataAtOrAfter10am:
         db = _make_db()
         slack_client = MagicMock()
 
-        # 11:30am local — well past the cutoff
-        fake_local = datetime(TODAY.year, TODAY.month, TODAY.day, 11, 30, tzinfo=timezone.utc)
+        # 13:00 — well past the noon cutoff
+        fake_local = datetime(TODAY.year, TODAY.month, TODAY.day, 13, 0, tzinfo=timezone.utc)
         with patch(f"{_ADAPTER}.datetime") as mock_dt:
             mock_dt.now.return_value = fake_local
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)

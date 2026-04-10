@@ -7,7 +7,8 @@ from datetime import date, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from running_coach_ai.coach.persona import COACH_PERSONA, call_claude, format_miles, format_pace_mi
+from running_coach_ai.coach.persona import call_claude, format_miles, format_pace_mi
+from running_coach_ai.coach.personas import PERSONAS, get_persona
 from running_coach_ai.database.models import (
     Athlete,
     CoachMemory,
@@ -471,7 +472,7 @@ def build_system_prompt(
     week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=6)
 
-    sections = [COACH_PERSONA]
+    sections = [get_persona(athlete.coach_key).persona_block]
 
     # --- Section 1b: Current date (explicit — never rely on model's internal clock) ---
     sections.append(
@@ -581,6 +582,8 @@ def build_system_prompt(
             f"- Avg stress: {health.stress_avg}",
             f"- Steps: {health.steps}",
         ]
+        if health.training_readiness is not None:
+            health_lines.append(f"- Training readiness: {health.training_readiness}/100")
         if health.spo2_avg:
             health_lines.append(f"- SpO2: {health.spo2_avg:.1f}%")
 
@@ -593,10 +596,15 @@ def build_system_prompt(
                     trend_marker = {"BALANCED": "✓", "UNBALANCED": "↓", "LOW": "↓↓", "HIGH": "↑"}.get(
                         h.hrv_status.upper(), ""
                     )
-                health_lines.append(
-                    f"- {h.date}: HRV {h.hrv_score} {trend_marker}, "
-                    f"sleep {h.sleep_score or '?'}, RHR {h.resting_hr or '?'}"
-                )
+                parts = [
+                    f"HRV {h.hrv_score} {trend_marker}",
+                    f"sleep {h.sleep_score or '?'}",
+                    f"RHR {h.resting_hr or '?'}",
+                    f"BB {h.body_battery_start or '?'}",
+                ]
+                if h.training_readiness is not None:
+                    parts.append(f"TR {h.training_readiness}")
+                health_lines.append(f"- {h.date}: {', '.join(parts)}")
 
         sections.append("\n".join(health_lines))
     else:
@@ -807,6 +815,16 @@ def build_system_prompt(
         for analysis in spotlight_analyses:
             if analysis:
                 sections.append(analysis)
+
+    # --- Section 9: Available Coaches ---
+    coach_lines = ["## Available Coaches"]
+    for p in PERSONAS.values():
+        coach_lines.append(f"- **{p.name}** (`{p.key}`): {p.description}")
+    coach_lines.append(
+        "\nWhen the athlete asks to see, browse, or list available coaches, present this section. "
+        "Do not emit `<coach_switch>` unless they explicitly confirm a choice."
+    )
+    sections.append("\n".join(coach_lines))
 
     return "\n\n".join(sections)
 
@@ -1227,6 +1245,31 @@ def extract_and_save_memories(
     return cleaned
 
 
+def extract_coach_switch(athlete: Athlete, response: str, db_session: Session) -> str:
+    """Extract <coach_switch>key</coach_switch> tag, update athlete.coach_key if valid, return cleaned response."""
+    from running_coach_ai.coach.personas import is_valid_coach_key, resolve_coach_key
+
+    match = re.search(r"<coach_switch>(.*?)</coach_switch>", response, re.DOTALL)
+    # Always strip the tag regardless of validity
+    cleaned = re.sub(r"<coach_switch>.*?</coach_switch>", "", response, flags=re.DOTALL).strip()
+
+    if match:
+        new_key = match.group(1).strip()
+        if is_valid_coach_key(new_key):
+            resolved_key = resolve_coach_key(new_key)
+            if resolved_key and resolved_key != athlete.coach_key:
+                athlete.coach_key = resolved_key
+                db_session.commit()
+                logger.info("Coach switched to '%s' for athlete %d", resolved_key, athlete.id)
+        else:
+            logger.warning(
+                "Invalid coach_switch key '%s' for athlete %d — ignoring",
+                new_key, athlete.id,
+            )
+
+    return cleaned
+
+
 # ---------------------------------------------------------------------------
 # Main conversation handler
 # ---------------------------------------------------------------------------
@@ -1317,6 +1360,7 @@ def handle_message(athlete: Athlete, text: str, db_session: Session) -> str:
         athlete.id, response, db_session, plan_already_synced=had_plan_block
     )
     response = extract_and_save_memories(athlete.id, response, db_session)
+    response = extract_coach_switch(athlete, response, db_session)
     if sync_note:
         response = response + sync_note
 

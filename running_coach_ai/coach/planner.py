@@ -40,7 +40,8 @@ Rules:
 - Start at {current_mi} mi/week (don't jump above current fitness)
 - 2-3 week taper for marathon, 1-2 for shorter races
 - ~80% easy volume, ~20% quality
-- Introduce quality sessions gradually in base phase"""
+- Introduce quality sessions gradually in base phase
+- Minimum 3 miles per easy/strides session — never schedule a run under 30 minutes; if current weekly mileage is too low to support {training_days} days at that minimum, use fewer days rather than shorter runs"""
 
 
 # Day-of-week slots per training_days (0 = Mon, 6 = Sun)
@@ -278,7 +279,9 @@ def _expand_skeleton(skeleton: list[dict], start_date: date, goal: Goal,
                 pace = long_pace
             elif dtype == "strides":
                 target_zones = None
-                duration = round_to_5(dist / easy_pace) if dist and easy_pace else 40
+                min_dist_km = 30.0 / easy_pace if easy_pace else 0
+                dist = round(max(dist, min_dist_km), 1)
+                duration = round_to_5(dist * easy_pace) if dist and easy_pace else 40
                 description = f"{duration} min easy finishing with 6×100m strides"
                 pace = easy_pace
             elif dtype == "cross_train":
@@ -288,7 +291,9 @@ def _expand_skeleton(skeleton: list[dict], start_date: date, goal: Goal,
                 dist = 0
             else:  # easy
                 target_zones = None
-                duration = round_to_5(dist / easy_pace) if dist and easy_pace else 45
+                min_dist_km = 30.0 / easy_pace if easy_pace else 0
+                dist = round(max(dist, min_dist_km), 1)
+                duration = round_to_5(dist * easy_pace) if dist and easy_pace else 45
                 description = f"{duration} min easy, conversational pace, zone 1-2"
                 pace = easy_pace
 

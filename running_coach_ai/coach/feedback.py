@@ -5,7 +5,8 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from running_coach_ai.coach.persona import COACH_PERSONA, call_claude, format_miles, format_pace_mi, km_to_mi
+from running_coach_ai.coach.persona import call_claude, format_miles, format_pace_mi, km_to_mi
+from running_coach_ai.coach.personas import get_persona
 from running_coach_ai.database.models import Athlete, CompletedWorkout, RunningProfile
 
 logger = logging.getLogger(__name__)
@@ -215,7 +216,6 @@ def generate_post_run_feedback(
 
     zone_confidence = b.get("zone_confidence", "low")
     zone_run_count = b.get("zone_max_hr_run_count", 0)
-    zone_run_plural = "s" if zone_run_count != 1 else ""
     if zone_confidence == "low":
         zone_confidence_note = (
             f"\n  ⚠️  ZONE CONFIDENCE: LOW ({zone_run_count} run{'s' if zone_run_count != 1 else ''} of data). "
@@ -309,7 +309,7 @@ def generate_post_run_feedback(
     )
 
     try:
-        response = call_claude(COACH_PERSONA, [{"role": "user", "content": prompt}])
+        response = call_claude(get_persona(athlete.coach_key).persona_block, [{"role": "user", "content": prompt}])
     except Exception as e:
         logger.error("Claude feedback generation failed for athlete %d: %s", athlete.id, e)
         return
@@ -356,7 +356,7 @@ def generate_weekly_review(athlete: Athlete, week_summary: dict, db_session: Ses
     )
 
     try:
-        response = call_claude(COACH_PERSONA, [{"role": "user", "content": prompt}])
+        response = call_claude(get_persona(athlete.coach_key).persona_block, [{"role": "user", "content": prompt}])
         logger.info("Weekly review generated for athlete %d", athlete.id)
         return response
     except Exception as e:

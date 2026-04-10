@@ -10,20 +10,56 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 logger = logging.getLogger(__name__)
 
+# Rate-limit Garmin auth-error DMs to one per athlete per day (keyed by athlete_id → date).
+_garmin_auth_error_notified: dict[int, date] = {}
+
+
+def _notify_garmin_auth_error(athlete, slack_client) -> None:
+    """DM the athlete that their Garmin credentials are invalid and show the re-entry button.
+
+    Rate-limited to one notification per athlete per calendar day so a broken morning
+    check-in (runs every 30 min) doesn't flood the athlete with the same message.
+    """
+    from running_coach_ai.slack.onboarding import _send_garmin_credential_button
+
+    today = date.today()
+    if _garmin_auth_error_notified.get(athlete.id) == today:
+        return
+
+    _garmin_auth_error_notified[athlete.id] = today
+
+    channel = athlete.slack_dm_channel_id
+    if not channel:
+        logger.warning("Cannot notify athlete %d of Garmin auth error: no DM channel cached", athlete.id)
+        return
+
+    try:
+        slack_client.chat_postMessage(
+            channel=channel,
+            text=(
+                "I'm having trouble connecting to your Garmin account — your credentials may have changed. "
+                "Please re-enter them so I can keep your training on track."
+            ),
+        )
+        _send_garmin_credential_button(channel, slack_client)
+        logger.info("Notified athlete %d of Garmin auth failure", athlete.id)
+    except Exception as e:
+        logger.error("Failed to send Garmin auth error notification to athlete %d: %s", athlete.id, e)
+
 
 def _next_checkin_start(tz_name: str) -> datetime:
-    """Return the next 07:00 in the athlete's timezone as a timezone-aware datetime.
+    """Return the next 06:00 in the athlete's timezone as a timezone-aware datetime.
 
-    If it is currently before 07:00 local time, returns today's 07:00.
-    If it is 07:00 or later, returns tomorrow's 07:00 so the first tick is
+    If it is currently before 06:00 local time, returns today's 06:00.
+    If it is 06:00 or later, returns tomorrow's 06:00 so the first tick is
     always a fresh morning poll.
     """
     tz = ZoneInfo(tz_name)
     now_local = datetime.now(tz)
-    today_7am = now_local.replace(hour=7, minute=0, second=0, microsecond=0)
-    if now_local >= today_7am:
-        return today_7am + timedelta(days=1)
-    return today_7am
+    today_6am = now_local.replace(hour=6, minute=0, second=0, microsecond=0)
+    if now_local >= today_6am:
+        return today_6am + timedelta(days=1)
+    return today_6am
 
 
 # ---------------------------------------------------------------------------
@@ -35,6 +71,7 @@ def _run_morning_checkin_for_athlete(athlete_id: int, slack_client) -> None:
     from running_coach_ai.database.models import Athlete
     from running_coach_ai.database.session import get_session
     from running_coach_ai.coach.adapter import run_morning_checkin
+    from running_coach_ai.garmin.client import is_garmin_auth_error
 
     logger.info("Morning check-in starting for athlete %d", athlete_id)
     try:
@@ -42,7 +79,12 @@ def _run_morning_checkin_for_athlete(athlete_id: int, slack_client) -> None:
             athlete = db_session.query(Athlete).get(athlete_id)
             if not athlete or not athlete.allowed or not athlete.onboarding_complete:
                 return
-            run_morning_checkin(athlete, db_session, slack_client)
+            try:
+                run_morning_checkin(athlete, db_session, slack_client)
+            except Exception as inner_e:
+                if is_garmin_auth_error(inner_e):
+                    _notify_garmin_auth_error(athlete, slack_client)
+                raise
     except Exception as e:
         logger.error("Morning check-in failed for athlete %d: %s", athlete_id, e)
 
@@ -65,6 +107,15 @@ def _run_activity_poll(slack_client, scheduler=None) -> None:
             try:
                 if not athlete.garmin_email or not athlete.garmin_password_encrypted:
                     continue
+                # Skip re-auth if no cached session exists — avoids 429 rate limits
+                # from repeated SSO login attempts. The session is created during
+                # onboarding or via !admin resync-garmin.
+                import os as _os
+                from running_coach_ai.config import settings as _settings
+                token_dir = _os.path.join(_settings.GARMIN_SESSION_DIR, str(athlete.id))
+                if not _os.path.isfile(_os.path.join(token_dir, "oauth1_token.json")):
+                    logger.debug("Skipping activity poll for athlete %d: no cached Garmin session", athlete.id)
+                    continue
                 garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted)
                 new_ids = poll_new_activities(garmin, athlete.id, db_session)
 
@@ -76,6 +127,9 @@ def _run_activity_poll(slack_client, scheduler=None) -> None:
                 _retry_pending_feedback(athlete, garmin, db_session, slack_client)
 
             except Exception as e:
+                from running_coach_ai.garmin.client import is_garmin_auth_error
+                if is_garmin_auth_error(e):
+                    _notify_garmin_auth_error(athlete, slack_client)
                 logger.error("Activity poll failed for athlete %d: %s", athlete.id, e)
 
 
@@ -451,7 +505,7 @@ def register_jobs(scheduler: BlockingScheduler, slack_app) -> None:
             .all()
         )
         for athlete in athletes:
-            tz = athlete.timezone or "UTC"
+            tz = athlete.timezone or "America/New_York"
             scheduler.add_job(
                 _run_morning_checkin_for_athlete,
                 IntervalTrigger(minutes=30, start_date=_next_checkin_start(tz), timezone=tz),
@@ -502,7 +556,7 @@ def register_athlete_morning_job(scheduler: BlockingScheduler, athlete, slack_cl
     Called after new athlete onboarding completes so the job takes effect
     without restarting the scheduler.
     """
-    tz = athlete.timezone or "UTC"
+    tz = athlete.timezone or "America/New_York"
     scheduler.add_job(
         _run_morning_checkin_for_athlete,
         IntervalTrigger(minutes=30, start_date=_next_checkin_start(tz), timezone=tz),

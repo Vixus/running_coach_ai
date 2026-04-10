@@ -35,13 +35,22 @@ def parse_health_snapshot(raw: dict, athlete_id: int, snapshot_date: date, db_se
     if raw.get("sleep"):
         dto = _safe_get(raw["sleep"], "dailySleepDTO")
         if dto:
-            # sleepScores.overall.value is the primary path; fall back to top-level score
+            # Try all known Garmin API variants for sleep score (field name changes across firmware)
             sleep_score = (
                 _safe_get(dto, "sleepScores", "overall", "value")
+                or _safe_get(dto, "overallSleepScore", "value")
+                or _safe_get(dto, "overallSleepScore")
                 or _safe_get(dto, "sleepScore")
                 or _safe_get(raw["sleep"], "sleepScore")
             )
             sleep_duration = _safe_get(dto, "sleepTimeSeconds")
+        if sleep_score is None:
+            logger.warning(
+                "Sleep score not found for athlete %d — dto keys: %s, raw sleep keys: %s",
+                athlete_id,
+                list(dto.keys()) if dto else "no dto",
+                list(raw["sleep"].keys()) if isinstance(raw.get("sleep"), dict) else "n/a",
+            )
         logger.debug(
             "Sleep parsed for athlete %d: score=%s duration=%s (dto keys: %s)",
             athlete_id, sleep_score, sleep_duration,
@@ -91,6 +100,7 @@ def parse_health_snapshot(raw: dict, athlete_id: int, snapshot_date: date, db_se
     if raw.get("body_battery") and isinstance(raw["body_battery"], list) and raw["body_battery"]:
         bb_entry = raw["body_battery"][0]
         vals_array = bb_entry.get("bodyBatteryValuesArray") or []
+        levels: list = []
         if vals_array:
             levels = [
                 v[1] for v in vals_array
@@ -102,8 +112,10 @@ def parse_health_snapshot(raw: dict, athlete_id: int, snapshot_date: date, db_se
         if body_battery_start is None:
             body_battery_start = _safe_get(bb_entry, "charged")
         logger.debug(
-            "Body battery for athlete %d: start(peak)=%s end=%s (value entries: %d)",
+            "Body battery for athlete %d: start(peak)=%s end=%s "
+            "(value entries: %d, first_5=%s, last_5=%s)",
             athlete_id, body_battery_start, body_battery_end, len(vals_array),
+            levels[:5], levels[-5:],
         )
 
     # --- Stress ---
@@ -150,14 +162,34 @@ def parse_health_snapshot(raw: dict, athlete_id: int, snapshot_date: date, db_se
             if readings:
                 spo2_avg = round(sum(readings) / len(readings), 1)
 
+    # --- Training readiness ---
+    training_readiness = None
+    if raw.get("training_readiness"):
+        tr_data = raw["training_readiness"]
+        if isinstance(tr_data, dict):
+            training_readiness = (
+                tr_data.get("trainingReadinessScore")
+                or tr_data.get("score")
+                or tr_data.get("value")
+            )
+            if training_readiness is not None:
+                training_readiness = int(training_readiness)
+        logger.debug("Training readiness parsed for athlete %d: %s", athlete_id, training_readiness)
+        if training_readiness is None:
+            logger.warning(
+                "Training readiness score not found for athlete %d — keys: %s",
+                athlete_id,
+                list(tr_data.keys()) if isinstance(tr_data, dict) else type(tr_data).__name__,
+            )
+
     # --- Log summary of what was parsed ---
     logger.info(
         "HealthSnapshot athlete %d %s — HRV: %s (%s), sleep: %s score/%s s, "
-        "RHR: %s, BB: %s→%s, stress: %s, steps: %s, SpO2: %s",
+        "RHR: %s, BB: %s→%s, stress: %s, steps: %s, SpO2: %s, TR: %s",
         athlete_id, snapshot_date,
         hrv_score, hrv_status, sleep_score, sleep_duration,
         resting_hr, body_battery_start, body_battery_end,
-        stress_avg, steps, spo2_avg,
+        stress_avg, steps, spo2_avg, training_readiness,
     )
 
     # --- Upsert on (athlete_id, date) ---
@@ -186,6 +218,7 @@ def parse_health_snapshot(raw: dict, athlete_id: int, snapshot_date: date, db_se
     snapshot.stress_avg = stress_avg
     snapshot.steps = steps
     snapshot.spo2_avg = spo2_avg
+    snapshot.training_readiness = training_readiness
 
     db_session.commit()
     return snapshot
