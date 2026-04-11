@@ -48,18 +48,22 @@ def _notify_garmin_auth_error(athlete, slack_client) -> None:
 
 
 def _next_checkin_start(tz_name: str) -> datetime:
-    """Return the next 06:00 in the athlete's timezone as a timezone-aware datetime.
+    """Return the start_date for the morning check-in IntervalTrigger.
 
-    If it is currently before 06:00 local time, returns today's 06:00.
-    If it is 06:00 or later, returns tomorrow's 06:00 so the first tick is
-    always a fresh morning poll.
+    - Before 06:00 local → today's 06:00
+    - 06:00–noon local   → now (fire immediately; dedup guard prevents double-send)
+    - After noon local   → tomorrow's 06:00 (too late to retry today)
     """
     tz = ZoneInfo(tz_name)
     now_local = datetime.now(tz)
     today_6am = now_local.replace(hour=6, minute=0, second=0, microsecond=0)
-    if now_local >= today_6am:
-        return today_6am + timedelta(days=1)
-    return today_6am
+    today_noon = now_local.replace(hour=12, minute=0, second=0, microsecond=0)
+
+    if now_local < today_6am:
+        return today_6am
+    if now_local < today_noon:
+        return now_local
+    return today_6am + timedelta(days=1)
 
 
 # ---------------------------------------------------------------------------

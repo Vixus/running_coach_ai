@@ -546,6 +546,30 @@ def build_system_prompt(
         sections.append("\n".join(week_lines))
 
     # --- Section 4: Health data — today's snapshot + 7-day HRV trend ---
+    # If today's snapshot isn't in the DB yet (morning job hasn't run / failed),
+    # attempt a live fetch from Garmin so the conversation has fresh data.
+    if athlete.garmin_email and athlete.garmin_password_encrypted:
+        today_exists = (
+            scoped_query(db_session, HealthSnapshot, athlete.id)
+            .filter(HealthSnapshot.date == today)
+            .first()
+        )
+        if today_exists is None:
+            try:
+                from running_coach_ai.garmin.client import get_garmin_client, get_health_snapshot
+                from running_coach_ai.garmin.parser import parse_health_snapshot
+                garmin = get_garmin_client(
+                    athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted
+                )
+                raw = get_health_snapshot(garmin, today.isoformat())
+                parse_health_snapshot(raw, athlete.id, today, db_session)
+                db_session.flush()
+                logger.info("Live health fetch for athlete %d in conversation context", athlete.id)
+            except Exception as _e:
+                logger.warning(
+                    "Live health fetch failed for athlete %d in conversation: %s", athlete.id, _e
+                )
+
     recent_health = (
         scoped_query(db_session, HealthSnapshot, athlete.id)
         .filter(
@@ -1100,7 +1124,13 @@ def extract_and_sync_garmin(
     Returns (cleaned_response, status_note) where status_note is a
     human-readable sync result appended to the reply (empty string if no sync).
     """
-    _GARMIN_SYNC_RE = re.compile(r"<garmin_sync\s*(?:/>|></garmin_sync\s*>|>)")
+    # Match both the canonical <garmin_sync/> and the function-call variant
+    # that some model versions emit: <function_calls><invoke name="garmin_sync">...</invoke></function_calls>
+    _GARMIN_SYNC_RE = re.compile(
+        r"<garmin_sync\s*(?:/>|></garmin_sync\s*>|>)"
+        r"|<function_calls>\s*<invoke\s+name=[\"']garmin_sync[\"'][^>]*/?\s*>.*?</invoke>\s*</function_calls>",
+        re.DOTALL,
+    )
     if not _GARMIN_SYNC_RE.search(claude_response):
         cleaned = _GARMIN_SYNC_RE.sub("", claude_response).strip()
         return cleaned, ""

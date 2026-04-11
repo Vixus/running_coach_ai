@@ -331,7 +331,9 @@ def register_handlers(app: App) -> None:
             # Check for admin commands first
             if slack_user_id == settings.ADMIN_SLACK_USER_ID and text.startswith("!admin"):
                 from running_coach_ai.slack.admin import handle_admin_command
-                response = handle_admin_command(slack_user_id, text, db_session, channel=channel)
+                response = handle_admin_command(
+                    slack_user_id, text, db_session, channel=channel, slack_client=client
+                )
                 if response:
                     say(response)
                 return

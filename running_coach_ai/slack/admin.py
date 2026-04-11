@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def handle_admin_command(
-    sender_id: str, text: str, db_session: Session, *, channel: str | None = None
+    sender_id: str, text: str, db_session: Session, *, channel: str | None = None, slack_client=None
 ) -> str | None:
     """Parse and execute an admin command.
 
@@ -50,6 +50,8 @@ def handle_admin_command(
       !admin clean-garmin [<uid>]                        — show clean warning
       !admin clean-garmin [<uid>] --confirm              — execute clean
       !admin verify-garmin [<uid>]                       — compare DB plan vs live Garmin
+      !admin morning-checkin [<uid>]                     — trigger morning check-in now
+      !admin morning-checkin [<uid>] --force             — trigger even if already sent today
       !admin test-start                                  — become a fresh new runner for testing
       !admin test-stop                                   — return to normal admin account
     """
@@ -64,6 +66,7 @@ def handle_admin_command(
 
     confirmed = "--confirm" in text.lower()
     verify = "--verify" in text.lower()
+    force = "--force" in text.lower()
 
     add_match = re.match(r"!admin\s+add\s+(<@)?([A-Z0-9]+)>?", text, re.IGNORECASE)
     remove_match = re.match(r"!admin\s+remove\s+(<@)?([A-Z0-9]+)>?", text, re.IGNORECASE)
@@ -72,6 +75,7 @@ def handle_admin_command(
     clean_match = re.match(r"!admin\s+clean-garmin(?:\s+(<@)?([A-Z0-9]+)>?)?", text, re.IGNORECASE)
     verify_match = re.match(r"!admin\s+verify-garmin(?:\s+(<@)?([A-Z0-9]+)>?)?", text, re.IGNORECASE)
     reset_match = re.match(r"!admin\s+reset-onboarding(?:\s+(<@)?([A-Z0-9]+)>?)?", text, re.IGNORECASE)
+    morning_match = re.match(r"!admin\s+morning-checkin(?:\s+(<@)?([A-Z0-9]+)>?)?", text, re.IGNORECASE)
     test_start_match = re.match(r"!admin\s+test-start", text, re.IGNORECASE)
     test_stop_match = re.match(r"!admin\s+test-stop", text, re.IGNORECASE)
 
@@ -97,6 +101,9 @@ def handle_admin_command(
         if not user_id:
             return "Usage: `!admin reset-onboarding <user_id>` — uid is required."
         return _reset_onboarding_athlete(user_id, db_session)
+    elif morning_match:
+        user_id = morning_match.group(2) if morning_match.group(2) else None
+        return _trigger_morning_checkin(sender_id, user_id, db_session, force=force, slack_client=slack_client)
     elif test_start_match:
         return _test_start(sender_id, channel, db_session)
     elif test_stop_match:
@@ -105,6 +112,7 @@ def handle_admin_command(
         return ("Unknown admin command. Try: `!admin add <user_id>`, `!admin remove <user_id>`, "
                 "`!admin list`, `!admin resync-garmin [<user_id>]`, `!admin clean-garmin [<user_id>]`, "
                 "`!admin verify-garmin [<user_id>]`, `!admin reset-onboarding <user_id>`, "
+                "`!admin morning-checkin [<user_id>] [--force]`, "
                 "`!admin test-start`, `!admin test-stop`")
 
 
@@ -617,6 +625,50 @@ def _verify_garmin(
         )
 
     return "\n".join(lines)
+
+
+def _trigger_morning_checkin(
+    sender_id: str,
+    target_user_id: str | None,
+    db_session: Session,
+    force: bool = False,
+    slack_client=None,
+) -> str:
+    """Manually trigger the morning check-in for an athlete.
+
+    --force clears last_morning_checkin_date so the check-in runs even if
+    it was already sent today (useful for retesting without waiting until tomorrow).
+    """
+    from running_coach_ai.scheduler.jobs import _run_morning_checkin_for_athlete
+
+    if not slack_client:
+        return "Cannot trigger morning check-in: no Slack client available (internal error)."
+
+    lookup_id = target_user_id or sender_id
+    athlete = (
+        db_session.query(Athlete)
+        .filter(Athlete.slack_user_id == lookup_id)
+        .first()
+    )
+
+    if not athlete:
+        return f"No athlete found with Slack ID {lookup_id}."
+    if not athlete.allowed or not athlete.onboarding_complete:
+        return f"{athlete.name or lookup_id} has not completed onboarding."
+
+    name = athlete.name or lookup_id
+
+    if force and athlete.last_morning_checkin_date is not None:
+        athlete.last_morning_checkin_date = None
+        db_session.commit()
+        logger.info("Admin cleared last_morning_checkin_date for athlete %d (--force)", athlete.id)
+
+    try:
+        _run_morning_checkin_for_athlete(athlete.id, slack_client)
+        return f"Morning check-in triggered for {name}."
+    except Exception as e:
+        logger.error("Admin morning-checkin failed for athlete %d: %s", athlete.id, e)
+        return f"Morning check-in failed for {name}: {e}"
 
 
 def _list_athletes(db_session: Session) -> str:

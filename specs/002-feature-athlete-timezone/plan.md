@@ -109,3 +109,13 @@ The two lines `if not (6 <= now.hour < 22): return` are removed from `_run_activ
 ## Constitution Check (Post-Design)
 
 All 8 principles re-verified against the Phase 1 design artifacts. No new violations introduced by design choices. GATE STATUS: **PASS**.
+
+## Reconciliation Addendum (2026-04-10)
+
+### Behaviour Update
+
+- **`_next_checkin_start()` window change**: The start-date logic for the morning check-in `IntervalTrigger` was updated in `running_coach_ai/scheduler/jobs.py`. The previous behaviour deferred the first tick to tomorrow's 06:00 whenever the bot started after 06:00 local time. The updated behaviour has three branches: (1) before 06:00 local time -> today's 06:00; (2) between 06:00 and noon -> now (fire immediately, relying on the existing `last_morning_checkin_date` dedup guard); (3) after noon -> tomorrow's 06:00. This prevents athletes from missing their check-in on days the bot restarts between 06:00 and 12:00.
+
+### Revision: Implementation Sync 2026-04-10
+
+- Reason: `_next_checkin_start()` mid-morning window behaviour changed to fire immediately rather than deferring to the next day.

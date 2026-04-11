@@ -162,6 +162,8 @@ An admin user can add or remove athletes from the allowed-users list at runtime 
 1. **Given** the admin sends an add-user command with a valid user identifier, **When** the command is processed, **Then** the user is added to the allowed list and can begin onboarding immediately without any restart or deployment.
 2. **Given** the admin sends a remove-user command, **When** the command is processed, **Then** that user's access is revoked and subsequent messages from them are declined politely — their data is retained and they can be re-added without re-onboarding.
 3. **Given** a non-admin user attempts to use admin commands, **When** the command is received, **Then** it is silently ignored or politely declined without revealing admin functionality.
+4. **Given** the admin sends `!admin morning-checkin [<uid>]`, **When** the command is processed, **Then** the morning check-in job runs for that athlete immediately, respecting the same-day dedup guard to prevent double-send.
+5. **Given** the admin sends `!admin morning-checkin [<uid>] --force`, **When** the command is processed, **Then** `last_morning_checkin_date` is cleared first, so a fresh check-in message is sent even if one was already delivered today.
 
 ---
 
@@ -238,6 +240,21 @@ An admin user can add or remove athletes from the allowed-users list at runtime 
 - **FR-032**: The system MUST skip sending the morning DM if athlete local time is past 10:00am and health data is still unavailable; it MUST log this skip at INFO level and MUST NOT send any message for that calendar day.
 - **FR-033**: The system MUST NOT send more than one morning check-in DM per athlete per calendar day. On successful send, the system MUST record the date in `athletes.last_morning_checkin_date` and treat all subsequent same-day poller ticks as no-ops.
 
+**Data Model Additions**
+
+- **FR-034**: The system MUST store a `workout_name` (nullable Text) on each `PlannedWorkout`. When present, this string is used as the `workoutName` field uploaded to Garmin Connect and may be included in `<plan>` JSON tags.
+- **FR-035**: The system MUST store an `activity_type` (nullable Text, Garmin `typeKey`, e.g. `"running"`, `"hiking"`) on each `CompletedWorkout` so that non-running activities can be separated from running workouts in context assembly and weekly load calculations.
+- **FR-036**: The system MUST store `lthr_bpm` (nullable Integer) on each `Athlete` to record their Lactate Threshold Heart Rate derived from Garmin device profiles. This value is used for zone-based training intensity calculations.
+- **FR-037**: The system MUST store `training_readiness` (nullable Integer, 0–100) in each daily `HealthSnapshot` when Garmin publishes it. The morning check-in and conversation context assembler MUST include it alongside HRV and sleep data.
+
+**Admin Operations**
+
+- **FR-038**: The admin MUST be able to trigger a manual morning check-in for any athlete via `!admin morning-checkin [<uid>]`. The command respects the same-day dedup guard. Adding `--force` clears `last_morning_checkin_date` first, allowing the check-in to run even if already sent today.
+
+**Observability**
+
+- **FR-039**: When `LOG_FILE` is set in the environment, the system MUST additionally write structured logs to a rotating file (10 MB max, 5 backups) at that path, in addition to stdout. This supplements FR-028 for NAS deployments where persistent log files are required.
+
 ### Key Entities
 
 - **Athlete**: A registered individual with a unique identity, fitness account credentials, home location, and onboarding status. Each athlete is fully isolated from all others.
@@ -287,3 +304,6 @@ An admin user can add or remove athletes from the allowed-users list at runtime 
 ### Revision: Implementation Sync 2026-04-04
 
 - Reason: Reconciled documented behavior with implementation gaps across latency targets, retry/stale handling, deterministic onboarding progression, multi-goal conflict resolution, biomechanical trend coverage, admin command surface, and athlete-scoped query enforcement.
+
+### Revision: Implementation Sync 2026-04-10
+- Reason: Reconciled schema additions (workout_name, activity_type, lthr_bpm, training_readiness), new admin morning-checkin command, LOG_FILE rotating handler, and all associated test requirements.

@@ -157,3 +157,31 @@ running_coach_ai/
 ## Complexity Tracking
 
 No constitution violations to justify. N/A.
+
+## Reconciliation Addendum (2026-04-10)
+
+### Scope
+
+Schema additions and behavioural changes landed on the `001-ai-running-coach` branch after the 2026-04-04 reconciliation. This addendum closes the remaining drift.
+
+### Contract and Behaviour Updates
+
+- **workout_name contract**: `PlannedWorkout` now carries a `workout_name TEXT NULLABLE` column. When non-null it is emitted as `workoutName` in the Garmin workout upload JSON (`garmin/workout_builder.py:build_workout_json`). The `<plan>` JSON schema in all persona blocks now includes an optional `workout_name` field — Claude may include it to label sessions; omitting it falls back to a default name derived from `workout_type`.
+- **activity_type contract**: `CompletedWorkout` now carries `activity_type TEXT NULLABLE` (Garmin `typeKey`). `garmin/parser.py` populates it from `activityType.typeKey` on both the activity-list and activity-detail responses. `slack/conversation.py` and `scheduler/jobs.py` use a `RUNNING_TYPES` constant to filter non-running activities out of running-specific weekly load aggregations.
+- **lthr_bpm contract**: `Athlete` gains `lthr_bpm INTEGER NULLABLE` for Lactate Threshold Heart Rate. `scheduler/jobs.py` attempts to derive it from the Garmin profile on each activity-poll cycle (if not yet set) and stores it; it is cleared to `None` by `!admin clean-garmin`.
+- **training_readiness contract**: `HealthSnapshot` gains `training_readiness INTEGER NULLABLE`. `garmin/client.py:get_health_snapshot` calls `get_morning_training_readiness(date_str)` and attaches the raw result; `garmin/parser.py` extracts the score integer and persists it. `coach/adapter.py` and `slack/conversation.py` include it in health context sections when non-null.
+- **!admin morning-checkin contract**: `slack/admin.py:handle_admin_command` now accepts a `slack_client` keyword argument (None-safe). The new `!admin morning-checkin [<uid>] [--force]` branch calls `scheduler/jobs.py:_run_morning_checkin_for_athlete(athlete_id, slack_client)`. `--force` clears `athlete.last_morning_checkin_date` before the call. `slack/bot.py` passes `slack_client=client` to every `handle_admin_command` call.
+- **LOG_FILE contract**: `config.py:configure_logging` now checks `settings.LOG_FILE`. When set, a `logging.handlers.RotatingFileHandler` (10 MB, 5 backups, UTF-8) is attached to the root logger in addition to the existing stdout `basicConfig` handler.
+
+### Testing Strategy Additions
+
+- Add unit test for `!admin morning-checkin` (with and without `--force`) in `tests/unit/test_admin.py`.
+- Add unit test for `LOG_FILE` rotating handler setup in `tests/unit/test_config_logging.py`.
+- Add unit tests verifying `workout_name` round-trip (plan tag to DB to Garmin upload) in `tests/unit/test_workout_builder.py`.
+- Add unit tests for `activity_type` filtering logic in `tests/unit/test_activity_type_filter.py`.
+- Add unit tests for `lthr_bpm` derivation and persistence in `tests/unit/test_lthr_derivation.py`.
+- Add unit tests for `training_readiness` parsing and context inclusion in `tests/unit/test_training_readiness.py`.
+
+### Revision: Implementation Sync 2026-04-10
+
+- Reason: Reconciled schema drift (workout_name, activity_type, lthr_bpm, training_readiness), new admin morning-checkin command with slack_client plumbing, and LOG_FILE rotating log handler.

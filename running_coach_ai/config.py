@@ -1,6 +1,8 @@
 """Application configuration loaded from environment variables."""
 
 import logging
+import logging.handlers
+import os
 from typing import List
 
 from pydantic_settings import BaseSettings
@@ -17,6 +19,7 @@ class Settings(BaseSettings):
     ALLOWED_SLACK_USER_IDS: str = ""
     ADMIN_SLACK_USER_ID: str = ""
     LOG_LEVEL: str = "INFO"
+    LOG_FILE: str = ""  # If set, logs are also written to this file path
 
     @property
     def allowed_user_ids(self) -> List[str]:
@@ -31,9 +34,18 @@ settings = Settings()
 
 
 def configure_logging() -> None:
-    """Set up structured logging based on LOG_LEVEL env var."""
-    logging.basicConfig(
-        level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
+    """Set up structured logging: always to stdout, optionally to a rotating file."""
+    level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
+    fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    datefmt = "%Y-%m-%d %H:%M:%S"
+
+    logging.basicConfig(level=level, format=fmt, datefmt=datefmt)
+
+    log_file = settings.LOG_FILE
+    if log_file:
+        os.makedirs(os.path.dirname(log_file), exist_ok=True) if os.path.dirname(log_file) else None
+        handler = logging.handlers.RotatingFileHandler(
+            log_file, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
+        )
+        handler.setFormatter(logging.Formatter(fmt, datefmt=datefmt))
+        logging.getLogger().addHandler(handler)

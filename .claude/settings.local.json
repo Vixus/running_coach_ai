@@ -38,7 +38,11 @@
       "Bash(bash --version)",
       "Bash(grep -n \"^revision\\\\|^down_revision\" C:/Users/vixus/Projects/running_coach_ai/running_coach_ai/database/migrations/versions/*.py)",
       "Bash(alembic upgrade:*)",
-      "Bash(ruff check:*)"
+      "Bash(ruff check:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(DB_PATH=./data/coach.db GARMIN_SESSION_DIR=./data/garmin_sessions/ python scripts/diagnose.py)"
     ]
   }
 }

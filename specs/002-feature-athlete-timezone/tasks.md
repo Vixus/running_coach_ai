@@ -162,3 +162,7 @@ T009 (test_activity_poll_no_gate.py)    ─┘
 | SC-002 (within 60 s of ingestion)               | Inherent to synchronous pipeline: timezone update executes in the same `_ingest_and_feedback` call that processes the activity — no async delay possible. Verified post-deploy by log timestamps. | T005, T008                                                                      |
 | SC-003 (job fires within ±5 min of 07:00 local) | Operational metric. Verified post-deploy by comparing `morning_checkin_*` log timestamps against the athlete’s stored `timezone`. Not unit-testable without a live scheduler.                     | T004, T008 (job re-registration); existing `register_athlete_morning_job` tests |
 | SC-004                                          | Unit test: `_run_activity_poll` proceeds at 03:00 server time.                                                                                                                                    | T009, T010                                                                      |
+
+## Remediation: Gaps (2026-04-10)
+
+- [ ] T013 [P] [US1] Write unit tests for the updated `_next_checkin_start()` in `tests/unit/test_morning_checkin_polling.py`: (a) called before 06:00 local -> returns today's 06:00; (b) called between 06:00 and noon -> returns approximately now (within 1 second); (c) called after noon -> returns tomorrow's 06:00; (d) existing T079 tests still pass unmodified in `running_coach_ai/scheduler/jobs.py`. [Sync: Gap Report]

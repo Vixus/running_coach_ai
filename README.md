@@ -110,6 +110,7 @@ Send these as DMs from the `ADMIN_SLACK_USER_ID` account:
 | `!admin resync-garmin [<uid>]` | Preview resync; add `--confirm` to execute; add `--confirm --verify` to also verify after |
 | `!admin clean-garmin [<uid>]` | Preview full wipe + re-sync; add `--confirm` to execute (deletes manual Garmin workouts too) |
 | `!admin verify-garmin [<uid>]` | Compare DB plan against live Garmin — reports missing or unscheduled workouts |
+| `!admin morning-checkin [<uid>]` | Manually trigger morning check-in now; add `--force` to skip the "already sent today" check |
 | `!admin reset-onboarding <uid>` | Clear onboarding state and conversation history so an athlete can re-onboard from scratch |
 | `!admin test-start` | Become a fresh new runner in the current DM channel (creates isolated test athlete) |
 | `!admin test-stop` | Return to the normal admin account |
