@@ -52,7 +52,8 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, slack_client) -> 
     Garmin has not yet processed the night's sleep/HRV/body-battery data.
     Retries are handled by the 30-minute IntervalTrigger in the scheduler.
     """
-    today = date.today()
+    tz = ZoneInfo(athlete.timezone or "America/New_York")
+    today = datetime.now(tz).date()
     today_str = today.isoformat()
 
     # Dedup guard — ensure exactly one DM per day (FR-033)

@@ -344,6 +344,41 @@ def get_garmin_workout_library(garmin: Garmin, limit: int = 999) -> list[dict]:
 # Health data reads
 # ---------------------------------------------------------------------------
 
+def _retry_health_call(func, *args, retries: int = 2, **kwargs):
+    """Call a Garmin health endpoint with retry on transient errors.
+
+    Each health metric is individually retried so a single network blip
+    doesn't silently drop an entire metric for the day.
+    """
+    import requests as _requests
+
+    last_exc = None
+    for attempt in range(retries + 1):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            last_exc = e
+            if attempt < retries:
+                error_str = str(e).lower()
+                is_retryable = (
+                    isinstance(e, (_requests.exceptions.ConnectionError,
+                                   _requests.exceptions.Timeout))
+                    or any(kw in error_str for kw in (
+                        "429", "rate limit", "500", "502", "503", "504",
+                        "connection", "timeout", "reset",
+                    ))
+                )
+                if is_retryable:
+                    delay = 2.0 * (2 ** attempt)
+                    logger.warning(
+                        "Health call %s retry %d/%d after: %s (%.1fs delay)",
+                        func.__name__, attempt + 1, retries, e, delay,
+                    )
+                    time.sleep(delay)
+                    continue
+            raise
+    raise last_exc  # unreachable, but keeps type checkers happy
+
 def _has_sleep_data(resp) -> bool:
     """Return True if the sleep response contains actual sleep records."""
     if not resp:
@@ -382,29 +417,31 @@ def get_health_snapshot(garmin: Garmin, date_str: str) -> dict:
     yesterday. The morning check-in retries every 30 minutes until data is
     available, so stale fallback data is never surfaced.
 
-    Each metric is fetched independently — exceptions are caught per field so a
-    single failing endpoint does not block the others.
+    Each metric is fetched independently with per-call retry logic — a single
+    transient failure no longer silently drops a metric for the entire day.
+    Exceptions are caught per field so a single failing endpoint does not
+    block the others.
 
     Returns a dict with raw response values (None if unavailable).
     """
     raw: dict = {}
 
     try:
-        sleep = garmin.get_sleep_data(date_str)
+        sleep = _retry_health_call(garmin.get_sleep_data, date_str)
         raw["sleep"] = sleep if _has_sleep_data(sleep) else None
     except Exception as e:
         logger.warning("Sleep data unavailable for %s: %s", date_str, e)
         raw["sleep"] = None
 
     try:
-        hrv = garmin.get_hrv_data(date_str)
+        hrv = _retry_health_call(garmin.get_hrv_data, date_str)
         raw["hrv"] = hrv if _has_hrv_data(hrv) else None
     except Exception as e:
         logger.warning("HRV data unavailable for %s: %s", date_str, e)
         raw["hrv"] = None
 
     try:
-        rhr = garmin.get_rhr_day(date_str)
+        rhr = _retry_health_call(garmin.get_rhr_day, date_str)
         raw["rhr"] = rhr
         logger.debug("RHR raw response for %s: %s", date_str, rhr)
     except Exception as e:
@@ -412,21 +449,21 @@ def get_health_snapshot(garmin: Garmin, date_str: str) -> dict:
         raw["rhr"] = None
 
     try:
-        bb = garmin.get_body_battery(date_str, date_str)
+        bb = _retry_health_call(garmin.get_body_battery, date_str, date_str)
         raw["body_battery"] = bb if _has_body_battery_data(bb) else None
     except Exception as e:
         logger.warning("Body battery unavailable for %s: %s", date_str, e)
         raw["body_battery"] = None
 
     try:
-        stress = garmin.get_stress_data(date_str)
+        stress = _retry_health_call(garmin.get_stress_data, date_str)
         raw["stress"] = stress
     except Exception as e:
         logger.warning("Stress data unavailable for %s: %s", date_str, e)
         raw["stress"] = None
 
     try:
-        steps = garmin.get_steps_data(date_str)
+        steps = _retry_health_call(garmin.get_steps_data, date_str)
         raw["steps"] = steps
         logger.debug("Steps raw type/sample for %s: type=%s, first=%s",
                      date_str, type(steps).__name__,
@@ -436,14 +473,16 @@ def get_health_snapshot(garmin: Garmin, date_str: str) -> dict:
         raw["steps"] = None
 
     try:
-        spo2 = garmin.get_spo2_data(date_str)
+        spo2 = _retry_health_call(garmin.get_spo2_data, date_str)
         raw["spo2"] = spo2
     except Exception as e:
         logger.warning("SpO2 data unavailable for %s: %s", date_str, e)
         raw["spo2"] = None
 
     try:
-        raw["training_readiness"] = garmin.get_morning_training_readiness(date_str)
+        raw["training_readiness"] = _retry_health_call(
+            garmin.get_morning_training_readiness, date_str
+        )
     except Exception as e:
         logger.warning("Training readiness unavailable for %s: %s", date_str, e)
         raw["training_readiness"] = None

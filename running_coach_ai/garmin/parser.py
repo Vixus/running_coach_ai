@@ -36,8 +36,10 @@ def parse_health_snapshot(raw: dict, athlete_id: int, snapshot_date: date, db_se
         dto = _safe_get(raw["sleep"], "dailySleepDTO")
         if dto:
             # Try all known Garmin API variants for sleep score (field name changes across firmware)
+            # Modern firmware (2024+): dailySleepDTO.sleepScores.totalScore
             sleep_score = (
-                _safe_get(dto, "sleepScores", "overall", "value")
+                _safe_get(dto, "sleepScores", "totalScore")
+                or _safe_get(dto, "sleepScores", "overall", "value")
                 or _safe_get(dto, "overallSleepScore", "value")
                 or _safe_get(dto, "overallSleepScore")
                 or _safe_get(dto, "sleepScore")
@@ -166,6 +168,9 @@ def parse_health_snapshot(raw: dict, athlete_id: int, snapshot_date: date, db_se
     training_readiness = None
     if raw.get("training_readiness"):
         tr_data = raw["training_readiness"]
+        # Garmin API returns a list of daily records; unwrap to the first entry.
+        if isinstance(tr_data, list) and tr_data:
+            tr_data = tr_data[0]
         if isinstance(tr_data, dict):
             training_readiness = (
                 tr_data.get("trainingReadinessScore")
@@ -193,6 +198,23 @@ def parse_health_snapshot(raw: dict, athlete_id: int, snapshot_date: date, db_se
     )
 
     # --- Upsert on (athlete_id, date) ---
+    # For existing records, merge: only overwrite a field when the new value is
+    # not None.  This preserves best-known data across multiple fetch attempts
+    # (e.g. first fetch gets HRV+sleep, second gets body_battery — both survive).
+    fields = {
+        "hrv_score": hrv_score,
+        "hrv_status": hrv_status,
+        "resting_hr": resting_hr,
+        "sleep_score": sleep_score,
+        "sleep_duration_seconds": sleep_duration,
+        "body_battery_start": body_battery_start,
+        "body_battery_end": body_battery_end,
+        "stress_avg": stress_avg,
+        "steps": steps,
+        "spo2_avg": spo2_avg,
+        "training_readiness": training_readiness,
+    }
+
     existing = (
         db_session.query(HealthSnapshot)
         .filter(
@@ -204,21 +226,14 @@ def parse_health_snapshot(raw: dict, athlete_id: int, snapshot_date: date, db_se
 
     if existing:
         snapshot = existing
+        for attr, val in fields.items():
+            if val is not None:
+                setattr(snapshot, attr, val)
     else:
         snapshot = HealthSnapshot(athlete_id=athlete_id, date=snapshot_date)
+        for attr, val in fields.items():
+            setattr(snapshot, attr, val)
         db_session.add(snapshot)
-
-    snapshot.hrv_score = hrv_score
-    snapshot.hrv_status = hrv_status
-    snapshot.resting_hr = resting_hr
-    snapshot.sleep_score = sleep_score
-    snapshot.sleep_duration_seconds = sleep_duration
-    snapshot.body_battery_start = body_battery_start
-    snapshot.body_battery_end = body_battery_end
-    snapshot.stress_avg = stress_avg
-    snapshot.steps = steps
-    snapshot.spo2_avg = spo2_avg
-    snapshot.training_readiness = training_readiness
 
     db_session.commit()
     return snapshot

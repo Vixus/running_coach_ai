@@ -107,7 +107,7 @@ def handle_admin_command(
     elif test_start_match:
         return _test_start(sender_id, channel, db_session)
     elif test_stop_match:
-        return _test_stop(sender_id)
+        return _test_stop(sender_id, db_session)
     else:
         return ("Unknown admin command. Try: `!admin add <user_id>`, `!admin remove <user_id>`, "
                 "`!admin list`, `!admin resync-garmin [<user_id>]`, `!admin clean-garmin [<user_id>]`, "
@@ -764,11 +764,30 @@ def _test_start(admin_slack_id: str, channel: str | None, db_session: Session) -
     )
 
 
-def _test_stop(admin_slack_id: str) -> str:
-    """Deactivate test mode — admin messages route back to their real athlete record."""
-    if admin_slack_id not in _test_mode:
+def _test_stop(admin_slack_id: str, db_session: Session) -> str:
+    """Deactivate test mode — admin messages route back to their real athlete record.
+
+    Also sets the test athlete's allowed=False so scheduler jobs (morning
+    check-in, activity poll, weekly review) stop processing it.
+    """
+    was_in_memory = admin_slack_id in _test_mode
+    _test_mode.pop(admin_slack_id, None)
+
+    # Disable the test athlete in DB so scheduler jobs skip it
+    test_user_id = f"__test_{admin_slack_id}__"
+    test_athlete = (
+        db_session.query(Athlete)
+        .filter(Athlete.slack_user_id == test_user_id, Athlete.allowed == True)
+        .first()
+    )
+
+    if not was_in_memory and not test_athlete:
         return "Test mode is not currently active."
-    del _test_mode[admin_slack_id]
+
+    if test_athlete:
+        test_athlete.allowed = False
+        db_session.commit()
+
     logger.info("Test mode deactivated for admin %s", admin_slack_id)
     return "*Test mode OFF* — you're back to your normal account."
 

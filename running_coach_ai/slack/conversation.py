@@ -4,6 +4,7 @@ import json
 import logging
 import re
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
@@ -467,8 +468,10 @@ def build_system_prompt(
     7. Active coach memories
     8. (Conversation history is passed as messages, not in the system prompt)
     """
-    # Calculate date context once up front — used by multiple sections
-    today = date.today()
+    # Calculate date context once up front — used by multiple sections.
+    # Use the athlete's timezone so early-morning queries fetch the correct date.
+    tz = ZoneInfo(athlete.timezone or "America/New_York")
+    today = datetime.now(tz).date()
     week_start = today - timedelta(days=today.weekday())
     week_end = week_start + timedelta(days=6)
 
@@ -546,29 +549,45 @@ def build_system_prompt(
         sections.append("\n".join(week_lines))
 
     # --- Section 4: Health data — today's snapshot + 7-day HRV trend ---
-    # If today's snapshot isn't in the DB yet (morning job hasn't run / failed),
-    # attempt a live fetch from Garmin so the conversation has fresh data.
+    # If today's snapshot isn't in the DB yet, or exists but has no usable health data
+    # (e.g. stored by a broken parser run earlier today), attempt a live fetch from Garmin.
+    _KEY_HEALTH_FIELDS = ("sleep_score", "hrv_score", "body_battery_start")
     if athlete.garmin_email and athlete.garmin_password_encrypted:
         today_exists = (
             scoped_query(db_session, HealthSnapshot, athlete.id)
             .filter(HealthSnapshot.date == today)
             .first()
         )
-        if today_exists is None:
-            try:
-                from running_coach_ai.garmin.client import get_garmin_client, get_health_snapshot
-                from running_coach_ai.garmin.parser import parse_health_snapshot
-                garmin = get_garmin_client(
-                    athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted
-                )
-                raw = get_health_snapshot(garmin, today.isoformat())
-                parse_health_snapshot(raw, athlete.id, today, db_session)
-                db_session.flush()
-                logger.info("Live health fetch for athlete %d in conversation context", athlete.id)
-            except Exception as _e:
-                logger.warning(
-                    "Live health fetch failed for athlete %d in conversation: %s", athlete.id, _e
-                )
+        _needs_fetch = today_exists is None or any(
+            getattr(today_exists, f) is None for f in _KEY_HEALTH_FIELDS
+        )
+        if _needs_fetch:
+            import time as _time
+            from running_coach_ai.garmin.client import get_garmin_client, get_health_snapshot
+            from running_coach_ai.garmin.parser import parse_health_snapshot
+
+            for _attempt in range(3):
+                try:
+                    garmin = get_garmin_client(
+                        athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted
+                    )
+                    raw = get_health_snapshot(garmin, today.isoformat())
+                    parse_health_snapshot(raw, athlete.id, today, db_session)
+                    db_session.flush()
+                    logger.info("Live health fetch for athlete %d in conversation context", athlete.id)
+                    break
+                except Exception as _e:
+                    if _attempt < 2:
+                        logger.warning(
+                            "Live health fetch attempt %d/3 failed for athlete %d: %s",
+                            _attempt + 1, athlete.id, _e,
+                        )
+                        _time.sleep(2.0 * (2 ** _attempt))
+                    else:
+                        logger.warning(
+                            "Live health fetch failed for athlete %d in conversation after 3 attempts: %s",
+                            athlete.id, _e,
+                        )
 
     recent_health = (
         scoped_query(db_session, HealthSnapshot, athlete.id)

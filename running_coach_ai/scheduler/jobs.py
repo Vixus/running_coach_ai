@@ -103,7 +103,11 @@ def _run_activity_poll(slack_client, scheduler=None) -> None:
     with get_session() as db_session:
         athletes = (
             db_session.query(Athlete)
-            .filter(Athlete.allowed == True, Athlete.onboarding_complete == True)
+            .filter(
+                Athlete.allowed == True,
+                Athlete.onboarding_complete == True,
+                ~Athlete.slack_user_id.like("__test_%"),
+            )
             .all()
         )
 
@@ -348,6 +352,78 @@ def _ingest_and_feedback(athlete, activity_id: str, garmin, db_session, slack_cl
         logger.error("Failed to ingest activity %s for athlete %d: %s", activity_id, athlete.id, e)
 
 
+def _run_health_backfill() -> None:
+    """Afternoon health data backfill — ensures today's health metrics are captured.
+
+    Runs daily at 14:00 system time. For each athlete with Garmin credentials,
+    checks whether today's health snapshot has the key fields populated. If any
+    are missing, fetches from Garmin and merges into the existing record. This
+    guarantees a complete health history for coaching context even when the
+    morning check-in window was missed.
+    """
+    from running_coach_ai.database.models import Athlete, HealthSnapshot
+    from running_coach_ai.database.session import get_session
+    from running_coach_ai.garmin.client import get_garmin_client, get_health_snapshot
+    from running_coach_ai.garmin.parser import parse_health_snapshot
+
+    logger.info("Health data backfill starting")
+
+    with get_session() as db_session:
+        athletes = (
+            db_session.query(Athlete)
+            .filter(
+                Athlete.allowed == True,
+                Athlete.onboarding_complete == True,
+                ~Athlete.slack_user_id.like("__test_%"),
+            )
+            .all()
+        )
+
+        for athlete in athletes:
+            if not athlete.garmin_email or not athlete.garmin_password_encrypted:
+                continue
+
+            tz = ZoneInfo(athlete.timezone or "America/New_York")
+            today = datetime.now(tz).date()
+            today_str = today.isoformat()
+
+            # Check if today's snapshot already has key health fields
+            existing = (
+                db_session.query(HealthSnapshot)
+                .filter(
+                    HealthSnapshot.athlete_id == athlete.id,
+                    HealthSnapshot.date == today,
+                )
+                .first()
+            )
+
+            key_fields = ("sleep_score", "hrv_score", "body_battery_start")
+            if existing and all(
+                getattr(existing, f) is not None for f in key_fields
+            ):
+                logger.debug(
+                    "Health backfill: athlete %d already has complete data for %s",
+                    athlete.id, today_str,
+                )
+                continue
+
+            try:
+                garmin = get_garmin_client(
+                    athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted
+                )
+                raw = get_health_snapshot(garmin, today_str)
+                parse_health_snapshot(raw, athlete.id, today, db_session)
+                logger.info("Health backfill: updated snapshot for athlete %d on %s", athlete.id, today_str)
+            except Exception as e:
+                from running_coach_ai.garmin.client import is_garmin_auth_error
+                if is_garmin_auth_error(e):
+                    logger.warning("Health backfill: Garmin auth error for athlete %d — skipping", athlete.id)
+                else:
+                    logger.error("Health backfill failed for athlete %d: %s", athlete.id, e)
+
+    logger.info("Health data backfill complete")
+
+
 def _run_garmin_reconciliation() -> None:
     """Daily reconciliation job — finds future workouts missing Garmin IDs and re-syncs them.
 
@@ -369,6 +445,7 @@ def _run_garmin_reconciliation() -> None:
             .filter(
                 Athlete.allowed == True,
                 Athlete.onboarding_complete == True,
+                ~Athlete.slack_user_id.like("__test_%"),
             )
             .all()
         )
@@ -453,7 +530,11 @@ def _run_weekly_review(slack_client) -> None:
     with get_session() as db_session:
         athletes = (
             db_session.query(Athlete)
-            .filter(Athlete.allowed == True, Athlete.onboarding_complete == True)
+            .filter(
+                Athlete.allowed == True,
+                Athlete.onboarding_complete == True,
+                ~Athlete.slack_user_id.like("__test_%"),
+            )
             .all()
         )
 
@@ -505,7 +586,11 @@ def register_jobs(scheduler: BlockingScheduler, slack_app) -> None:
     with get_session() as db_session:
         athletes = (
             db_session.query(Athlete)
-            .filter(Athlete.allowed == True, Athlete.onboarding_complete == True)
+            .filter(
+                Athlete.allowed == True,
+                Athlete.onboarding_complete == True,
+                ~Athlete.slack_user_id.like("__test_%"),
+            )
             .all()
         )
         for athlete in athletes:
@@ -547,6 +632,15 @@ def register_jobs(scheduler: BlockingScheduler, slack_app) -> None:
         _run_garmin_reconciliation,
         CronTrigger(hour=8, minute=30),
         id="garmin_reconciliation",
+        replace_existing=True,
+        misfire_grace_time=1800,
+    )
+
+    # Daily health data backfill — 14:00, catches any missed morning health snapshots
+    scheduler.add_job(
+        _run_health_backfill,
+        CronTrigger(hour=14, minute=0),
+        id="health_backfill",
         replace_existing=True,
         misfire_grace_time=1800,
     )
