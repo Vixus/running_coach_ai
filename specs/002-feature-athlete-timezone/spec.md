@@ -107,3 +107,11 @@ As an athlete in any timezone, I want the system to poll my Garmin activities du
 - **Poller Load**: Removing the poller time gate entirely (24/7 polling) is assumed to be safe regarding Garmin API rate limits, even with the ~16 extra no-op iterations per athlete per day.
 - **Data Availability**: The `home_lat` and `home_lon` collected during onboarding are assumed to be accurate enough for timezone derivation.
 - **No Schema Migration Required**: `athletes.timezone` (`Text, nullable=True`) already exists in the ORM model and deployed schema. This feature only populates and updates the column — no Alembic migration is needed.
+
+---
+
+## Implementation Status (as of 2026-04-23)
+
+**Shipped.** Timezone auto-detection lives in `running_coach_ai/coach/timezone_utils.py` and is invoked during onboarding (`_complete_onboarding`) and from `_run_activity_poll` when a new activity includes GPS. Morning-check-in jobs re-register via `register_athlete_morning_job()` when a timezone change is detected. The 06:00–22:00 server-time gate on `_run_activity_poll` was removed per the clarification; polling now runs unconditionally.
+
+One test task remains open in `tasks.md` (T013, `[Sync: Gap Report]`): unit tests for `_next_checkin_start()` boundary conditions. The helper is in production use; this is a test-coverage gap only.

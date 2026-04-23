@@ -42,10 +42,13 @@
       "Bash(git add:*)",
       "Bash(git commit -m ':*)",
       "Bash(git push:*)",
-      "Bash(DB_PATH=./data/coach.db GARMIN_SESSION_DIR=./data/garmin_sessions/ python scripts/diagnose.py)",
       "Bash(find /c/Users/vixus/Projects/running_coach_ai -type f \\\\\\( -name \"*.py\" -o -name \"*.sql\" -o -name \"*.json\" -o -name \"seed*\" -o -name \"fixture*\" \\\\\\) -exec grep -l \"Bob\" {} \\\\;)",
       "Bash(xargs grep:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(grep -v \"^Found\\\\|^E712.*conversation\\\\|^E712.*TrainingPlan\\\\|^\\\\s*-->\\\\s*running_coach_ai.slack\\\\|^\\\\s*|\\\\s*\\\\.filter.*active\\\\|^help\\\\|^\\\\s*$\\\\|^warning\")",
+      "Bash(alembic current *)",
+      "Bash(alembic heads *)",
+      "Bash(alembic history *)"
     ]
   }
 }

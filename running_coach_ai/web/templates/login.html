@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Running Coach — Sign In</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f0eb;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.10);
+    }
+    .logo {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #5a8a62;
+      margin-bottom: 0.25rem;
+    }
+    .subtitle {
+      color: #888;
+      font-size: 0.85rem;
+      margin-bottom: 1.75rem;
+    }
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 0.3rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    input[type="text"], input[type="password"] {
+      display: block;
+      width: 100%;
+      padding: 0.65rem 0.85rem;
+      border: 1.5px solid #d8d0c8;
+      border-radius: 7px;
+      font-size: 0.97rem;
+      color: #222;
+      background: #faf8f6;
+      margin-bottom: 1rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus { border-color: #5a8a62; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 0.72rem;
+      background: #5a8a62;
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: #4a7a52; }
+    .error {
+      background: #fdecea;
+      border: 1px solid #f5b7b1;
+      border-radius: 7px;
+      color: #b94a48;
+      padding: 0.6rem 0.85rem;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">Running Coach</div>
+    <div class="subtitle">Analytics Dashboard</div>
+
+    <div id="error-msg" class="error" style="display:none"></div>
+
+    <form id="login-form">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" autocomplete="username" autofocus />
+
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" />
+
+      <button type="submit" class="btn">Sign In</button>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const errorEl = document.getElementById('error-msg');
+      errorEl.style.display = 'none';
+
+      try {
+        const res = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        if (res.ok) {
+          window.location.href = '/app';
+        } else {
+          const data = await res.json();
+          errorEl.textContent = data.error || 'Login failed';
+          errorEl.style.display = 'block';
+        }
+      } catch (err) {
+        errorEl.textContent = 'Network error — please try again';
+        errorEl.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -14,6 +14,9 @@ venv/
 # Data
 data/
 
+# Logs
+*.log
+
 # IDE
 .vscode/
 .idea/

@@ -98,6 +98,12 @@ You need to learn:
 - Any injuries or health conditions ("none" is fine)
 - City they train in (for weather forecasts)
 - Coach selection: present the available coaches below and ask the athlete which one they'd like to work with. If they don't have a preference or are unclear, default to "classic".
+- Prescription style: whether they prefer workouts prescribed by **time** ("45-minute easy run") or **distance** ("4-mile easy run"). Explain both options naturally and let them choose. If they're unsure or don't have a preference, choose for them based on their profile:
+  - Recommend **time** for: beginners, athletes focused on consistency, those returning from injury, or anyone who finds distance-watching stressful.
+  - Recommend **distance** for: experienced runners who track weekly mileage closely, athletes focused on race-pace precision, or anyone who prefers concrete measurable targets.
+  - Pros of time: forgiving on varied terrain, consistent perceived effort, removes pace anxiety, great for aerobic base building.
+  - Pros of distance: easy to track weekly volume, direct alignment with race goals, concrete progress measurement.
+  Record whichever was chosen (including your recommendation if they deferred to you).
 
 Use miles and min/mile paces throughout this conversation. Round numbers: 30, 45, 60 min; 8, 10, 12 miles.
 
@@ -113,10 +119,11 @@ Conversation style:
 Profile confirmation: once you have everything, present it as a clear, readable summary and ask the athlete to confirm or correct it. After they confirm, write a warm closing line that kicks off their coaching journey and signals you're building their plan now — then end with the completion tag.
 
 <onboarding_complete>
-{{"name":"ATHLETE_NAME","age":99,"race_type":"marathon","race_name":"EVENT NAME OR null","race_date":"YYYY-MM-DD","target_time_seconds":99999,"weekly_mileage_km":99.9,"training_days":9,"experience_level":"intermediate","injuries":"none","city":"CITY_NAME","coach_key":"classic"}}
+{{"name":"ATHLETE_NAME","age":99,"race_type":"marathon","race_name":"EVENT NAME OR null","race_date":"YYYY-MM-DD","target_time_seconds":99999,"weekly_mileage_km":99.9,"training_days":9,"experience_level":"intermediate","injuries":"none","city":"CITY_NAME","coach_key":"classic","prescription_style":"distance"}}
 </onboarding_complete>
 
 Field rules:
+- prescription_style: "time" | "distance" — always set one, even if you chose for the athlete
 - race_type: marathon | half_marathon | 10k | 5k
 - race_name: the specific event name the athlete mentioned (e.g. "Berlin Marathon"), or null if they didn't name one — never infer or guess from city/date
 - race_date: YYYY-MM-DD. If the athlete names a well-known race (e.g. Berlin Marathon, Boston Marathon), use your knowledge of that event's typical date to suggest the correct date and confirm with the athlete — do not silently assume; flag if the date they gave seems inconsistent with the named event
@@ -364,6 +371,10 @@ def _complete_onboarding(athlete: Athlete, data: dict, db_session: Session, say_
     if garmin_email and garmin_password:
         athlete.garmin_email = garmin_email
         athlete.garmin_password_encrypted = encrypt_password(garmin_password)
+
+    # Set prescription style
+    raw_style = data.get("prescription_style", "distance")
+    athlete.prescription_style = raw_style if raw_style in ("time", "distance") else "distance"
 
     # Set coach persona
     coach_key = resolve_coach_key(data.get("coach_key", DEFAULT_COACH_KEY))

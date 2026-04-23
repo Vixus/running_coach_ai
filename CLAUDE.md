@@ -1,4 +1,4 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -32,9 +32,19 @@ pytest -k "test_name"          # single test by name
 # Generate Fernet encryption key (run once for new deploys)
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
+# Diagnose Garmin authentication issues
+python scripts/diagnose_garmin.py
+
 # Docker (Synology NAS deployment)
 docker-compose up -d
 docker-compose logs -f coach
+
+# Troubleshooting Garmin rate limits
+# If you get 429 errors, it may be IP-based rate limiting
+# Solutions:
+# 1. Use a VPN to route through different IP
+# 2. Wait longer between authentication attempts
+# 3. Check if residential IP helps vs datacenter IP
 ```
 
 ## Architecture
@@ -42,6 +52,7 @@ docker-compose logs -f coach
 ### Process model
 
 `main.py` starts two concurrent systems on one process:
+
 1. **Slack SocketModeHandler** (`handler.connect()`) — non-blocking, opens a WebSocket in a daemon thread. Handles all inbound DMs and @mentions.
 2. **APScheduler BlockingScheduler** (`scheduler.start()`) — blocks the main thread; registers three recurring jobs at startup.
 
@@ -50,6 +61,7 @@ All shared state flows through SQLite (via SQLAlchemy). Bolt event handlers and 
 ### Message routing (`slack/bot.py` → `slack/onboarding.py` / `slack/conversation.py`)
 
 Every inbound DM goes through this gate in order:
+
 1. Ignore bot messages and message subtypes
 2. Admin command intercept (`!admin ...`) if sender is `ADMIN_SLACK_USER_ID`
 3. Allowed-list check — create `Athlete` row on first contact if in `ALLOWED_SLACK_USER_IDS`; decline otherwise
@@ -61,11 +73,27 @@ Fully conversational — Claude drives the 8-question intake via `_SYSTEM_PROMPT
 
 Garmin credentials are scrubbed from conversation history and the Slack message is deleted immediately after parsing.
 
+### Web Dashboard (`web.py` → `running_coach_ai/web/`)
+
+`web.py` at the repo root is the entry point. It calls `create_app()` from `running_coach_ai/web/app.py` and runs on `WEB_PORT` (default 8080).
+
+Key design decisions:
+- **Flask 3.x app factory** (`create_app()`) with all blueprint imports deferred inside the factory function — missing blueprint modules don't cause `ImportError` during development.
+- **SQLite WAL mode** is enabled on every new connection via `@event.listens_for(engine, "connect")` to allow concurrent readers alongside the Slack process writer.
+- **`process_message(athlete, user_text, db_session, source="slack", coach_key=None) -> str`** is the pure coaching function extracted from `conversation.py`. It temporarily overrides `athlete.coach_key` in a `try/finally` block (ephemeral — does not persist to DB), then calls Claude and returns the response text. The Slack `handle_message()` is now a thin wrapper.
+- **`WebEvent` dual-sink logging** (`running_coach_ai/web/events.py`): `WebEventHandler` writes log records to the `web_events` table; `web_event()` is a convenience helper for explicit event writes. Auth events include username and remote IP. Attached to `running_coach_ai.web`, `running_coach_ai.garmin`, and `running_coach_ai.coach.personas` namespaces.
+- **Admin seeding**: `create_app()` idempotently sets `is_admin=True` for the `ADMIN_SLACK_USER_ID` athlete on startup.
+
+New env vars: `WEB_SECRET_KEY` (required for Flask sessions), `WEB_PORT` (default 8080).
+
+Seed first admin account: `python scripts/set_web_credentials.py --slack-id U123 --username admin --password secret --admin`
+
 ### Coaching conversation (`slack/conversation.py`)
 
 `build_system_prompt()` assembles 8 context sections on every turn: persona, current date, athlete profile, training phase + this week, health data (today + 7-day HRV trend), recent completed workouts, upcoming Garmin calendar (next 4 weeks with sync status), weather, and coach memories.
 
 Claude's response is post-processed for three XML side-effect tags before the text is sent to the athlete:
+
 - `<plan>{json}</plan>` — mutates `PlannedWorkout` rows and re-syncs to Garmin if previously uploaded
 - `<garmin_sync/>` — pushes next 4 weeks of future workouts to Garmin Connect
 - `<remember>text</remember>` — creates a `CoachMemory` row
@@ -79,11 +107,11 @@ Claude's response is post-processed for three XML side-effect tags before the te
 
 ### Scheduler jobs (`scheduler/jobs.py`)
 
-| Job | Trigger | Action |
-|-----|---------|--------|
-| `morning_checkin_{id}` | Daily 07:00 athlete local time | Fetch live Garmin health → weather → Claude → adapt plan → DM |
-| `activity_poll` | Every 30 min, 06:00–22:00 only | Poll new Garmin activities → telemetry → biomechanics → feedback DM |
-| `weekly_review` | Sunday 20:00 system time | Aggregate week → Claude review → adapt next week → sync Garmin → DM |
+| Job                    | Trigger                        | Action                                                              |
+| ---------------------- | ------------------------------ | ------------------------------------------------------------------- |
+| `morning_checkin_{id}` | Daily 07:00 athlete local time | Fetch live Garmin health → weather → Claude → adapt plan → DM       |
+| `activity_poll`        | Every 30 min, 06:00–22:00 only | Poll new Garmin activities → telemetry → biomechanics → feedback DM |
+| `weekly_review`        | Sunday 20:00 system time       | Aggregate week → Claude review → adapt next week → sync Garmin → DM |
 
 New athletes get their morning job registered immediately in `onboarding._complete_onboarding()` via `register_athlete_morning_job()` — no restart needed.
 
@@ -99,13 +127,13 @@ Every DB query on behalf of an athlete **must** include `athlete_id`. Use `datab
 
 Sent as DMs by `ADMIN_SLACK_USER_ID`, prefixed `!admin`:
 
-| Command | Effect |
-|---------|--------|
-| `!admin add <uid>` | Grant access; create Athlete row |
-| `!admin remove <uid>` | Revoke access; data retained |
-| `!admin list` | List all athletes and status |
-| `!admin resync-garmin [<uid>]` | Re-upload all upcoming workouts to Garmin |
-| `!admin clean-garmin [<uid>]` | Wipe entire Garmin library, clear DB IDs, re-sync fresh |
+| Command                        | Effect                                                  |
+| ------------------------------ | ------------------------------------------------------- |
+| `!admin add <uid>`             | Grant access; create Athlete row                        |
+| `!admin remove <uid>`          | Revoke access; data retained                            |
+| `!admin list`                  | List all athletes and status                            |
+| `!admin resync-garmin [<uid>]` | Re-upload all upcoming workouts to Garmin               |
+| `!admin clean-garmin [<uid>]`  | Wipe entire Garmin library, clear DB IDs, re-sync fresh |
 
 ### Key constraints
 

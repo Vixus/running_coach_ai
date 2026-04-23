@@ -115,3 +115,13 @@ An athlete (onboarded or not) can ask to see all available coaches and their des
 - The Slack interface remains the sole interaction channel; no separate coach selection UI is required.
 - Coach personas will be designed such that they are inclusive, supportive, and appropriate for all fitness levels; offensive or demotivating personas are excluded by design.
 - The onboarding flow can accommodate one additional conversational step without exceeding user patience or session timeout constraints.
+
+---
+
+## Implementation Status (as of 2026-04-23)
+
+**Shipped — 100%.** All 19 tasks in `tasks.md` marked complete. Coach registry lives in `running_coach_ai/coach/personas.py` with three personas: `classic` (Coach Alex), `maya` (Coach Maya), `jordan` (Coach Jordan). The `coach_key` column on `Athlete` (migration `b3f2a1c9d0e5_add_coach_key_to_athletes`) stores the selection; Claude applies the persona at system-prompt assembly time in `slack/conversation.py:build_system_prompt()`.
+
+A subsequent extension (spec 005, web dashboard) adds an additional per-athlete "prescription style" column (`j6f7g8h9i0j1_add_prescription_style_to_athletes`) that composes with the coach persona — not covered by this spec.
+
+Mid-cycle coach switching is implemented via a Claude-emitted `<coach_switch>` tag handled in `conversation.py`; the switch persists to `athletes.coach_key` and takes effect immediately on the next turn and for all scheduled jobs.

@@ -155,10 +155,15 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, slack_client) -> 
     )
 
     if todays_workout:
-        dist_str = f" {format_miles(todays_workout.target_distance_km)}" if todays_workout.target_distance_km else ""
+        if todays_workout.target_distance_km:
+            vol_str = f" {format_miles(todays_workout.target_distance_km)}"
+        elif todays_workout.target_duration_seconds:
+            vol_str = f" {todays_workout.target_duration_seconds // 60}min"
+        else:
+            vol_str = ""
         pace_str = f" @ {format_pace_mi(todays_workout.target_pace_min_per_km)}" if todays_workout.target_pace_min_per_km else ""
         session_text = (
-            f"{todays_workout.workout_type}{dist_str}{pace_str}\n"
+            f"{todays_workout.workout_type}{vol_str}{pace_str}\n"
             f"Description: {todays_workout.description or 'N/A'}"
         )
     else:
@@ -184,6 +189,12 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, slack_client) -> 
     # Send Slack DM and mark today's check-in complete (FR-033)
     try:
         from running_coach_ai.slack.bot import send_dm
+        from running_coach_ai.database.models import ConversationMessage
+        db_session.add(ConversationMessage(
+            athlete_id=athlete.id,
+            role="assistant",
+            content=response,
+        ))
         send_dm(slack_client, athlete, response, db_session)
         athlete.last_morning_checkin_date = today
         db_session.commit()
@@ -226,7 +237,9 @@ def adapt_next_week(athlete: Athlete, week_summary: dict, db_session: Session) -
         "- {}: {} {}".format(
             w.scheduled_date,
             w.workout_type,
-            format_miles(w.target_distance_km) if w.target_distance_km else "",
+            format_miles(w.target_distance_km) if w.target_distance_km else (
+                f"{w.target_duration_seconds // 60}min" if w.target_duration_seconds else ""
+            ),
         )
         for w in next_workouts
     )

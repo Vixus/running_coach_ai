@@ -477,11 +477,18 @@ def build_system_prompt(
 
     sections = [get_persona(athlete.coach_key).persona_block]
 
-    # --- Section 1b: Current date (explicit — never rely on model's internal clock) ---
+    # --- Section 1b: Current date + data guardrails ---
     sections.append(
         f"\n## Current Date\n"
         f"Today is **{today.strftime('%A, %B %d, %Y')}**. "
-        f"Current week runs {week_start.strftime('%b %d')} (Mon) – {week_end.strftime('%b %d')} (Sun)."
+        f"Current week runs {week_start.strftime('%b %d')} (Mon) – {week_end.strftime('%b %d')} (Sun).\n\n"
+        f"**Data rules — never break these:**\n"
+        f"- All Garmin data available to you is already loaded into this prompt. "
+        f"If the athlete asks about a run not listed in Recent Workouts, emit `<garmin_fetch/>` to pull it — "
+        f"never invent or estimate run stats.\n"
+        f"- Never state a distance, pace, HR, or date you cannot see explicitly in this prompt.\n"
+        f"- `<garmin_fetch/>` pulls new activity data from Garmin into context. "
+        f"Use it when the athlete asks about a run you cannot find below."
     )
 
     # --- Section 2: Athlete profile ---
@@ -490,28 +497,44 @@ def build_system_prompt(
         .filter(Goal.active == True)
         .all()
     )
-    goal_lines = []
+    upcoming_goal_lines = []
+    completed_goal_lines = []
     for g in goals:
         h = g.target_time_seconds // 3600
         m = (g.target_time_seconds % 3600) // 60
         race_date_obj = g.race_date if isinstance(g.race_date, date) else date.fromisoformat(str(g.race_date))
-        days_to_race = (race_date_obj - today).days
-        if days_to_race > 0:
-            countdown = f"{days_to_race} days ({days_to_race // 7} weeks) to race day"
-        elif days_to_race == 0:
-            countdown = "RACE DAY TODAY"
-        else:
-            countdown = f"race was {-days_to_race} days ago"
         race_name_str = f" ({g.race_name})" if getattr(g, 'race_name', None) else " (event name unknown — do not infer from city/date)"
-        goal_lines.append(
-            f"  - {g.race_type}{race_name_str} on {g.race_date} | {countdown} | target: {h}:{m:02d} | "
-            f"experience: {g.experience_level}, {g.training_days_per_week} days/week"
-        )
-    goals_text = "\n".join(goal_lines) if goal_lines else "  - No active goals"
+        if race_date_obj >= today:
+            days_to_race = (race_date_obj - today).days
+            if days_to_race == 0:
+                countdown = "RACE DAY TODAY"
+            else:
+                countdown = f"{days_to_race} days ({days_to_race // 7} weeks) to race day"
+            upcoming_goal_lines.append(
+                f"  - {g.race_type}{race_name_str} on {g.race_date} | {countdown} | target: {h}:{m:02d} | "
+                f"experience: {g.experience_level}, {g.training_days_per_week} days/week"
+            )
+        else:
+            days_ago = (today - race_date_obj).days
+            completed_goal_lines.append(
+                f"  - [COMPLETED {days_ago}d ago] {g.race_type}{race_name_str} on {g.race_date} | target was {h}:{m:02d}"
+            )
+
+    goal_parts = []
+    if upcoming_goal_lines:
+        goal_parts.append("Upcoming races:\n" + "\n".join(upcoming_goal_lines))
+    if completed_goal_lines:
+        goal_parts.append("Completed races (for context only — do not treat as active targets):\n" + "\n".join(completed_goal_lines))
+    goals_text = "\n".join(goal_parts) if goal_parts else "  - No active goals"
+    style_label = {
+        "time": "time-based (prescribe all runs by duration, nearest 5 min — use target_duration_seconds)",
+        "distance": "distance-based (prescribe all runs in whole miles — use target_distance_km)",
+    }.get(athlete.prescription_style, "not yet set — use distance-based as default")
     sections.append(
         f"\n## Athlete Profile\n"
         f"- Name: {athlete.name}\n"
         f"- Age: {athlete.age}\n"
+        f"- Prescription style: {style_label}\n"
         f"- Goals:\n{goals_text}"
     )
 
@@ -543,9 +566,14 @@ def build_system_prompt(
     if this_week:
         week_lines = ["## This Week's Sessions"]
         for w in this_week:
-            dist = f" {format_miles(w.target_distance_km)}" if w.target_distance_km else ""
+            if w.target_distance_km:
+                vol = f" {format_miles(w.target_distance_km)}"
+            elif w.target_duration_seconds:
+                vol = f" {w.target_duration_seconds // 60}min"
+            else:
+                vol = ""
             status_marker = f" [{w.status}]" if w.status != "planned" else ""
-            week_lines.append(f"- {w.scheduled_date} ({w.scheduled_date.strftime('%A')}) | {w.workout_type}{dist}{status_marker}: {w.description or ''}")
+            week_lines.append(f"- {w.scheduled_date} ({w.scheduled_date.strftime('%A')}) | {w.workout_type}{vol}{status_marker}: {w.description or ''}")
         sections.append("\n".join(week_lines))
 
     # --- Section 4: Health data — today's snapshot + 7-day HRV trend ---
@@ -673,7 +701,11 @@ def build_system_prompt(
     recent_xtraining = [w for w in all_recent if (w.activity_type or "running") not in RUNNING_TYPES][:7]
 
     if recent_workouts:
-        workout_lines = ["## Recent Workouts (target → actual)"]
+        last_run_date = recent_workouts[0].date.strftime("%b %d")
+        workout_lines = [
+            f"## Recent Workouts (target → actual) — {len(recent_workouts)} run(s) on record, most recent: {last_run_date}",
+            "If a run is not listed here it is not in the database — emit <garmin_fetch/> rather than guessing.",
+        ]
         for w in recent_workouts:
             pace_str = format_pace_mi(w.avg_pace_min_per_km) if w.avg_pace_min_per_km else "N/A"
             dist_str = format_miles(w.distance_km) if w.distance_km is not None else "N/A"
@@ -735,7 +767,15 @@ def build_system_prompt(
     runs_this_week = [w for w in completed_this_week if (w.activity_type or "running") in RUNNING_TYPES]
     runs_4wk = [w for w in recent_4wk if (w.activity_type or "running") in RUNNING_TYPES]
     planned_run_sessions = [w for w in this_week if w.workout_type != "rest"]
-    km_planned_week = sum(w.target_distance_km or 0 for w in planned_run_sessions)
+
+    def _planned_km(w) -> float:
+        if w.target_distance_km:
+            return w.target_distance_km
+        if w.target_duration_seconds and w.target_pace_min_per_km:
+            return (w.target_duration_seconds / 60) / w.target_pace_min_per_km
+        return 0.0
+
+    km_planned_week = sum(_planned_km(w) for w in planned_run_sessions)
     km_done_week = sum(w.distance_km or 0 for w in runs_this_week)
     mi_planned = km_planned_week / 1.60934
     mi_done = km_done_week / 1.60934
@@ -811,12 +851,17 @@ def build_system_prompt(
             f"({synced_count}/{len(upcoming)} synced to Garmin)"
         ]
         for w in upcoming:
-            dist = f" {format_miles(w.target_distance_km)}" if w.target_distance_km else ""
+            if w.target_distance_km:
+                vol = f" {format_miles(w.target_distance_km)}"
+            elif w.target_duration_seconds:
+                vol = f" {w.target_duration_seconds // 60}min"
+            else:
+                vol = ""
             garmin_tag = " ✓Garmin" if w.garmin_workout_id else " ✗not on Garmin"
             status_tag = f" [{w.status}]" if w.status not in ("planned", None) else ""
             cal_lines.append(
                 f"- {w.scheduled_date} ({w.scheduled_date.strftime('%A')}) |"
-                f" {w.workout_type}{dist}{status_tag}{garmin_tag}: {w.description or ''}"
+                f" {w.workout_type}{vol}{status_tag}{garmin_tag}: {w.description or ''}"
             )
         sections.append("\n".join(cal_lines))
 
@@ -873,8 +918,119 @@ def build_system_prompt(
 
 
 # ---------------------------------------------------------------------------
+# On-demand Garmin fetch (conversation-time ingest, no feedback DM)
+# ---------------------------------------------------------------------------
+
+_GARMIN_FETCH_RE = re.compile(r"<garmin_fetch\s*(?:/>|></garmin_fetch\s*>)")
+
+
+def _handle_garmin_fetch(athlete: Athlete, db_session: Session) -> bool:
+    """Poll Garmin for new activities and ingest them during a conversation turn.
+
+    Unlike the scheduler job, skips the feedback DM — the coaching response
+    IS the feedback. Sets feedback_given=True so activity_poll won't double-send.
+
+    Returns True if at least one new activity was ingested.
+    """
+    from running_coach_ai.garmin.client import (
+        get_garmin_client, poll_new_activities,
+        fetch_athlete_lthr, fetch_activity_hr_zones,
+    )
+    from running_coach_ai.garmin.parser import parse_activity_summary
+    from running_coach_ai.garmin.telemetry import extract_telemetry, ingest_lap_splits
+    from running_coach_ai.coach.biomechanics import analyse_workout, update_running_profile
+    from sqlalchemy import func as _sql_func
+
+    RUNNING_TYPES = {
+        "running", "trail_running", "treadmill_running", "track_running",
+        "ultra_running", "virtual_run", "obstacle_run",
+    }
+
+    if not athlete.garmin_email or not athlete.garmin_password_encrypted:
+        return False
+
+    try:
+        garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted)
+        new_ids = poll_new_activities(garmin, athlete.id, db_session)
+        if not new_ids:
+            return False
+
+        for activity_id in new_ids:
+            try:
+                activity_data = garmin.get_activity(activity_id)
+                detail = garmin.get_activity_details(activity_id)
+
+                stub = (
+                    db_session.query(CompletedWorkout)
+                    .filter(
+                        CompletedWorkout.garmin_activity_id == str(activity_id),
+                        CompletedWorkout.athlete_id == athlete.id,
+                        CompletedWorkout.duration_seconds.is_(None),
+                    )
+                    .first()
+                )
+                if stub:
+                    db_session.delete(stub)
+                    db_session.flush()
+
+                completed = parse_activity_summary(activity_data, athlete.id, db_session)
+                activity_type = completed.activity_type or "unknown"
+
+                if activity_type in RUNNING_TYPES:
+                    telemetry = extract_telemetry(detail, completed.id, athlete.id, db_session)
+                    ingest_lap_splits(garmin, athlete.id, activity_id, telemetry, db_session)
+
+                    if not athlete.lthr_bpm:
+                        lthr = fetch_athlete_lthr(garmin, athlete.id)
+                        if lthr:
+                            athlete.lthr_bpm = lthr
+
+                    garmin_hr_zones = fetch_activity_hr_zones(garmin, str(activity_id), athlete.id)
+                    athlete_max_hr = (
+                        db_session.query(_sql_func.max(CompletedWorkout.max_hr))
+                        .filter(CompletedWorkout.athlete_id == athlete.id, CompletedWorkout.max_hr.isnot(None))
+                        .scalar()
+                    ) or completed.max_hr or 189
+                    max_hr_run_count = (
+                        db_session.query(_sql_func.count(CompletedWorkout.id))
+                        .filter(CompletedWorkout.athlete_id == athlete.id, CompletedWorkout.max_hr.isnot(None))
+                        .scalar()
+                    ) or 0
+                    analyse_workout(
+                        telemetry, completed,
+                        athlete_max_hr=athlete_max_hr,
+                        max_hr_run_count=max_hr_run_count,
+                        garmin_hr_zones=garmin_hr_zones,
+                    )
+                    update_running_profile(athlete.id, db_session)
+
+                completed.feedback_given = True
+                db_session.commit()
+                logger.info("Ingested activity %s during garmin_fetch for athlete %d", activity_id, athlete.id)
+
+            except Exception as e:
+                logger.error(
+                    "Failed to ingest activity %s during garmin_fetch for athlete %d: %s",
+                    activity_id, athlete.id, e,
+                )
+
+        return True
+
+    except Exception as e:
+        logger.error("Garmin fetch failed for athlete %d: %s", athlete.id, e)
+        return False
+
+
+# ---------------------------------------------------------------------------
 # Tag extraction
 # ---------------------------------------------------------------------------
+
+def _round_duration(seconds) -> int | None:
+    """Round a duration to the nearest 5 minutes (300 seconds), minimum 5 min."""
+    if not seconds:
+        return seconds
+    return max(300, round(seconds / 300) * 300)
+
 
 def extract_and_apply_plan(
     athlete_id: int,
@@ -924,6 +1080,8 @@ def extract_and_apply_plan(
                     workout.description = session["description"]
                 if "target_distance_km" in session:
                     workout.target_distance_km = session["target_distance_km"]
+                if "target_duration_seconds" in session:
+                    workout.target_duration_seconds = _round_duration(session["target_duration_seconds"])
                 if "target_pace_min_per_km" in session:
                     workout.target_pace_min_per_km = session["target_pace_min_per_km"]
                 if "target_zones_json" in session:
@@ -956,6 +1114,7 @@ def extract_and_apply_plan(
                         workout_name=session.get("workout_name") or None,
                         description=session.get("description"),
                         target_distance_km=session.get("target_distance_km"),
+                        target_duration_seconds=_round_duration(session.get("target_duration_seconds")),
                         target_pace_min_per_km=session.get("target_pace_min_per_km"),
                         target_zones_json=session.get("target_zones_json"),
                         status=session.get("status", "planned"),
@@ -1294,6 +1453,72 @@ def extract_and_save_memories(
     return cleaned
 
 
+_PRESCRIPTION_DEFAULT_PACES: dict[str, float] = {
+    "easy": 6.5, "long_run": 7.0, "tempo": 5.0, "strides": 5.5, "cross_train": 6.0,
+}
+_PRESCRIPTION_TAG_RE = re.compile(r"<switch_prescription>(time|distance)</switch_prescription>", re.IGNORECASE)
+
+
+def _convert_upcoming_workouts(athlete_id: int, new_style: str, db_session: Session) -> int:
+    """Convert all upcoming planned workouts to the new prescription style. Returns count changed."""
+    from running_coach_ai.coach.persona import km_to_mi, mi_to_km
+    today = date.today()
+    workouts = (
+        db_session.query(PlannedWorkout)
+        .filter(
+            PlannedWorkout.athlete_id == athlete_id,
+            PlannedWorkout.scheduled_date >= today,
+            PlannedWorkout.status.in_(["planned", "modified"]),
+            PlannedWorkout.workout_type.notin_(["rest", "race"]),
+        )
+        .all()
+    )
+    changed = 0
+    for w in workouts:
+        if w.target_zones_json:
+            continue  # structured intervals/tempo — leave untouched
+        pace = w.target_pace_min_per_km or _PRESCRIPTION_DEFAULT_PACES.get(w.workout_type, 6.5)
+        if new_style == "time":
+            if w.target_duration_seconds:
+                w.target_distance_km = None
+                changed += 1
+            elif w.target_distance_km:
+                secs = w.target_distance_km * pace * 60
+                w.target_duration_seconds = max(300, round(secs / 300) * 300)
+                w.target_distance_km = None
+                changed += 1
+        elif new_style == "distance":
+            if w.target_distance_km:
+                miles = max(1, round(km_to_mi(w.target_distance_km)))
+                w.target_distance_km = mi_to_km(miles)
+                w.target_duration_seconds = None
+                changed += 1
+            elif w.target_duration_seconds:
+                dist_km = (w.target_duration_seconds / 60) / pace
+                miles = max(1, round(km_to_mi(dist_km)))
+                w.target_distance_km = mi_to_km(miles)
+                w.target_duration_seconds = None
+                changed += 1
+    return changed
+
+
+def extract_prescription_switch(athlete: Athlete, response: str, db_session: Session) -> str:
+    """Extract <switch_prescription> tag, convert upcoming workouts, return cleaned response."""
+    match = _PRESCRIPTION_TAG_RE.search(response)
+    if not match:
+        return response
+    new_style = match.group(1).lower()
+    old_style = athlete.prescription_style
+    athlete.prescription_style = new_style
+    changed = _convert_upcoming_workouts(athlete.id, new_style, db_session)
+    db_session.flush()
+    logger.info(
+        "Prescription style switched %s→%s for athlete %d; %d workouts converted",
+        old_style, new_style, athlete.id, changed,
+    )
+    return _PRESCRIPTION_TAG_RE.sub("", response).strip()
+
+
 def extract_coach_switch(athlete: Athlete, response: str, db_session: Session) -> str:
     """Extract <coach_switch>key</coach_switch> tag, update athlete.coach_key if valid, return cleaned response."""
     from running_coach_ai.coach.personas import is_valid_coach_key, resolve_coach_key
@@ -1323,17 +1548,39 @@ def extract_coach_switch(athlete: Athlete, response: str, db_session: Session) -
 # Main conversation handler
 # ---------------------------------------------------------------------------
 
-def handle_message(athlete: Athlete, text: str, db_session: Session) -> str:
-    """Handle a coaching conversation message.
+def process_message(
+    athlete: Athlete,
+    user_text: str,
+    db_session: Session,
+    source: str = "slack",
+    coach_key: str | None = None,
+) -> str:
+    """Pure function: process one coaching message turn and return the cleaned response.
 
-    1. Load conversation history
-    2. Build system prompt
-    3. Call Claude
-    4. Extract and apply <plan> mutations
-    5. Extract and save <remember> memories
-    6. Persist messages
-    7. Return cleaned reply
+    Loads history, builds system prompt (using coach_key override if provided),
+    calls Claude, applies XML side effects (<plan>, <remember>, <garmin_sync/>),
+    persists ConversationMessage rows with the given source, and returns the
+    cleaned response text. Does NOT send any Slack DM.
     """
+    # Temporarily override athlete.coach_key for system prompt assembly if requested
+    original_coach_key = athlete.coach_key
+    if coach_key:
+        athlete.coach_key = coach_key
+
+    try:
+        return _process_message_inner(athlete, user_text, db_session, source=source)
+    finally:
+        # Restore original — ephemeral override, do not persist to DB
+        athlete.coach_key = original_coach_key
+
+
+def _process_message_inner(
+    athlete: Athlete,
+    text: str,
+    db_session: Session,
+    source: str = "slack",
+) -> str:
+    """Internal implementation of process_message after coach_key is set."""
     # Load conversation history (last 30 messages)
     history = (
         scoped_query(db_session, ConversationMessage, athlete.id)
@@ -1344,6 +1591,32 @@ def handle_message(athlete: Athlete, text: str, db_session: Session) -> str:
     # Reverse to chronological order
     history = list(reversed(history))
 
+    return _handle_message_core(athlete, text, history, db_session, source=source)
+
+
+def handle_message(athlete: Athlete, text: str, db_session: Session) -> str:
+    """Handle a coaching conversation message (Slack entry point).
+
+    Thin wrapper around process_message() that always uses source="slack".
+    1. Load conversation history
+    2. Build system prompt
+    3. Call Claude
+    4. Extract and apply <plan> mutations
+    5. Extract and save <remember> memories
+    6. Persist messages
+    7. Return cleaned reply
+    """
+    return process_message(athlete, text, db_session, source="slack")
+
+
+def _handle_message_core(
+    athlete: Athlete,
+    text: str,
+    history: list,
+    db_session: Session,
+    source: str = "slack",
+) -> str:
+    """Core message processing logic shared by handle_message and process_message."""
     # Build messages for Claude
     messages = [{"role": msg.role, "content": msg.content} for msg in history]
     messages.append({"role": "user", "content": text})
@@ -1399,6 +1672,38 @@ def handle_message(athlete: Athlete, text: str, db_session: Session) -> str:
         logger.error("Claude API call failed for athlete %d: %s", athlete.id, e)
         return "Lost my train of thought — give me a second and send that again."
 
+    # Handle <garmin_fetch/> FIRST — if new data is ingested, re-call Claude
+    # with a refreshed system prompt so the response is grounded in real data.
+    if _GARMIN_FETCH_RE.search(response):
+        new_data = _handle_garmin_fetch(athlete, db_session)
+        if new_data:
+            fresh_latest = (
+                scoped_query(db_session, CompletedWorkout, athlete.id)
+                .join(WorkoutTelemetry, WorkoutTelemetry.completed_workout_id == CompletedWorkout.id)
+                .filter(CompletedWorkout.activity_type.in_(RUNNING_TYPES_CTX))
+                .order_by(CompletedWorkout.date.desc())
+                .first()
+            )
+            fresh_analyses: list[str] = []
+            if fresh_latest:
+                a = _format_run_analysis_for_context(fresh_latest, athlete, athlete_max_hr, max_hr_run_count)
+                if a:
+                    fresh_analyses.append(a)
+            fresh_system_prompt = build_system_prompt(
+                athlete, db_session, spotlight_analyses=fresh_analyses or None
+            )
+            try:
+                response = call_claude(fresh_system_prompt, messages, max_tokens=16384)
+            except Exception as e:
+                logger.error("Re-call after garmin_fetch failed for athlete %d: %s", athlete.id, e)
+                response = _GARMIN_FETCH_RE.sub("", response).strip()
+        else:
+            response = _GARMIN_FETCH_RE.sub("", response).strip()
+            response += (
+                "\n\n_(I checked Garmin but no new activities have synced yet — "
+                "give it a minute and try again, or do a manual sync in the Garmin app.)_"
+            )
+
     # Extract tags and apply side effects.
     # Check for <plan> blocks BEFORE stripping so extract_and_sync_garmin knows
     # the plan handler already synced affected weeks — preventing a double-upload.
@@ -1409,20 +1714,23 @@ def handle_message(athlete: Athlete, text: str, db_session: Session) -> str:
         athlete.id, response, db_session, plan_already_synced=had_plan_block
     )
     response = extract_and_save_memories(athlete.id, response, db_session)
+    response = extract_prescription_switch(athlete, response, db_session)
     response = extract_coach_switch(athlete, response, db_session)
     if sync_note:
         response = response + sync_note
 
-    # Persist conversation messages
+    # Persist conversation messages with source tagging
     user_msg = ConversationMessage(
         athlete_id=athlete.id,
         role="user",
         content=text,
+        source=source,
     )
     assistant_msg = ConversationMessage(
         athlete_id=athlete.id,
         role="assistant",
         content=response,
+        source=source,
     )
     db_session.add(user_msg)
     db_session.add(assistant_msg)

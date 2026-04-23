@@ -11,7 +11,10 @@ from running_coach_ai.database.models import Athlete, CompletedWorkout, RunningP
 
 logger = logging.getLogger(__name__)
 
-POST_RUN_FEEDBACK_PROMPT = """You are giving post-run feedback to {name} after their run today. You love data and use it precisely — reference actual numbers, spot patterns, and tell the athlete something they couldn't see just by looking at their watch summary.
+POST_RUN_FEEDBACK_PROMPT = """You are giving post-run feedback to {name} after their {run_or_race} today. You love data and use it precisely — reference actual numbers, spot patterns, and tell the athlete something they couldn't see just by looking at their watch summary.
+
+ATHLETE'S TRAINING GOALS:
+{goal_context}
 
 PLANNED SESSION:
 {planned_session}
@@ -152,17 +155,63 @@ def generate_post_run_feedback(
     from running_coach_ai.slack.bot import send_dm
     from running_coach_ai.slack.conversation import extract_and_save_memories
 
-    # Get planned session if it exists
-    planned_text = "Unplanned run (not in training schedule)."
-    if completed.planned_workout_id:
-        planned = db_session.query(PlannedWorkout).get(completed.planned_workout_id)
-        if planned:
-            dist_str = f" {format_miles(planned.target_distance_km)}" if planned.target_distance_km else ""
-            pace_str = f" @ {format_pace_mi(planned.target_pace_min_per_km)}" if planned.target_pace_min_per_km else ""
-            planned_text = (
-                f"{planned.workout_type}{dist_str}{pace_str}\n"
-                f"{planned.description or ''}"
+    from running_coach_ai.database.models import Goal
+
+    # Check if today is a race day
+    race_goal = (
+        db_session.query(Goal)
+        .filter(
+            Goal.athlete_id == athlete.id,
+            Goal.race_date == completed.date,
+            Goal.active,
+        )
+        .first()
+    )
+    is_race_day = race_goal is not None
+    run_or_race = "race" if is_race_day else "run"
+
+    # Build goal context for the prompt (upcoming races only)
+    future_goals = (
+        db_session.query(Goal)
+        .filter(
+            Goal.athlete_id == athlete.id,
+            Goal.active,
+            Goal.race_date > completed.date,
+        )
+        .order_by(Goal.race_date)
+        .all()
+    )
+    if future_goals:
+        goal_lines = []
+        for g in future_goals:
+            days_away = (g.race_date - completed.date).days
+            th = g.target_time_seconds // 3600
+            tm = (g.target_time_seconds % 3600) // 60
+            race_name = g.race_name or g.race_type
+            goal_lines.append(
+                f"- {race_name} ({g.race_type}) on {g.race_date} — {days_away} days away | target: {th}:{tm:02d}"
             )
+        goal_context = "\n".join(goal_lines)
+    else:
+        goal_context = "No upcoming race goals set."
+
+    # Get planned session if it exists
+    if is_race_day:
+        race_name = race_goal.race_name or race_goal.race_type
+        th = race_goal.target_time_seconds // 3600
+        tm = (race_goal.target_time_seconds % 3600) // 60
+        planned_text = f"RACE DAY — {race_name} ({race_goal.race_type}) | target: {th}:{tm:02d}"
+    else:
+        planned_text = "Unplanned run (not in training schedule)."
+        if completed.planned_workout_id:
+            planned = db_session.query(PlannedWorkout).get(completed.planned_workout_id)
+            if planned:
+                dist_str = f" {format_miles(planned.target_distance_km)}" if planned.target_distance_km else ""
+                pace_str = f" @ {format_pace_mi(planned.target_pace_min_per_km)}" if planned.target_pace_min_per_km else ""
+                planned_text = (
+                    f"{planned.workout_type}{dist_str}{pace_str}\n"
+                    f"{planned.description or ''}"
+                )
 
     # Get running profile
     profile = (
@@ -250,6 +299,8 @@ def generate_post_run_feedback(
 
     prompt = POST_RUN_FEEDBACK_PROMPT.format(
         name=athlete.name,
+        run_or_race=run_or_race,
+        goal_context=goal_context,
         planned_session=planned_text,
         distance_mi=distance_mi,
         duration_min=duration_min,
@@ -316,6 +367,17 @@ def generate_post_run_feedback(
 
     # Extract <remember> tags
     response = extract_and_save_memories(athlete.id, response, db_session)
+
+    # Save to conversation history so the coach has context when the athlete replies
+    from running_coach_ai.database.models import ConversationMessage
+    db_session.add(ConversationMessage(
+        athlete_id=athlete.id,
+        role="assistant",
+        content=response,
+    ))
+
+    # Persist coach analysis for web Activity Feed display
+    completed.coach_analysis = response
 
     # Mark feedback given
     completed.feedback_given = True

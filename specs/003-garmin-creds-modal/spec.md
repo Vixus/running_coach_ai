@@ -114,3 +114,11 @@ Athletes who have already completed onboarding before this feature is deployed c
 - The Slack `plain_text_input` field type does not support native password masking; this is an inherent Slack platform limitation and is acceptable given that the credential is not transmitted through chat messages.
 - The "pending profile data" state is temporary and scoped to the onboarding flow only; it is cleared once onboarding completes or fails fatally.
 - Garmin authentication errors during modal submission are communicated to the athlete via a follow-up DM, not within the modal response itself (Slack modals have limited error display capabilities during async operations).
+
+---
+
+## Implementation Status (as of 2026-04-23)
+
+**Shipped — 100%.** All 20 tasks in `tasks.md` marked complete. The credential button flow and modal handler live in `running_coach_ai/slack/onboarding.py` and `running_coach_ai/slack/bot.py`. Credentials are submitted via Slack `views_open` / `view_submission` and never appear in chat history. The "awaiting credentials" state is gated in `handle()` so chat messages during this window trigger a reminder rather than a Claude turn.
+
+This flow is also reused by `!admin reset-onboarding` and by the "Garmin credentials invalid" re-entry button sent by the scheduler when auth errors occur (see `scheduler/jobs.py:_notify_garmin_auth_error`).

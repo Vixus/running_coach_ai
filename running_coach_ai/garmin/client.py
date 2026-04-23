@@ -108,12 +108,12 @@ def _token_dir(athlete_id: int) -> str:
     return os.path.join(settings.GARMIN_SESSION_DIR, str(athlete_id))
 
 
-def _login_with_rate_limit_retry(garmin: Garmin, athlete_id: int, max_attempts: int = 3) -> None:
+def _login_with_rate_limit_retry(garmin: Garmin, athlete_id: int, max_attempts: int = 5) -> None:
     """Call garmin.login() with backoff specifically for 429 rate-limit responses.
 
     Garmin's SSO endpoint returns 429 when too many login attempts occur in a
     short window (e.g., multiple athletes re-authing simultaneously after token
-    expiry). Waits 60s on the first 429, 120s on the second before giving up.
+    expiry). Waits progressively longer between attempts.
     All other exceptions are re-raised immediately.
     """
     for attempt in range(max_attempts):
@@ -123,7 +123,11 @@ def _login_with_rate_limit_retry(garmin: Garmin, athlete_id: int, max_attempts: 
         except Exception as e:
             is_rate_limited = "429" in str(e) or "too many requests" in str(e).lower()
             if is_rate_limited and attempt < max_attempts - 1:
-                wait = 60 * (attempt + 1)
+                # Exponential backoff with jitter: 2min ±30s, 4min ±60s, 8min ±120s, 16min ±240s
+                base_wait = 120 * (2 ** attempt)
+                jitter = base_wait // 4  # 25% jitter
+                import random
+                wait = base_wait + random.randint(-jitter, jitter)
                 logger.warning(
                     "Garmin SSO rate limited (429) for athlete %s (attempt %d/%d). "
                     "Waiting %ds before retry...",
@@ -145,6 +149,8 @@ def get_garmin_client(athlete_id: int, email: str, encrypted_password: bytes) ->
     os.makedirs(token_path, exist_ok=True)
 
     garmin = Garmin()
+    # Configure timeout for Garmin API calls
+    garmin.garth.configure(timeout=settings.GARMIN_TIMEOUT)
     try:
         garmin.garth.load(token_path)
         # Verify the loaded tokens are usable with a lightweight call.
@@ -159,14 +165,26 @@ def get_garmin_client(athlete_id: int, email: str, encrypted_password: bytes) ->
         logger.info("Garmin session loaded from cache for athlete %s", athlete_id)
         return garmin
     except Exception as e:
-        logger.info("Cached session invalid for athlete %s (%s), re-authenticating", athlete_id, e)
+        logger.warning("Cached session invalid for athlete %s (%s), re-authenticating", athlete_id, e)
+        # Check if token files exist
+        if os.path.exists(token_path):
+            files = os.listdir(token_path)
+            logger.info("Token directory %s contains files: %s", token_path, files)
+        else:
+            logger.warning("Token directory %s does not exist", token_path)
 
     password = decrypt_password(encrypted_password)
     garmin = Garmin(email, password)
-    _login_with_rate_limit_retry(garmin, athlete_id)
-    garmin.garth.dump(token_path)
-    logger.info("Garmin re-authenticated and session cached for athlete %s", athlete_id)
-    return garmin
+    # Configure timeout for new Garmin client
+    garmin.garth.configure(timeout=settings.GARMIN_TIMEOUT)
+    try:
+        _login_with_rate_limit_retry(garmin, athlete_id)
+        garmin.garth.dump(token_path)
+        logger.info("Garmin re-authenticated and session cached for athlete %s", athlete_id)
+        return garmin
+    except Exception as e:
+        logger.error("Garmin authentication failed for athlete %s: %s", athlete_id, e)
+        raise
 
 
 # ---------------------------------------------------------------------------

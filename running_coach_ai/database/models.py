@@ -45,12 +45,19 @@ class Athlete(Base):
     coach_key = Column(Text, nullable=True)          # Key into PERSONAS registry; NULL treated as "classic"
     pending_onboarding_data = Column(JSON, nullable=True)           # Profile JSON awaiting Garmin creds modal
     pending_onboarding_data_created_at = Column(DateTime, nullable=True)  # UTC timestamp for TTL check
+    web_username = Column(Text, nullable=True)
+    web_password_hash = Column(Text, nullable=True)
+    is_admin = Column(Boolean, nullable=False, default=False)
+    prescription_style = Column(Text, nullable=True)  # "time" | "distance" | None (not yet set)
 
     goals = relationship("Goal", back_populates="athlete")
     health_snapshots = relationship("HealthSnapshot", back_populates="athlete")
     coach_memories = relationship("CoachMemory", back_populates="athlete")
     conversation_messages = relationship("ConversationMessage", back_populates="athlete")
     running_profile = relationship("RunningProfile", back_populates="athlete", uselist=False)
+    run_feedbacks = relationship("RunFeedback", back_populates="athlete")
+    weekly_review_summaries = relationship("WeeklyReviewSummary", back_populates="athlete")
+    web_events = relationship("WebEvent", back_populates="athlete")
 
 
 class Goal(Base):
@@ -101,15 +108,16 @@ class PlannedWorkout(Base):
     athlete_id = Column(Integer, ForeignKey("athletes.id"), nullable=False)
     scheduled_date = Column(Date, nullable=False)
     workout_type = Column(Text, nullable=False)
+    workout_name = Column(Text, nullable=True)
     description = Column(Text, nullable=True)
     target_distance_km = Column(Float, nullable=True)
+    target_duration_seconds = Column(Integer, nullable=True)
     target_pace_min_per_km = Column(Float, nullable=True)
     target_zones_json = Column(JSON, nullable=True)
-    garmin_workout_id = Column(Text, nullable=True)
-    garmin_schedule_id = Column(Text, nullable=True)
-    workout_name = Column(Text, nullable=True)
     status = Column(Text, nullable=False, default="planned")
     modified_reason = Column(Text, nullable=True)
+    garmin_workout_id = Column(Text, nullable=True)
+    garmin_schedule_id = Column(Text, nullable=True)
     last_garmin_synced_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -154,10 +162,12 @@ class CompletedWorkout(Base):
     calories = Column(Integer, nullable=True)
     telemetry_channels_json = Column(JSON, nullable=True)
     feedback_given = Column(Boolean, nullable=False, default=False)
+    coach_analysis = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     planned_workout = relationship("PlannedWorkout", back_populates="completed_workout")
     telemetry = relationship("WorkoutTelemetry", back_populates="completed_workout", uselist=False, cascade="all, delete-orphan")
+    run_feedback = relationship("RunFeedback", back_populates="completed_workout", uselist=False)
 
     __table_args__ = (
         Index("ix_completed_workouts_athlete_date", "athlete_id", "date"),
@@ -247,6 +257,7 @@ class ConversationMessage(Base):
     slack_ts = Column(Text, nullable=True)
     role = Column(Text, nullable=False)
     content = Column(Text, nullable=False)
+    source = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     athlete = relationship("Athlete", back_populates="conversation_messages")
@@ -271,4 +282,66 @@ class CoachMemory(Base):
 
     __table_args__ = (
         Index("ix_coach_memories_athlete_active", "athlete_id", "active"),
+    )
+
+
+class RunFeedback(Base):
+    __tablename__ = "run_feedback"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    athlete_id = Column(Integer, ForeignKey("athletes.id"), nullable=False)
+    completed_workout_id = Column(Integer, ForeignKey("completed_workouts.id"), unique=True, nullable=False)
+    feel_score = Column(Integer, nullable=True)
+    rpe = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    athlete = relationship("Athlete", back_populates="run_feedbacks")
+    completed_workout = relationship("CompletedWorkout", back_populates="run_feedback")
+
+    __table_args__ = (
+        Index("ix_run_feedback_athlete_workout", "athlete_id", "completed_workout_id"),
+    )
+
+
+class WeeklyReviewSummary(Base):
+    __tablename__ = "weekly_review_summaries"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    athlete_id = Column(Integer, ForeignKey("athletes.id"), nullable=False)
+    week_start_date = Column(Date, nullable=False)
+    total_miles = Column(Float, nullable=True)
+    elevation_gain_ft = Column(Float, nullable=True)
+    avg_hrv = Column(Float, nullable=True)
+    total_tss = Column(Float, nullable=True)
+    narrative = Column(Text, nullable=False)
+    daily_volume_json = Column(JSON, nullable=True)
+    body_battery_json = Column(JSON, nullable=True)
+    next_week_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    athlete = relationship("Athlete", back_populates="weekly_review_summaries")
+
+    __table_args__ = (
+        UniqueConstraint("athlete_id", "week_start_date", name="uq_weekly_review_athlete_week"),
+    )
+
+
+class WebEvent(Base):
+    __tablename__ = "web_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    athlete_id = Column(Integer, ForeignKey("athletes.id"), nullable=True)
+    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
+    severity = Column(Text, nullable=False)
+    category = Column(Text, nullable=False)
+    message = Column(Text, nullable=False)
+    details_json = Column(JSON, nullable=True)
+
+    athlete = relationship("Athlete", back_populates="web_events")
+
+    __table_args__ = (
+        Index("ix_web_events_timestamp", "timestamp"),
+        Index("ix_web_events_category_timestamp", "category", "timestamp"),
     )

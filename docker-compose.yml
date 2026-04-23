@@ -11,3 +11,20 @@ services:
       - LOG_FILE=/data/coach.log
     volumes:
       - ./data:/data
+
+  web:
+    build: .
+    command: python web.py
+    restart: unless-stopped
+    user: "0"
+    env_file: .env
+    environment:
+      - DB_PATH=/data/coach.db
+      - GARMIN_SESSION_DIR=/data/garmin_sessions/
+      - LOG_FILE=/data/web.log
+    volumes:
+      - ./data:/data
+    ports:
+      - "8080:8080"
+    depends_on:
+      - coach

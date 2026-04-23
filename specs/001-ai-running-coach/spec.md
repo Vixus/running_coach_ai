@@ -307,3 +307,17 @@ An admin user can add or remove athletes from the allowed-users list at runtime 
 
 ### Revision: Implementation Sync 2026-04-10
 - Reason: Reconciled schema additions (workout_name, activity_type, lthr_bpm, training_readiness), new admin morning-checkin command, LOG_FILE rotating handler, and all associated test requirements.
+
+---
+
+## Implementation Status (as of 2026-04-23)
+
+**Shipped.** All 33 functional requirements and 11 success criteria implemented on `main`. See `retrospective.md` for the full 2026-04-04 post-delivery analysis (100% task completion at that point; 100% spec adherence).
+
+Open items in `tasks.md` (T081–T087, 7 tasks tagged `[Sync: Gap Report]`): additional unit-test coverage for admin commands, workout_name round-trip, activity_type filtering, LTHR derivation, and LOG_FILE rotating handler. These are test-hardening gaps — the functional code already exists.
+
+Subsequent features have since extended this baseline:
+- Spec 002 — Athlete timezone auto-detection (`coach/timezone_utils.py`)
+- Spec 003 — Garmin credentials via Slack modal (replaces chat-based credential capture referenced in US1)
+- Spec 004 — Multi-coach personas (`coach/personas.py`) — supersedes the single "veteran coach" persona in this spec
+- Spec 005 — Web analytics dashboard (`running_coach_ai/web/`) — adds a web UI; the original Assumption "Mobile app, web UI… are out of scope" applies to this spec only

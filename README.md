@@ -10,16 +10,27 @@ A self-hosted AI running coach that integrates Slack, Garmin Connect, and Claude
 - **Daily morning check-ins** — automated readiness assessments using live HRV, sleep, body battery, and weather data
 - **Activity feedback** — post-run biomechanics and telemetry analysis delivered via Slack within 10 minutes of completing a run
 - **Weekly plan reviews** — automated Sunday review that adapts the upcoming week and re-syncs to Garmin
-- **Onboarding flow** — fully conversational intake covering race goals, experience, timezone, and Garmin credentials
+- **Onboarding flow** — fully conversational intake covering race goals, experience, timezone, and Garmin credentials (credentials entered via a secure Slack modal)
+- **Web analytics dashboard** — self-hosted Flask UI for reviewing activity trends, upcoming plan, weekly review summaries, and chatting with the coach outside Slack
 
 ## Architecture
 
-```
-main.py
-├── Slack SocketModeHandler  (daemon thread — handles all inbound DMs)
-└── APScheduler BlockingScheduler  (main thread — morning check-in, activity poll, weekly review)
+Two entry points, one shared SQLite database:
 
-All shared state → SQLite via SQLAlchemy
+```
+main.py   → Slack bot + APScheduler   (coaching loop)
+web.py    → Flask web dashboard       (analytics + alt chat)
+
+Both read/write the same SQLite DB (WAL mode enabled so the Flask readers don't
+block the Slack writer).
+```
+
+Inside `main.py`:
+
+```
+├── Slack SocketModeHandler  (daemon thread — handles all inbound DMs)
+└── APScheduler BlockingScheduler  (main thread — morning check-in, activity poll,
+                                    weekly review, Garmin reconciliation, health backfill)
 ```
 
 Key modules:
@@ -30,12 +41,19 @@ Key modules:
 | `running_coach_ai/slack/onboarding.py`       | Conversational athlete intake (name, race, goal, fitness, coach selection) |
 | `running_coach_ai/slack/conversation.py`     | Per-turn coaching conversation and system prompt assembly                  |
 | `running_coach_ai/coach/personas.py`         | Coach persona registry (Alex, Maya, Jordan)                                |
+| `running_coach_ai/coach/persona.py`          | Display-layer helpers (unit conversion km↔mi, pace formatting)             |
 | `running_coach_ai/coach/planner.py`          | Training plan generation                                                   |
 | `running_coach_ai/coach/adapter.py`          | Plan adaptation logic                                                      |
+| `running_coach_ai/coach/feedback.py`         | Post-run Claude feedback generation                                        |
+| `running_coach_ai/coach/biomechanics.py`     | Stride/cadence/form analysis from Garmin telemetry                         |
 | `running_coach_ai/garmin/client.py`          | Garmin Connect auth and session management                                 |
 | `running_coach_ai/garmin/workout_builder.py` | Garmin workout payload construction                                        |
-| `running_coach_ai/scheduler/jobs.py`         | Morning check-in, activity poll, weekly review jobs                        |
+| `running_coach_ai/garmin/telemetry.py`       | Activity stream parsing (pace, HR, cadence, power series)                  |
+| `running_coach_ai/scheduler/jobs.py`         | All scheduled background jobs                                              |
 | `running_coach_ai/database/models.py`        | SQLAlchemy ORM models                                                      |
+| `running_coach_ai/web/app.py`                | Flask app factory and blueprint registration                               |
+| `running_coach_ai/web/auth.py`               | Session-based login for the dashboard                                      |
+| `running_coach_ai/web/api/`                  | Dashboard, activities, plan, chat, review, admin JSON APIs                 |
 
 ## Requirements
 
@@ -75,6 +93,10 @@ ENCRYPTION_KEY=
 ALLOWED_SLACK_USER_IDS=U012AB3CD,U034EF5GH
 ADMIN_SLACK_USER_ID=U012AB3CD
 LOG_LEVEL=INFO
+
+# Web dashboard
+WEB_SECRET_KEY=           # random string for Flask session cookies
+WEB_PORT=8080
 ```
 
 **3. Run database migrations**
@@ -83,10 +105,19 @@ LOG_LEVEL=INFO
 alembic upgrade head
 ```
 
-**4. Start the bot**
+**4. Start the services**
 
 ```bash
-python main.py
+python main.py    # Slack bot + scheduler
+python web.py     # Web dashboard on :8080 (separate process)
+```
+
+On Windows there is a `start.bat` that launches both in the background.
+
+**5. Seed the first admin web login**
+
+```bash
+python scripts/set_web_credentials.py --slack-id U012AB3CD --username admin --password secret --admin
 ```
 
 ## Docker (Synology NAS / self-hosted)
@@ -132,12 +163,31 @@ Athletes can switch coaches at any time by asking the bot.
 
 ## Scheduled Jobs
 
-| Job                   | Schedule                                     | Action                                                                      |
-| --------------------- | -------------------------------------------- | --------------------------------------------------------------------------- |
-| Morning check-in      | Every 30 min from 06:00 (athlete local time) | Fetch health data + weather → adapt plan → DM athlete                       |
-| Activity poll         | Every 10 min                                 | Poll new Garmin activities → telemetry analysis → feedback DM               |
-| Weekly review         | Sunday 20:00 (system time)                   | Aggregate week → adapt next week → sync next 2 weeks to Garmin → DM summary |
-| Garmin reconciliation | Daily 08:30 (system time)                    | Find future workouts missing Garmin IDs and re-sync them (self-healing)     |
+| Job                   | Schedule                                                | Action                                                                      |
+| --------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Morning check-in      | Every 30 min from 06:00 local, dedup'd per day/athlete  | Fetch health data + weather → adapt plan → DM athlete                       |
+| Activity poll         | Every 30 min, 06:00–22:00 system time                   | Poll new Garmin activities → telemetry analysis → feedback DM               |
+| Weekly review         | Sunday 20:00 system time                                | Aggregate week → adapt next week → sync Garmin → DM summary                 |
+| Garmin reconciliation | Daily 08:30 system time                                 | Find future workouts missing Garmin IDs and re-sync them (self-healing)     |
+| Health backfill       | Daily 14:00 system time                                 | Backfill any missed morning health snapshots                                |
+
+## Web Dashboard
+
+Runs on `WEB_PORT` (default 8080) via `python web.py`. Login at `/login`, then the single-page app at `/app`.
+
+| Area          | Endpoint prefix      | Purpose                                                       |
+| ------------- | -------------------- | ------------------------------------------------------------- |
+| Auth          | `/auth/*`            | Session login / logout (cookie-based)                         |
+| Dashboard     | `/api/dashboard`     | Summary stats, health trends, this-week plan                  |
+| Activities    | `/api/activities`    | Recent completed workouts and telemetry                       |
+| Plan          | `/api/plan`          | Upcoming planned workouts                                     |
+| Chat          | `/api/chat`          | Send a message to your coach from the web (same engine as Slack) |
+| Review        | `/api/review`        | Weekly review summaries                                       |
+| Admin         | `/api/admin/*`       | Admin-only endpoints (gated by `is_admin`)                    |
+
+All dashboard events (logins, 5xx errors, coach chat from web) are logged to the `web_events` table for audit.
+
+Seed admin web credentials with `scripts/set_web_credentials.py` (see Setup step 5).
 
 ## Key Constraints
 

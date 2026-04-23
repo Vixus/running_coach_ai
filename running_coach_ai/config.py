@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     ADMIN_SLACK_USER_ID: str = ""
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = ""  # If set, logs are also written to this file path
+    GARMIN_TIMEOUT: int = 30  # Timeout in seconds for Garmin API calls
+    WEB_SECRET_KEY: str = ""
+    WEB_PORT: int = 8080
 
     @property
     def allowed_user_ids(self) -> List[str]:

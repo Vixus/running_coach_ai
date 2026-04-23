@@ -223,7 +223,7 @@ def _distribute_km(total_km: float, day_types: list[str]) -> list[float]:
 
 
 def _expand_skeleton(skeleton: list[dict], start_date: date, goal: Goal,
-                     training_days: int) -> list[dict]:
+                     training_days: int, prescription_style: str | None = None) -> list[dict]:
     """Turn a compact skeleton into full week/day plan structure.
 
     Quality sessions (intervals, tempo) get full step-by-step structures and
@@ -233,6 +233,7 @@ def _expand_skeleton(skeleton: list[dict], start_date: date, goal: Goal,
     race_pace = goal.target_time_seconds / (race_km * 60)  # min/km
     easy_pace = round(race_pace + 1.2, 1)
     long_pace = round(race_pace + 1.0, 1)
+    effective_style = prescription_style or "distance"
 
     total_weeks = len(skeleton)
     slots = _TRAINING_SLOTS.get(training_days, _TRAINING_SLOTS[5])
@@ -262,6 +263,7 @@ def _expand_skeleton(skeleton: list[dict], start_date: date, goal: Goal,
         for i, (dtype, dist) in enumerate(zip(types_ordered, dists_ordered)):
             slot = slots[i] if i < len(slots) else i
             day_date = week_start + timedelta(days=slot)
+            dur_secs = None
 
             # Build structured workouts for quality sessions
             if dtype == "intervals":
@@ -274,33 +276,55 @@ def _expand_skeleton(skeleton: list[dict], start_date: date, goal: Goal,
                 pace = round(race_pace + 0.1, 1)
             elif dtype == "long_run":
                 target_zones = None
-                dist_mi = format_miles(dist)
-                description = f"{dist_mi} long run, easy effort, zone 1-2 throughout"
                 pace = long_pace
+                if effective_style == "time":
+                    dur_secs = max(300, round(dist * pace * 60 / 300) * 300)
+                    description = f"{dur_secs // 60} min long run, easy effort, zone 1-2 throughout"
+                    dist = 0
+                else:
+                    miles = max(1, round(km_to_mi(dist)))
+                    dist = mi_to_km(miles)
+                    description = f"{miles} mile long run, easy effort, zone 1-2 throughout"
             elif dtype == "strides":
                 target_zones = None
                 min_dist_km = 30.0 / easy_pace if easy_pace else 0
                 dist = round(max(dist, min_dist_km), 1)
                 duration = round_to_5(dist * easy_pace) if dist and easy_pace else 40
-                description = f"{duration} min easy finishing with 6×100m strides"
                 pace = easy_pace
+                if effective_style == "time":
+                    dur_secs = duration * 60
+                    description = f"{duration} min easy finishing with 6×100m strides"
+                    dist = 0
+                else:
+                    miles = max(1, round(km_to_mi(dist)))
+                    dist = mi_to_km(miles)
+                    description = f"{miles} mile easy finishing with 6×100m strides"
             elif dtype == "cross_train":
                 target_zones = None
                 description = "Cross-training — swim, bike, or yoga. Low impact, active recovery."
                 pace = None
                 dist = 0
+                dur_secs = 2700  # 45 min, always time-based
             else:  # easy
                 target_zones = None
                 min_dist_km = 30.0 / easy_pace if easy_pace else 0
                 dist = round(max(dist, min_dist_km), 1)
                 duration = round_to_5(dist * easy_pace) if dist and easy_pace else 45
-                description = f"{duration} min easy, conversational pace, zone 1-2"
                 pace = easy_pace
+                if effective_style == "time":
+                    dur_secs = duration * 60
+                    description = f"{duration} min easy, conversational pace, zone 1-2"
+                    dist = 0
+                else:
+                    miles = max(1, round(km_to_mi(dist)))
+                    dist = mi_to_km(miles)
+                    description = f"{miles} mile easy, conversational pace, zone 1-2"
 
             days.append({
                 "date": day_date.isoformat(),
                 "type": dtype,
-                "distance_km": dist,
+                "distance_km": dist if dist else None,
+                "duration_seconds": dur_secs,
                 "pace_min_per_km": pace,
                 "description": description,
                 "target_zones_json": target_zones,
@@ -388,7 +412,8 @@ def generate_plan(athlete: Athlete, goal: Goal, db_session: Session) -> Training
                 len(skeleton), athlete.id)
 
     # Expand into full plan
-    all_weeks = _expand_skeleton(skeleton, today, goal, goal.training_days_per_week)
+    all_weeks = _expand_skeleton(skeleton, today, goal, goal.training_days_per_week,
+                                  prescription_style=athlete.prescription_style)
     plan_data = {"weeks": all_weeks}
 
     # Create TrainingPlan row
@@ -414,6 +439,7 @@ def generate_plan(athlete: Athlete, goal: Goal, db_session: Session) -> Training
                 workout_type=day["type"],
                 description=day.get("description"),
                 target_distance_km=day.get("distance_km"),
+                target_duration_seconds=day.get("duration_seconds"),
                 target_pace_min_per_km=day.get("pace_min_per_km"),
                 target_zones_json=day.get("target_zones_json"),
                 status="planned",

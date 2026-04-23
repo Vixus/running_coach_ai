@@ -514,6 +514,99 @@ def _run_garmin_reconciliation() -> None:
     logger.info("Garmin reconciliation complete")
 
 
+def _upsert_weekly_review_summary(athlete_id: int, week_start, week_summary: dict, narrative: str, db_session) -> None:
+    """Persist the weekly review to WeeklyReviewSummary using SQLite upsert."""
+    from running_coach_ai.database.models import WeeklyReviewSummary, CompletedWorkout, HealthSnapshot, PlannedWorkout
+    from sqlalchemy.dialects.sqlite import insert
+    from running_coach_ai.coach.persona import km_to_mi
+
+    # Build daily volume array (Mon–Sun) from completed workouts
+    week_end = week_start + timedelta(days=6)
+    completed = (
+        db_session.query(CompletedWorkout)
+        .filter(
+            CompletedWorkout.athlete_id == athlete_id,
+            CompletedWorkout.date >= week_start,
+            CompletedWorkout.date <= week_end,
+        )
+        .all()
+    )
+    daily_volume = [0.0] * 7
+    for cw in completed:
+        dow = cw.date.weekday()  # 0=Mon
+        daily_volume[dow] = round(daily_volume[dow] + km_to_mi(cw.distance_km or 0), 1)
+
+    # Collect 8-week body battery data (most recent 8 Sundays)
+    eight_weeks_ago = week_start - timedelta(weeks=7)
+    health_rows = (
+        db_session.query(HealthSnapshot)
+        .filter(
+            HealthSnapshot.athlete_id == athlete_id,
+            HealthSnapshot.date >= eight_weeks_ago,
+            HealthSnapshot.date <= week_end,
+        )
+        .order_by(HealthSnapshot.date.asc())
+        .all()
+    )
+    body_battery = [h.body_battery_start for h in health_rows if h.body_battery_start is not None][-8:]
+
+    # Build next-week preview from PlannedWorkout rows
+    next_week_start = week_start + timedelta(weeks=1)
+    next_week_end = next_week_start + timedelta(days=6)
+    planned_next = (
+        db_session.query(PlannedWorkout)
+        .filter(
+            PlannedWorkout.athlete_id == athlete_id,
+            PlannedWorkout.scheduled_date >= next_week_start,
+            PlannedWorkout.scheduled_date <= next_week_end,
+        )
+        .order_by(PlannedWorkout.scheduled_date.asc())
+        .all()
+    )
+    day_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    next_week_json = [
+        {
+            "day": day_labels[pw.scheduled_date.weekday()],
+            "type": pw.workout_type or "rest",
+            "label": pw.notes or pw.workout_type or "Rest",
+        }
+        for pw in planned_next
+    ]
+
+    total_miles = round(km_to_mi(week_summary.get("actual_km", 0) or 0), 1)
+    elevation_ft = None  # elevation not tracked in aggregate_week; kept null
+    avg_hrv = week_summary.get("avg_hrv")
+    total_tss = week_summary.get("total_training_load")
+
+    stmt = insert(WeeklyReviewSummary).values(
+        athlete_id=athlete_id,
+        week_start_date=week_start,
+        narrative=narrative,
+        total_miles=total_miles,
+        elevation_gain_ft=elevation_ft,
+        avg_hrv=avg_hrv,
+        total_tss=total_tss,
+        daily_volume_json=daily_volume,
+        body_battery_json=body_battery,
+        next_week_json=next_week_json,
+    ).on_conflict_do_update(
+        index_elements=["athlete_id", "week_start_date"],
+        set_={
+            "narrative": narrative,
+            "total_miles": total_miles,
+            "elevation_gain_ft": elevation_ft,
+            "avg_hrv": avg_hrv,
+            "total_tss": total_tss,
+            "daily_volume_json": daily_volume,
+            "body_battery_json": body_battery,
+            "next_week_json": next_week_json,
+        },
+    )
+    db_session.execute(stmt)
+    db_session.commit()
+    logger.info("WeeklyReviewSummary upserted for athlete %d week %s", athlete_id, week_start)
+
+
 def _run_weekly_review(slack_client) -> None:
     """Weekly review job — runs Sunday 20:00."""
     from running_coach_ai.database.models import Athlete
@@ -543,6 +636,9 @@ def _run_weekly_review(slack_client) -> None:
                 week_summary = aggregate_week(athlete.id, week_start, db_session)
                 review_message = generate_weekly_review(athlete, week_summary, db_session)
                 adapt_next_week(athlete, week_summary, db_session)
+
+                # Persist the weekly review summary for the web dashboard
+                _upsert_weekly_review_summary(athlete.id, week_start, week_summary, review_message, db_session)
 
                 # Sync next 2 weeks to Garmin
                 if athlete.garmin_email and athlete.garmin_password_encrypted:
@@ -605,16 +701,14 @@ def register_jobs(scheduler: BlockingScheduler, slack_app) -> None:
             )
             logger.info("Registered morning check-in for athlete %d (%s)", athlete.id, tz)
 
-    # Activity poll — every 10 minutes, starting immediately at startup so
-    # the first poll runs without a 10-minute wait after a restart.
+    # Activity poll — every 30 minutes, 06:00–22:00 only
     scheduler.add_job(
         _run_activity_poll,
-        IntervalTrigger(minutes=10),
+        CronTrigger(minute="*/30", hour="6-21"),
         args=[slack_client, scheduler],
         id="activity_poll",
         replace_existing=True,
         misfire_grace_time=60,
-        next_run_time=datetime.now(),
     )
 
     # Weekly review — Sunday 20:00 system time

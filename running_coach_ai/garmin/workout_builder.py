@@ -228,20 +228,45 @@ def build_workout_json(planned_workout: PlannedWorkout) -> dict:
 
             step_order += 1
     else:
-        # Simple session (easy, long_run, strides): round to nearest integer mile
-        distance_m = _km_to_integer_miles_in_meters(
-            planned_workout.target_distance_km or 5.0
-        )
-        step = _build_simple_step(
-            order=1,
-            step_type="interval",
-            distance_m=distance_m,
-            pace_min_per_km=planned_workout.target_pace_min_per_km,
-        )
-        steps_list.append(step)
+        # Time-based types: easy and strides are prescribed by duration, not distance.
+        # Resolution order:
+        #   1. distance × pace → duration (planner always sets both)
+        #   2. parse "X min" from description (Claude-created workouts may omit distance)
+        # Long runs and races remain distance-based.
+        _TIME_BASED_TYPES = {"easy", "strides", "cross_train"}
+        duration_min: float | None = None
+        if planned_workout.workout_type in _TIME_BASED_TYPES:
+            if planned_workout.target_duration_seconds:
+                duration_min = max(5, round(planned_workout.target_duration_seconds / 60 / 5) * 5)
+            elif planned_workout.target_distance_km and planned_workout.target_pace_min_per_km:
+                raw_min = planned_workout.target_distance_km * planned_workout.target_pace_min_per_km
+                duration_min = max(5, round(raw_min / 5) * 5)
+            elif planned_workout.description:
+                m = re.search(r'(\d+)\s*min', planned_workout.description, re.IGNORECASE)
+                if m:
+                    duration_min = max(5, round(int(m.group(1)) / 5) * 5)
 
-        # Set the estimated distance for the workout
-        workout["estimatedDistanceInMeters"] = distance_m
+        if duration_min is not None:
+            step = _build_simple_step(
+                order=1,
+                step_type="interval",
+                duration_secs=duration_min * 60,
+                pace_min_per_km=planned_workout.target_pace_min_per_km,
+            )
+            steps_list.append(step)
+        else:
+            # Distance-based: round to nearest integer mile
+            distance_m = _km_to_integer_miles_in_meters(
+                planned_workout.target_distance_km or 5.0
+            )
+            step = _build_simple_step(
+                order=1,
+                step_type="interval",
+                distance_m=distance_m,
+                pace_min_per_km=planned_workout.target_pace_min_per_km,
+            )
+            steps_list.append(step)
+            workout["estimatedDistanceInMeters"] = distance_m
 
     return workout
 
