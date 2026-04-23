@@ -21,6 +21,9 @@
     @keyframes drawLine{from{stroke-dashoffset:800;}to{stroke-dashoffset:0;}}
     @keyframes barRise{from{transform:scaleY(0);}to{transform:scaleY(1);}}
     @keyframes spin{to{transform:rotate(360deg);}}
+    @keyframes coachPulse{0%,100%{box-shadow:0 4px 20px rgba(0,0,0,0.25),0 0 0 0 rgba(120,120,120,0.3);}60%{box-shadow:0 4px 20px rgba(0,0,0,0.25),0 0 0 10px transparent;}}
+    @keyframes slideIn{from{transform:translateX(-100%);}to{transform:translateX(0);}}
+    @media(max-width:767px){html,body,#root{overflow:auto;}.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:299;}}
     input,button,textarea{font-family:inherit;}
   </style>
 </head>
@@ -40,14 +43,14 @@ const THEMES = {
   light: {
     bg:'#f2ede6', surface:'#faf8f4', surface2:'#f5f1ea', sidebar:'#ede8df',
     border:'rgba(80,60,30,0.1)', borderSoft:'rgba(80,60,30,0.06)',
-    text:'#1f1c16', textMid:'#5a5040', textMuted:'#9a8f7a', textDim:'#c0b8aa',
+    text:'#1f1c16', textMid:'#5a5040', textMuted:'#6e6254', textDim:'#c0b8aa',
     inputBg:'#ffffff',
     shadow:'0 1px 3px rgba(80,60,20,0.08), 0 4px 16px rgba(80,60,20,0.04)',
   },
   dark: {
     bg:'#1c1a15', surface:'#242118', surface2:'#2c291f', sidebar:'#1e1c16',
     border:'rgba(255,240,200,0.08)', borderSoft:'rgba(255,240,200,0.05)',
-    text:'#ede8df', textMid:'#b0a890', textMuted:'#7a7060', textDim:'#4a4538',
+    text:'#ede8df', textMid:'#b0a890', textMuted:'#8c8272', textDim:'#4a4538',
     inputBg:'#2c291f',
     shadow:'0 1px 4px rgba(0,0,0,0.3)',
   }
@@ -85,11 +88,11 @@ const Card = ({children, style, onClick}) => {
 
 const Label = ({children, style}) => {
   const {t} = useTh();
-  return <div style={{fontSize:11, fontWeight:600, letterSpacing:'0.07em', textTransform:'uppercase', color:t.textMuted, marginBottom:10, ...style}}>{children}</div>;
+  return <div style={{fontSize:12, fontWeight:600, letterSpacing:'0.07em', textTransform:'uppercase', color:t.textMuted, marginBottom:10, ...style}}>{children}</div>;
 };
 
 const Badge = ({children, color}) => (
-  <span style={{background:color+'22', color, borderRadius:6, padding:'2px 9px', fontSize:11, fontWeight:600}}>{children}</span>
+  <span style={{background:color+'22', color, borderRadius:6, padding:'2px 9px', fontSize:12, fontWeight:600}}>{children}</span>
 );
 
 const MetricCard = ({label, value, unit, sub, color, trend}) => {
@@ -351,6 +354,8 @@ function EmptyState({icon, title, desc}) {
 // ── Dashboard ────────────────────────────────────────────────────
 function Dashboard({coach}) {
   const {t, ac} = useTh();
+  const windowWidth = useWindowWidth();
+  const chartWidth = windowWidth < 768 ? Math.max(120, Math.floor((windowWidth - 56) / 2)) : 280;
   const [data, setData]       = useState(null);
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -396,6 +401,12 @@ function Dashboard({coach}) {
             <div style={{fontSize:12, color:t.textMuted, marginBottom:5}}>{cd.name} · Just now</div>
             <div style={{fontSize:14, color:t.text, lineHeight:1.65}}>{coach_message}</div>
           </div>
+        </div>
+      )}
+
+      {!athlete.onboarding_complete && (
+        <div style={{fontSize:12, color:t.textMuted, marginBottom:20, padding:'8px 12px', background:t.surface2, borderRadius:6}}>
+          Start your onboarding in Slack to activate daily coaching.
         </div>
       )}
 
@@ -448,14 +459,14 @@ function Dashboard({coach}) {
                 <Label style={{marginBottom:2}}>Weekly Volume · 8 Weeks</Label>
                 <div style={{fontSize:11, color:t.textMuted}}>Hover a bar for details</div>
               </div>
-              <BarChart data={charts.weekly_volume_8w||[]} labels={volLabels} color={ac.main} width={280} height={88} weekData={volWeekData}/>
+              <BarChart data={charts.weekly_volume_8w||[]} labels={volLabels} color={ac.main} width={chartWidth} height={88} weekData={volWeekData}/>
             </Card>
             <Card style={{overflow:'visible'}}>
               <div style={{marginBottom:14}}>
                 <Label style={{marginBottom:2}}>HRV Trend · 8 Weeks</Label>
                 <div style={{fontSize:11, color:t.textMuted}}>Hover a point for context</div>
               </div>
-              <LineChart data={charts.hrv_8w||[]} labels={volLabels} color="#5a8a62" width={280} height={88} tooltips={hrvTooltips}/>
+              <LineChart data={charts.hrv_8w||[]} labels={volLabels} color="#5a8a62" width={chartWidth} height={88} tooltips={hrvTooltips}/>
             </Card>
           </div>
         );
@@ -473,7 +484,7 @@ function Dashboard({coach}) {
                 border:`1px solid ${day.is_today?ac.main+'40':t.borderSoft}`,
                 transition:'all 0.15s',
               }}>
-                <div style={{fontSize:12, color:t.textMuted, marginBottom:6, fontWeight:500}}>{day.day}</div>
+                <div style={{fontSize:13, color:t.textMuted, marginBottom:6, fontWeight:500}}>{day.day}</div>
                 <div style={{width:9, height:9, borderRadius:'50%', background:day.color, margin:'0 auto 7px'}}/>
                 <div style={{fontSize:12, color:day.is_today?ac.main:t.text, fontWeight:day.is_today?600:400, lineHeight:1.35}}>{day.label}</div>
                 {day.done && !day.is_today && <div style={{fontSize:11, color:t.textMuted, marginTop:6}}>✓</div>}
@@ -496,24 +507,34 @@ function TrainingPlan() {
   const [syncing, setSyncing]     = useState(false);
   const [syncResult, setSyncResult] = useState(null);
   const [loading, setLoading]     = useState(true);
+  const [lastSync, setLastSync]   = useState(() => localStorage.getItem('garmin_last_sync') || null);
+  const [, forceUpdate]           = React.useReducer(x => x+1, 0);
 
   useEffect(() => {
     setLoading(true);
     apiFetch(`/api/plan?month=${month}`).then(r=>r?.json()).then(d=>{if(d) setData(d);}).finally(()=>setLoading(false));
   }, [month]);
 
+  useEffect(() => {
+    const id = setInterval(forceUpdate, 60000);
+    return () => clearInterval(id);
+  }, []);
+
   function prevMonth() { const [y,m]=month.split('-').map(Number); const d=new Date(y,m-2,1); setMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }
   function nextMonth() { const [y,m]=month.split('-').map(Number); const d=new Date(y,m,1);   setMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }
 
   async function handleSync() {
     setSyncing(true); setSyncResult(null);
-    try { const r=await apiFetch('/api/plan/sync',{method:'POST'}); const d=await r.json(); setSyncResult(d); }
+    try {
+      const r=await apiFetch('/api/plan/sync',{method:'POST'}); const d=await r.json(); setSyncResult(d);
+      if (d?.ok) { const ts=new Date().toISOString(); localStorage.setItem('garmin_last_sync',ts); setLastSync(ts); }
+    }
     catch { setSyncResult({ok:false, error:'Network error'}); }
     setSyncing(false);
   }
 
   if (loading) return <div style={{padding:40, color:t.textMuted, animation:'fadeUp 0.3s ease'}}>Loading training plan…</div>;
-  if (!data)   return <EmptyState icon="📅" title="No training plan" desc="Your coach will generate a training plan after onboarding." />;
+  if (!data)   return <EmptyState icon="📅" title="No training plan" desc="Message your coach on Slack to begin onboarding. Once complete, your personalized training plan will appear here." />;
 
   const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const TYPE_COLORS = {easy:'#5a8a62',long_run:'#5e7e96',tempo:'#b8673e',intervals:'#c05040',strides:'#8a7aba',cross_train:'#5e7e96',rest:'#a09080',race:'#c4a040'};
@@ -533,14 +554,20 @@ function TrainingPlan() {
               <span style={{fontSize:13,fontWeight:600,minWidth:90,textAlign:'center',color:t.text}}>{data.month_label}</span>
               <button onClick={nextMonth} style={{width:28,height:28,border:'none',background:'transparent',cursor:'pointer',borderRadius:6,color:t.text,fontSize:16,display:'flex',alignItems:'center',justifyContent:'center'}}>›</button>
             </div>
-            <button onClick={handleSync} disabled={syncing} style={{
-              background:syncResult?.ok?'#5a8a6215':ac.soft, border:`1px solid ${syncResult?.ok?'#5a8a6240':ac.main+'40'}`,
-              color:syncResult?.ok?'#5a8a62':ac.main, borderRadius:9, padding:'8px 14px', fontSize:12, fontWeight:600,
-              cursor:syncing?'default':'pointer', display:'flex', gap:8, alignItems:'center',
-            }}>
-              {syncing && <span style={{display:'inline-block',animation:'spin 0.8s linear infinite'}}>↻</span>}
-              {syncing?'Syncing…':syncResult?.ok?'✓ Synced to Garmin':syncResult?.error?'⚠ Retry':'Sync to Garmin'}
-            </button>
+            <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
+              <button onClick={handleSync} disabled={syncing} style={{
+                background:syncResult?.ok?'#5a8a6215':ac.soft, border:`1px solid ${syncResult?.ok?'#5a8a6240':ac.main+'40'}`,
+                color:syncResult?.ok?'#5a8a62':ac.main, borderRadius:9, padding:'8px 14px', fontSize:12, fontWeight:600,
+                cursor:syncing?'default':'pointer', display:'flex', gap:8, alignItems:'center',
+              }}>
+                {syncing && <span style={{display:'inline-block',animation:'spin 0.8s linear infinite'}}>↻</span>}
+                {syncing?'Syncing…':syncResult?.ok?'✓ Synced to Garmin':syncResult?.error?'⚠ Retry':'Sync to Garmin'}
+              </button>
+              {lastSync && (() => {
+                const mins = Math.round((Date.now() - new Date(lastSync)) / 60000);
+                return <div style={{fontSize:11,color:t.textMuted}}>{`Last synced: ${mins < 1 ? 'just now' : `${mins} min ago`}`}</div>;
+              })()}
+            </div>
           </div>
         </div>
 
@@ -548,19 +575,33 @@ function TrainingPlan() {
           <div style={{background:'rgba(200,50,30,0.08)', borderRadius:8, padding:'8px 12px', marginBottom:12, color:'#c05040', fontSize:13}}>{syncResult.error}</div>
         )}
 
-        {/* Day headers */}
+        {/* Day headers + week rows — wrapped for horizontal scroll on mobile */}
+        <div style={{overflowX:'auto', WebkitOverflowScrolling:'touch'}}>
+        <div style={{minWidth:520}}>
         <div style={{display:'grid', gridTemplateColumns:'56px repeat(7,1fr)', gap:5, marginBottom:4}}>
           <div/>
-          {DAYS.map(d => <div key={d} style={{textAlign:'center', fontSize:12, fontWeight:600, color:t.textMuted, padding:'3px 0'}}>{d}</div>)}
+          {DAYS.map(d => <div key={d} style={{textAlign:'center', fontSize:13, fontWeight:600, color:t.textMuted, padding:'3px 0'}}>{d}</div>)}
         </div>
 
         {(data.weeks||[]).map((week,wi) => {
           const wLabel = data.week_labels?.[wi]||'';
+          const days = week.filter(d => d !== null);
+          let rangeLabel = wLabel.split('·')[0]?.trim();
+          if (days.length > 0) {
+            const first = new Date(days[0].date+'T00:00:00');
+            const last  = new Date(days[days.length-1].date+'T00:00:00');
+            const fmt = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+            rangeLabel = first.getMonth() === last.getMonth()
+              ? `${fmt(first).split(' ')[0]} ${fmt(first).split(' ')[1]}–${fmt(last).split(' ')[1]}`
+              : `${fmt(first)} – ${fmt(last)}`;
+          }
+          const isThisWeek = data.active_week_index === wi;
           return (
             <div key={wi} style={{display:'grid', gridTemplateColumns:'56px repeat(7,1fr)', gap:5, marginBottom:6}}>
               <div style={{display:'flex',flexDirection:'column',justifyContent:'center',paddingRight:6}}>
-                <div style={{fontSize:11,color:t.textMuted,fontWeight:600}}>{wLabel.split('·')[0]?.trim()}</div>
+                <div style={{fontSize:11,color:t.textMuted,fontWeight:600,lineHeight:1.2}}>{rangeLabel}</div>
                 {wLabel.includes('·') && <div style={{fontSize:10,color:ac.main,marginTop:2}}>{wLabel.split('·')[1]?.trim()}</div>}
+                {isThisWeek && <div style={{fontSize:10,color:ac.main,marginTop:1,fontWeight:600}}>This week</div>}
               </div>
               {week.map((day,di) => {
                 if (!day) return <div key={di} style={{minHeight:90,background:t.surface2+'40',borderRadius:10,opacity:0.2}}/>;
@@ -585,13 +626,16 @@ function TrainingPlan() {
                         ? <span style={{fontSize:11,fontWeight:600,color:col}}>{day.distance_mi} mi</span>
                         : day.duration_min!=null && <span style={{fontSize:11,fontWeight:600,color:col}}>{day.duration_min} min</span>}
                     </div>
-                    <div style={{fontSize:12,fontWeight:isSel?600:500,color:isSel?ac.main:t.text,lineHeight:1.3,marginBottom:3}}>{day.label}</div>
+                    <div style={{fontSize:13,fontWeight:isSel?600:500,color:isSel?ac.main:t.text,lineHeight:1.3,marginBottom:3}}>{day.label}</div>
                     {day.target_pace && <div style={{fontSize:11,color:t.textMuted}}>{day.target_pace}</div>}
                     {day.done
-                      ? <div style={{fontSize:10,color:isToday?'#5a8a62':t.textMuted,marginTop:'auto',paddingTop:4}}>✓ {day.actual_pace||''}</div>
+                      ? <div style={{fontSize:11,color:isToday?'#5a8a62':t.textMuted,marginTop:'auto',paddingTop:4}}>✓ {day.actual_pace||''}</div>
                       : day.intensity!=null && (
-                        <div style={{display:'flex',gap:2,marginTop:'auto',paddingTop:4}}>
-                          {[1,2,3,4].map(i=><div key={i} style={{flex:1,height:3,borderRadius:2,background:i<=day.intensity?col:'currentColor',opacity:i<=day.intensity?1:0.12}}/>)}
+                        <div style={{marginTop:'auto',paddingTop:4}}>
+                          <div style={{fontSize:10,color:t.textMuted,marginBottom:2}}>Intensity</div>
+                          <div style={{display:'flex',gap:2}}>
+                            {[1,2,3,4].map(i=><div key={i} style={{flex:1,height:5,borderRadius:2,background:i<=day.intensity?col:'currentColor',opacity:i<=day.intensity?1:0.12}}/>)}
+                          </div>
                         </div>
                       )
                     }
@@ -601,6 +645,9 @@ function TrainingPlan() {
             </div>
           );
         })}
+
+        </div>{/* end minWidth wrapper */}
+        </div>{/* end overflowX wrapper */}
 
         {/* Legend */}
         <div style={{display:'flex', gap:14, marginTop:14, flexWrap:'wrap', alignItems:'center'}}>
@@ -1011,6 +1058,8 @@ function CoachChat({coach, mini=false}) {
 // ── Weekly Review ────────────────────────────────────────────────
 function WeeklyReview() {
   const {t, ac} = useTh();
+  const windowWidth = useWindowWidth();
+  const chartWidth = windowWidth < 768 ? Math.max(120, Math.floor((windowWidth - 56) / 2)) : 280;
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [reviewOffset, setReviewOffset] = useState(0);
@@ -1054,14 +1103,14 @@ function WeeklyReview() {
             <Label style={{marginBottom:2}}>Daily Volume</Label>
             <div style={{fontSize:11, color:t.textMuted}}>miles</div>
           </div>
-          <BarChart data={daily_volume||[]} labels={WEEK_DAYS} color={ac.main} width={280} height={100}/>
+          <BarChart data={daily_volume||[]} labels={WEEK_DAYS} color={ac.main} width={chartWidth} height={100}/>
         </Card>
         <Card style={{overflow:'visible'}}>
           <div style={{marginBottom:14}}>
             <Label style={{marginBottom:2}}>Body Battery · 8 Weeks</Label>
             <div style={{fontSize:11, color:t.textMuted}}>Hover for weekly context</div>
           </div>
-          <LineChart data={body_battery_8w||[]} color="#b8673e" width={280} height={100}/>
+          <LineChart data={body_battery_8w||[]} color="#b8673e" width={chartWidth} height={100}/>
         </Card>
       </div>
 
@@ -1213,13 +1262,13 @@ const NAV_ICONS = {
   admin:      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.5 1.5M11.5 11.5L13 13M3 13l1.5-1.5M11.5 4.5L13 3" strokeLinecap="round"/></svg>,
 };
 
-function Sidebar({screen, setScreen, athlete, coach, setCoach, mode, toggleMode, unread}) {
+function Sidebar({screen, setScreen, athlete, coach, setCoach, mode, toggleMode, unread, embedded}) {
   const {t, ac} = useTh();
   const navItems = [...NAV, ...(athlete?.is_admin ? [{id:'admin',label:'Admin'}] : [])];
   return (
-    <div style={{width:240, background:t.sidebar, borderRight:`1px solid ${t.border}`, display:'flex', flexDirection:'column', flexShrink:0, height:'100%'}}>
-      {/* Logo */}
-      <div style={{padding:'20px 18px 16px', borderBottom:`1px solid ${t.border}`, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+    <div style={{width:embedded?'100%':240, background:t.sidebar, borderRight:embedded?'none':`1px solid ${t.border}`, display:'flex', flexDirection:'column', flexShrink:0, height:'100%', flex:embedded?1:undefined}}>
+      {/* Logo — hidden when embedded in mobile drawer (drawer has its own header) */}
+      {!embedded && <div style={{padding:'20px 18px 16px', borderBottom:`1px solid ${t.border}`, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
         <div style={{display:'flex', gap:10, alignItems:'center'}}>
           <div style={{width:32,height:32,borderRadius:10,background:ac.main,display:'flex',alignItems:'center',justifyContent:'center',fontSize:17}}>🏃</div>
           <div>
@@ -1230,7 +1279,7 @@ function Sidebar({screen, setScreen, athlete, coach, setCoach, mode, toggleMode,
         <button onClick={toggleMode} title="Toggle dark mode" style={{width:30,height:30,border:`1px solid ${t.border}`,background:t.surface,borderRadius:8,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14}}>
           {mode==='light'?'🌙':'☀️'}
         </button>
-      </div>
+      </div>}
 
       {/* Nav */}
       <nav style={{padding:'12px 10px', flex:1}}>
@@ -1324,11 +1373,12 @@ function FloatingCoach({coach, unread, markChatRead}) {
       </div>
 
       {/* Bubble button */}
-      <button onClick={()=>{ setOpen(v=>!v); if (!open) markChatRead(); }} style={{
-        position:'relative', width:52, height:52, borderRadius:16, background:cd.color, border:'none',
+      <button title="Ask your coach" onClick={()=>{ setOpen(v=>!v); if (!open) markChatRead(); }} style={{
+        position:'relative', width:58, height:58, borderRadius:16, background:cd.color, border:'none',
         cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
         fontWeight:700, fontSize:18, color:'#fff',
         boxShadow:'0 4px 20px rgba(0,0,0,0.25)', transition:'transform 0.15s, box-shadow 0.15s',
+        animation: !open && !unread ? 'coachPulse 3s infinite' : 'none',
       }}
       onMouseEnter={e=>{ e.currentTarget.style.transform='scale(1.06)'; e.currentTarget.style.boxShadow='0 6px 28px rgba(0,0,0,0.3)'; }}
       onMouseLeave={e=>{ e.currentTarget.style.transform='scale(1)'; e.currentTarget.style.boxShadow='0 4px 20px rgba(0,0,0,0.25)'; }}>
@@ -1357,6 +1407,17 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// ── Window width hook ────────────────────────────────────────────
+function useWindowWidth() {
+  const [w, setW] = useState(window.innerWidth);
+  useEffect(() => {
+    const handler = () => setW(window.innerWidth);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return w;
+}
+
 // ── App ──────────────────────────────────────────────────────────
 function App() {
   const [coach,  setCoach]  = useState(() => localStorage.getItem('rcai_coach')  || 'classic');
@@ -1365,6 +1426,9 @@ function App() {
   const [screen, setScreen] = useState('dashboard');
   const [athlete, setAthlete] = useState(null);
   const [unread, setUnread] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const windowWidth = useWindowWidth();
+  const isMobile = windowWidth < 768;
 
   const t  = THEMES[mode] || THEMES.light;
   const ac = ACCENTS[accent] || ACCENTS.sage;
@@ -1411,6 +1475,63 @@ function App() {
     admin:      <Admin/>,
     onboarding: <Onboarding/>,
   };
+
+  const BOTTOM_NAV = [
+    {id:'dashboard', label:'Dashboard', icon:NAV_ICONS.dashboard},
+    {id:'plan',      label:'Plan',      icon:NAV_ICONS.plan},
+    {id:'activities',label:'Activity',  icon:NAV_ICONS.activities},
+    {id:'chat',      label:'Chat',      icon:NAV_ICONS.chat},
+  ];
+
+  if (isMobile) {
+    return (
+      <ThemeCtx.Provider value={{t, ac:acAdj, mode, accent, setAccent}}>
+        <div style={{display:'flex', flexDirection:'column', height:'100%', background:t.bg, color:t.text}}>
+          {/* Mobile top header */}
+          <div style={{height:48, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 12px', background:t.sidebar, borderBottom:`1px solid ${t.border}`, flexShrink:0, zIndex:100}}>
+            <button onClick={()=>setSidebarOpen(true)} style={{width:36,height:36,border:'none',background:'none',cursor:'pointer',color:t.text,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>☰</button>
+            <div style={{fontWeight:700,fontSize:15,color:t.text,letterSpacing:'-0.01em'}}>RunCoach AI</div>
+            <button onClick={toggleMode} style={{width:36,height:36,border:`1px solid ${t.border}`,background:t.surface,borderRadius:8,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14}}>
+              {mode==='light'?'🌙':'☀️'}
+            </button>
+          </div>
+          {/* Sidebar overlay */}
+          {sidebarOpen && (
+            <div className="sidebar-overlay" onClick={()=>setSidebarOpen(false)}>
+              <div onClick={e=>e.stopPropagation()} style={{position:'fixed',left:0,top:0,height:'100%',width:280,zIndex:300,background:t.sidebar,animation:'slideIn 0.22s ease',display:'flex',flexDirection:'column'}}>
+                <div style={{padding:'14px 16px 10px', borderBottom:`1px solid ${t.border}`, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                  <div style={{fontWeight:700,fontSize:14,color:t.text}}>Menu</div>
+                  <button onClick={()=>setSidebarOpen(false)} style={{width:30,height:30,border:'none',background:'none',cursor:'pointer',color:t.textMuted,fontSize:20,display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+                </div>
+                <Sidebar screen={screen} setScreen={id=>{ handleSetScreen(id); setSidebarOpen(false); }} athlete={athlete} coach={coach} setCoach={setCoach} mode={mode} toggleMode={toggleMode} unread={unread} embedded={true}/>
+              </div>
+            </div>
+          )}
+          {/* Main content */}
+          <div style={{flex:1, overflowY:'auto', display:'flex', flexDirection:'column', paddingBottom:60}}>
+            <ErrorBoundary>
+              {screens[screen] ?? <EmptyState icon="🔍" title="Screen not found" desc=""/>}
+            </ErrorBoundary>
+          </div>
+          {/* Bottom nav */}
+          <div style={{position:'fixed', bottom:0, left:0, right:0, height:60, background:t.sidebar, borderTop:`1px solid ${t.border}`, display:'flex', zIndex:200}}>
+            {BOTTOM_NAV.map(item => (
+              <button key={item.id} onClick={()=>{ if(item.id==='chat'){ handleSetScreen('chat'); } else handleSetScreen(item.id); }} style={{
+                flex:1, border:'none', background:screen===item.id?acAdj.soft:'transparent', cursor:'pointer',
+                display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:3,
+                color:screen===item.id?acAdj.main:t.textMuted, fontSize:10, fontWeight:screen===item.id?600:400,
+              }}>
+                <span style={{display:'flex',alignItems:'center'}}>{item.icon}</span>
+                {item.label}
+                {item.id==='chat' && unread && <div style={{position:'absolute',width:6,height:6,borderRadius:'50%',background:'#5a8a62',marginLeft:12,marginBottom:10}}/>}
+              </button>
+            ))}
+          </div>
+          <FloatingCoach coach={coach} unread={unread} markChatRead={markChatRead}/>
+        </div>
+      </ThemeCtx.Provider>
+    );
+  }
 
   return (
     <ThemeCtx.Provider value={{t, ac:acAdj, mode, accent, setAccent}}>
