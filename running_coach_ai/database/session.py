@@ -1,11 +1,20 @@
 """Database session factory and helpers."""
 
+import os
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from running_coach_ai.config import settings
+
+if settings.DB_PATH:
+    db_dir = os.path.dirname(settings.DB_PATH)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
+
+    if settings.GARMIN_SESSION_DIR:
+        os.makedirs(settings.GARMIN_SESSION_DIR, exist_ok=True)
 
 engine = create_engine(
     f"sqlite:///{settings.DB_PATH}",
