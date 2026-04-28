@@ -38,8 +38,27 @@ Write a morning message in coach voice: personalised, warm, direct. Include:
 Keep it concise — this is a morning message, not a lecture."""
 
 
-# Key health fields that signal Garmin has finished processing the night's data.
-_HEALTH_KEY_FIELDS = ("sleep_score", "hrv_score", "body_battery_start")
+# Fallback for devices without Training Readiness: sleep_score is only finalised
+# by Garmin after sleep tracking ends, making it a reliable wakeup proxy.
+_HEALTH_KEY_FIELDS = ("sleep_score",)
+
+
+def _garmin_morning_data_complete(snapshot) -> bool:
+    """Return True when Garmin has finished processing overnight health data.
+
+    Primary signal: training_readiness — Garmin only generates this composite
+    score after sleep tracking ends, HRV is computed, and body battery is
+    recalculated. It is the same gate Garmin uses to show the morning Training
+    Readiness card in the app.
+
+    Fallback (devices without Training Readiness support): require all three
+    proxy fields to be present instead.
+    """
+    if snapshot is None:
+        return False
+    if snapshot.training_readiness is not None:
+        return True
+    return all(getattr(snapshot, f) is not None for f in _HEALTH_KEY_FIELDS)
 
 
 def run_morning_checkin(athlete: Athlete, db_session: Session, slack_client) -> None:
@@ -61,6 +80,16 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, slack_client) -> 
         logger.debug("Morning check-in already sent to athlete %d today, skipping", athlete.id)
         return
 
+    # Time-of-day floor: never send before 06:00 local, even if Garmin has already
+    # processed a nap as a completed sleep session and the data gate would pass.
+    now_local = datetime.now(tz)
+    if now_local.hour < 6:
+        logger.debug(
+            "Morning check-in suppressed for athlete %d — too early (%s local)",
+            athlete.id, now_local.strftime("%H:%M"),
+        )
+        return
+
     # Fetch Garmin health data — try live fetch, fall back to yesterday's stored snapshot
     health_text = "No Garmin data available."
     snapshot = None
@@ -75,14 +104,11 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, slack_client) -> 
         except Exception as e:
             logger.error("Live health data fetch failed for athlete %d: %s", athlete.id, e)
 
-    # Health-data gate (FR-031, FR-032): wait for Garmin to post today's key metrics before sending.
+    # Health-data gate (FR-031, FR-032): wait for Garmin to finish processing all overnight metrics.
+    # Uses training_readiness as the primary signal (Garmin's own morning-complete indicator),
+    # falling back to requiring all three proxy fields on devices that don't support it.
     # Only applies to athletes WITH Garmin — no-Garmin athletes always get a workout/weather check-in.
-    no_usable_data = snapshot is None or all(
-        getattr(snapshot, f) is None for f in _HEALTH_KEY_FIELDS
-    )
-    if no_usable_data and athlete.garmin_email:
-        tz_name = athlete.timezone or "America/New_York"
-        now_local = datetime.now(ZoneInfo(tz_name))
+    if not _garmin_morning_data_complete(snapshot) and athlete.garmin_email:
         if now_local.hour < 12:
             logger.debug(
                 "No health data yet for athlete %d at %s local — will retry on next tick",

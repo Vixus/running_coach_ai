@@ -1562,16 +1562,21 @@ def process_message(
     persists ConversationMessage rows with the given source, and returns the
     cleaned response text. Does NOT send any Slack DM.
     """
-    # Temporarily override athlete.coach_key for system prompt assembly if requested
+    # Temporarily override athlete.coach_key for system prompt assembly if requested.
+    # Only restore in finally if we actually applied an override — otherwise we'd
+    # clobber any persisted coach switch made by extract_coach_switch() during
+    # message processing (the in-memory revert would be written back to the DB
+    # by the outer session's commit-on-exit).
+    did_override = bool(coach_key)
     original_coach_key = athlete.coach_key
-    if coach_key:
+    if did_override:
         athlete.coach_key = coach_key
 
     try:
         return _process_message_inner(athlete, user_text, db_session, source=source)
     finally:
-        # Restore original — ephemeral override, do not persist to DB
-        athlete.coach_key = original_coach_key
+        if did_override:
+            athlete.coach_key = original_coach_key
 
 
 def _process_message_inner(

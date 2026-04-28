@@ -1,0 +1,10 @@
+{
+  "workflow": "speckit",
+  "specName": "001-ai-running-coach",
+  "branch": "001-ai-running-coach",
+  "selectedAt": "2026-04-28T23:23:52.695Z",
+  "currentStep": "specify",
+  "status": "draft",
+  "stepHistory": {},
+  "transitions": []
+}

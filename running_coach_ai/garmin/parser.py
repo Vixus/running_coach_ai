@@ -59,6 +59,27 @@ def parse_health_snapshot(raw: dict, athlete_id: int, snapshot_date: date, db_se
             list(dto.keys()) if dto else "no dto",
         )
 
+        # NAP INVESTIGATION: log full sleep structure so we can see whether Garmin
+        # surfaces nap sessions separately or merges them into the daily record.
+        import json as _json
+        _sleep_raw = raw["sleep"]
+        _top_keys = list(_sleep_raw.keys()) if isinstance(_sleep_raw, dict) else type(_sleep_raw).__name__
+        _dto_timestamps = {
+            k: v for k, v in (dto or {}).items()
+            if any(kw in k.lower() for kw in ("time", "start", "end", "nap", "sleep", "session", "score", "duration"))
+        }
+        _nap_candidates = [
+            k for k in (list(_sleep_raw.keys()) if isinstance(_sleep_raw, dict) else [])
+            if any(kw in k.lower() for kw in ("nap", "session", "sleep"))
+        ]
+        logger.info(
+            "SLEEP_STRUCT athlete %d %s | top-level keys: %s | dto timestamp/duration fields: %s | nap candidates: %s",
+            athlete_id, snapshot_date,
+            _top_keys,
+            _json.dumps(_dto_timestamps, default=str),
+            _nap_candidates,
+        )
+
     # --- HRV ---
     hrv_score = None
     hrv_status = None

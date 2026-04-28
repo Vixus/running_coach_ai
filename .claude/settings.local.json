@@ -48,7 +48,18 @@
       "Bash(grep -v \"^Found\\\\|^E712.*conversation\\\\|^E712.*TrainingPlan\\\\|^\\\\s*-->\\\\s*running_coach_ai.slack\\\\|^\\\\s*|\\\\s*\\\\.filter.*active\\\\|^help\\\\|^\\\\s*$\\\\|^warning\")",
       "Bash(alembic current *)",
       "Bash(alembic heads *)",
-      "Bash(alembic history *)"
+      "Bash(alembic history *)",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(mkdir -p /tmp/design)",
+      "Read(//tmp/**)",
+      "Bash(tar -xzf '/c/Users/vixus/.claude/projects/C--Users-vixus-Projects-running-coach-ai/b19ce876-30e4-4520-8e55-c486e7225669/tool-results/webfetch-1777229796438-v5sk58.bin')",
+      "Bash(cp \"/tmp/design/running-coach-ai/project/Sarah's Training Magazine.html\" /tmp/design/magazine.html)",
+      "Bash(cp /tmp/design/running-coach-ai/chats/chat1.md /tmp/design/chat1.md)",
+      "Bash(cp \"/tmp/design/running-coach-ai/project/Sarah's Training Magazine v1.html\" /tmp/design/magazine_v1.html)",
+      "Bash(pytest tests/unit/ -x -q)",
+      "Bash(pytest tests/unit/ -q --ignore=tests/unit/test_activity_poll_interval.py -k \"web or magazine or dashboard\")",
+      "Bash(node --input-type=module)",
+      "Bash(node -e ' *)"
     ]
   }
 }

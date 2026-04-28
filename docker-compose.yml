@@ -1,6 +1,7 @@
 services:
   coach:
     build: .
+    command: python main.py
     restart: unless-stopped
     user: "0"
     env_file: .env

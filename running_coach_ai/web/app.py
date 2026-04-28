@@ -55,6 +55,14 @@ def create_app() -> Flask:
             return redirect('/login')
         static_dir = os.path.join(os.path.dirname(__file__), 'static')
         return send_from_directory(static_dir, 'app.html')
+
+    @app.route('/magazine')
+    def magazine_page():
+        if "athlete_id" not in session:
+            return redirect('/login')
+        static_dir = os.path.join(os.path.dirname(__file__), 'static')
+        return send_from_directory(static_dir, 'magazine.html')
+
     from running_coach_ai.web.api.dashboard import bp as dashboard_bp
     app.register_blueprint(dashboard_bp)
 
@@ -72,6 +80,9 @@ def create_app() -> Flask:
 
     from running_coach_ai.web.api.admin import bp as admin_bp
     app.register_blueprint(admin_bp)
+
+    from running_coach_ai.web.api.magazine import bp as magazine_bp
+    app.register_blueprint(magazine_bp)
 
     from running_coach_ai.web.events import attach_web_event_handler
     attach_web_event_handler(app)

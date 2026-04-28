@@ -1,0 +1,2384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RunCoach Magazine</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --paper:#f0ebe3; --paper2:#e8e0d4; --paper3:#ede5d8;
+  --ink:#141210; --mid:#8a7868; --dim:#b8a898; --faint:#d8cfc4;
+  --lime:#b8ff4f; --sage:#5a8a62; --terra:#b8673e; --stone:#5e7e96; --plum:#8a7aba;
+  --surface:rgba(20,18,16,.04); --surface2:rgba(20,18,16,.07);
+  --border:rgba(20,18,16,.1); --bordersoft:rgba(20,18,16,.06);
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);overflow-x:hidden;}
+::-webkit-scrollbar{width:3px;} ::-webkit-scrollbar-thumb{background:rgba(20,18,16,.15);border-radius:3px;}
+
+@keyframes charIn{to{opacity:1;transform:none;}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@keyframes drawLine{from{stroke-dashoffset:1200}to{stroke-dashoffset:0}}
+@keyframes barRise{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes ringPulse{0%,100%{opacity:.8;transform:translate(-50%,-50%) scale(1)}50%{opacity:.3;transform:translate(-50%,-50%) scale(1.06)}}
+@keyframes chatRing{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.14);opacity:.15}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes modalIn{from{opacity:0;transform:scale(.95) translateY(16px)}to{opacity:1;transform:none}}
+.char{display:inline-block;opacity:0;transform:translateY(24px) skewX(-3deg);animation:charIn .55s cubic-bezier(.16,1,.3,1) forwards;}
+.R{opacity:0;transform:translateY(44px);transition:opacity .9s cubic-bezier(.16,1,.3,1),transform .9s cubic-bezier(.16,1,.3,1);}
+.R.in{opacity:1;transform:none;}
+.Rl{opacity:0;transform:translateX(-44px);transition:opacity .9s cubic-bezier(.16,1,.3,1),transform .9s cubic-bezier(.16,1,.3,1);}
+.Rl.in{opacity:1;transform:none;}
+.Rr{opacity:0;transform:translateX(44px);transition:opacity .9s cubic-bezier(.16,1,.3,1),transform .9s cubic-bezier(.16,1,.3,1);}
+.Rr.in{opacity:1;transform:none;}
+.d1{transition-delay:.1s!important}.d2{transition-delay:.2s!important}.d3{transition-delay:.3s!important}
+.d4{transition-delay:.4s!important}.d5{transition-delay:.5s!important}.d6{transition-delay:.6s!important}
+
+#topnav{position:fixed;top:0;left:0;right:0;z-index:300;padding:0 40px;height:52px;display:flex;align-items:center;justify-content:space-between;transition:background .3s,border-color .3s;}
+#topnav.scrolled{background:rgba(240,235,227,.9);border-bottom:1px solid rgba(20,18,16,.08);backdrop-filter:blur(12px);}
+#topnav.dark{background:rgba(20,18,16,.88);border-bottom:1px solid rgba(255,255,255,.06);backdrop-filter:blur(12px);}
+.nav-brand{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.04em;color:inherit;opacity:0;transition:opacity .3s;}
+#topnav.scrolled .nav-brand,#topnav.dark .nav-brand{opacity:1;}
+.nav-links{display:flex;gap:6px;align-items:center;}
+.nav-link{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:20px;cursor:pointer;transition:all .2s;opacity:0;color:var(--mid);}
+#topnav.scrolled .nav-link,#topnav.dark .nav-link{opacity:1;}
+.nav-link:hover,.nav-link.active{background:rgba(20,18,16,.07);color:var(--ink);}
+#topnav.dark .nav-link:hover,#topnav.dark .nav-link.active{background:rgba(255,255,255,.1);color:#fff;}
+#topnav.dark .nav-link{color:rgba(255,255,255,.4);}
+.nav-right{display:flex;gap:8px;align-items:center;opacity:0;transition:opacity .3s;}
+#topnav.scrolled .nav-right,#topnav.dark .nav-right{opacity:1;}
+.nav-mode-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.nav-mode-btn:hover{background:var(--surface2);}
+.nav-profile{width:32px;height:32px;border-radius:50%;background:var(--stone);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#fff;cursor:pointer;}
+
+.coach-picker{position:relative;}
+.coach-picker-btn{display:flex;align-items:center;gap:6px;padding:5px 10px 5px 6px;border-radius:18px;border:1px solid var(--border);background:transparent;cursor:pointer;font-family:'Inter',sans-serif;font-size:11px;color:inherit;transition:background .2s,border-color .2s;}
+.coach-picker-btn:hover{background:var(--surface2);border-color:rgba(20,18,16,.18);}
+#topnav.dark .coach-picker-btn{border-color:rgba(255,255,255,.12);color:rgba(255,255,255,.7);}
+#topnav.dark .coach-picker-btn:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);color:#fff;}
+.coach-picker-av{width:22px;height:22px;border-radius:50%;background:var(--stone);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:12px;color:#fff;}
+.coach-picker-name{font-weight:500;letter-spacing:.04em;}
+.coach-picker-caret{font-size:9px;opacity:.6;}
+.coach-picker-menu{position:absolute;top:calc(100%+8px);right:0;min-width:240px;background:#1a1814;border:1px solid rgba(255,255,255,.1);border-radius:12px;box-shadow:0 16px 36px rgba(0,0,0,.45);padding:6px;display:none;z-index:301;animation:fadeUp .2s ease;}
+.coach-picker-menu.open{display:block;}
+.coach-picker-item{display:flex;gap:10px;padding:9px 10px;border-radius:9px;cursor:pointer;align-items:flex-start;transition:background .15s;}
+.coach-picker-item:hover{background:rgba(255,255,255,.06);}
+.coach-picker-item.active{background:rgba(184,255,79,.06);}
+.coach-picker-item-av{width:28px;height:28px;border-radius:9px;background:var(--stone);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:14px;color:#fff;flex-shrink:0;margin-top:1px;}
+.coach-picker-item-name{font-size:13px;font-weight:600;color:#fff;}
+.coach-picker-item-desc{font-size:11px;color:rgba(255,255,255,.45);line-height:1.4;margin-top:2px;}
+.coach-picker-item.active .coach-picker-item-name{color:var(--lime);}
+.coach-picker-saving{padding:8px 12px;font-size:11px;color:rgba(255,255,255,.5);text-align:center;}
+
+#prog{position:fixed;top:0;left:0;height:2px;background:var(--lime);z-index:400;width:0;pointer-events:none;transition:width .08s linear;}
+
+#snav{position:fixed;right:18px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px;z-index:200;}
+.snd{width:6px;height:6px;border-radius:50%;background:rgba(20,18,16,.2);cursor:pointer;transition:all .3s cubic-bezier(.16,1,.3,1);}
+.snd.active{background:var(--terra);transform:scale(1.6);}
+.snd.ondark{background:rgba(255,255,255,.25);}
+.snd.ondark.active{background:var(--lime);}
+
+#hero{min-height:100vh;background:var(--ink);display:flex;flex-direction:column;justify-content:flex-end;padding:56px 64px;position:relative;overflow:hidden;}
+#hero::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E") repeat;pointer-events:none;z-index:2;}
+#hero-glow{position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(184,255,79,.06) 0%,transparent 70%);pointer-events:none;transform:translate(-50%,-50%);transition:left .7s ease,top .7s ease;z-index:1;}
+.terrain-svg{position:absolute;inset:0;pointer-events:none;opacity:.08;z-index:1;will-change:transform;}
+.hero-eye{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:20px;position:relative;z-index:3;opacity:0;animation:fadeUp .7s .2s ease forwards;}
+.hero-name{font-family:'Bebas Neue',sans-serif;font-size:clamp(72px,12vw,190px);line-height:.86;color:#fff;position:relative;z-index:3;}
+.hero-name em{color:var(--lime);font-style:normal;}
+.hero-tag{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(15px,2vw,24px);color:rgba(255,255,255,.38);margin-top:22px;max-width:460px;position:relative;z-index:3;opacity:0;animation:fadeUp .7s .95s ease forwards;}
+.hero-strip{display:flex;gap:48px;margin-top:48px;padding-top:24px;border-top:1px solid rgba(255,255,255,.1);position:relative;z-index:3;opacity:0;animation:fadeUp .7s 1.15s ease forwards;flex-wrap:wrap;}
+.hs-v{font-family:'Bebas Neue',sans-serif;font-size:34px;color:#fff;line-height:1;}
+.hs-v em{color:var(--lime);font-style:normal;}
+.hs-l{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-top:3px;}
+.hero-scroll{position:absolute;right:60px;bottom:54px;display:flex;flex-direction:column;align-items:center;gap:8px;color:rgba(255,255,255,.22);font-size:9px;letter-spacing:.14em;text-transform:uppercase;z-index:3;opacity:0;animation:fadeUp .7s 1.5s ease forwards;}
+.hero-scroll svg{animation:chatRing 2.2s ease-in-out infinite;}
+
+.sec-dark{background:var(--ink);}
+.sec-paper{background:var(--paper);}
+.sec-paper2{background:var(--paper2);}
+.sec-sage{background:var(--sage);}
+.pad{padding:88px 64px;}
+.pad-sm{padding:72px 64px;}
+.eye{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--mid);margin-bottom:16px;display:block;}
+.eye-inv{color:rgba(255,255,255,.3);}
+.hed{font-family:'Bebas Neue',sans-serif;line-height:.9;letter-spacing:.01em;}
+.hed-xl{font-size:clamp(52px,9vw,120px);}
+.hed-lg{font-size:clamp(38px,6vw,80px);}
+.hed-md{font-size:clamp(28px,4vw,52px);}
+.hed em{color:var(--lime);font-style:normal;}
+.hed-inv{color:#fff;}
+.hed em.terra{color:var(--terra);font-style:normal;}
+.dek{font-family:'DM Serif Display',serif;font-style:italic;color:rgba(255,255,255,.35);font-size:clamp(16px,2vw,22px);line-height:1.55;margin-bottom:0;}
+.dek-ink{color:var(--mid);}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:72px;align-items:start;}
+.two-col-asym{display:grid;grid-template-columns:1.1fr 1fr;gap:80px;align-items:start;}
+
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.mcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;cursor:pointer;transition:all .2s cubic-bezier(.16,1,.3,1);position:relative;overflow:hidden;}
+.mcard:hover{background:var(--surface2);border-color:rgba(20,18,16,.18);transform:translateY(-2px);}
+.mcard-inv{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
+.mcard-inv:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.16);}
+.mc-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);margin-bottom:8px;}
+.mc-label-inv{color:rgba(255,255,255,.3);}
+.mc-val{font-family:'Bebas Neue',sans-serif;font-size:38px;line-height:1;letter-spacing:-.01em;}
+.mc-val-inv{color:#fff;}
+.mc-unit{font-size:13px;font-weight:400;opacity:.5;margin-left:2px;}
+.mc-sub{font-size:11px;color:var(--sage);margin-top:5px;font-weight:500;}
+.mc-sub-inv{color:rgba(184,255,79,.7);}
+.mc-trend{font-size:11px;margin-top:4px;}
+.mc-sparkline{position:absolute;bottom:0;right:0;opacity:.35;}
+.mc-expand-hint{position:absolute;top:10px;right:10px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);opacity:0;transition:opacity .2s;}
+.mcard:hover .mc-expand-hint{opacity:1;}
+
+#ts-overlay{position:fixed;inset:0;z-index:800;background:rgba(20,18,16,.7);backdrop-filter:blur(12px);display:none;justify-content:center;align-items:center;padding:32px;}
+#ts-overlay.show{display:flex;animation:fadeUp .25s ease;}
+#ts-modal{background:#1a1814;border:1px solid rgba(255,255,255,.1);border-radius:20px;width:100%;max-width:680px;padding:32px;animation:modalIn .3s cubic-bezier(.16,1,.3,1);}
+.tsm-close{float:right;background:rgba(255,255,255,.07);border:none;color:rgba(255,255,255,.5);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.tsm-close:hover{background:rgba(255,255,255,.14);color:#fff;}
+.tsm-eye{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px;}
+.tsm-title{font-family:'Bebas Neue',sans-serif;font-size:40px;color:#fff;margin-bottom:4px;}
+.tsm-val{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--lime);}
+.tsm-insight{font-family:'DM Serif Display',serif;font-style:italic;font-size:15px;color:rgba(255,255,255,.4);margin:14px 0 22px;line-height:1.6;}
+.tsm-svg-wrap{position:relative;}
+.ts-tip{position:absolute;background:rgba(20,18,16,.95);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 11px;font-size:11px;color:#fff;pointer-events:none;opacity:0;transition:opacity .12s;z-index:10;white-space:nowrap;}
+.tsm-toggle{display:inline-flex;gap:2px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:3px;margin-bottom:14px;}
+.tsm-toggle-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;letter-spacing:.04em;background:transparent;border:none;color:rgba(255,255,255,.5);padding:6px 12px;border-radius:7px;cursor:pointer;transition:all .15s;}
+.tsm-toggle-btn:hover{color:rgba(255,255,255,.85);}
+.tsm-toggle-btn.active{background:rgba(255,255,255,.09);color:#fff;}
+.tsm-toggle-btn:disabled{opacity:.25;cursor:default;}
+
+#morning{min-height:90vh;display:grid;grid-template-columns:1fr 1fr;}
+.m-left{background:var(--ink);padding:88px 64px;display:flex;flex-direction:column;justify-content:center;}
+.m-right{background:var(--paper);padding:88px 64px;display:flex;flex-direction:column;justify-content:center;}
+.coach-tag{display:flex;gap:12px;align-items:center;margin-bottom:24px;}
+.coach-av{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:19px;color:#fff;}
+.flip-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;}
+.flip-card{height:90px;perspective:700px;cursor:default;}
+.flip-inner{width:100%;height:100%;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.16,1,.3,1);position:relative;}
+.flip-card:hover .flip-inner{transform:rotateY(180deg);}
+.flip-f,.flip-b{position:absolute;width:100%;height:100%;border-radius:11px;backface-visibility:hidden;padding:14px 16px;display:flex;flex-direction:column;justify-content:center;}
+.flip-f{background:var(--surface);}
+.flip-b{background:var(--ink);transform:rotateY(180deg);}
+.fv{font-family:'Bebas Neue',sans-serif;font-size:36px;line-height:1;}
+.fl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);margin-top:3px;}
+.fb-stat{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--lime);margin-bottom:3px;}
+.fb-text{font-size:11px;color:rgba(255,255,255,.45);line-height:1.5;}
+
+#featrun{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;}
+.fr-left{background:var(--ink);padding:120px 80px;display:flex;flex-direction:column;justify-content:center;gap:36px;}
+.fr-right{background:var(--paper2);padding:120px 80px;display:flex;flex-direction:column;justify-content:center;gap:36px;}
+.fr-left > *, .fr-right > *{margin-bottom:0;}
+.fr-hed{font-family:'Bebas Neue',sans-serif;font-size:clamp(52px,8vw,110px);line-height:.86;color:#fff;margin-bottom:0;}
+.fr-dek{font-family:'DM Serif Display',serif;font-style:italic;font-size:19px;color:rgba(255,255,255,.45);margin-bottom:0;}
+.fr-stats{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:0;}
+.fr-stat{border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:18px 20px;transition:all .2s;cursor:default;}
+.fr-stat:hover{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.03);transform:translateY(-1px);}
+.fr-stat-v{font-family:'Bebas Neue',sans-serif;font-size:46px;color:#fff;line-height:1;}
+.fr-stat-v em{color:var(--lime);font-style:normal;}
+.fr-stat-l{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-top:3px;}
+.fr-zone-lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:9px;}
+.fr-zone-track{height:13px;display:flex;gap:1.5px;}
+.fr-zone-seg{height:100%;transform:scaleX(0);transform-origin:left;transition:transform .8s cubic-bezier(.16,1,.3,1);position:relative;cursor:default;}
+.fr-zone-seg:first-child{border-radius:7px 0 0 7px;}
+.fr-zone-seg:last-child{border-radius:0 7px 7px 0;}
+.fr-zone-seg:only-child{border-radius:7px;}
+.fr-zone-seg.anim{transform:scaleX(1);}
+.fr-zone-seg:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100%+7px);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:10px;white-space:nowrap;padding:5px 9px;border-radius:6px;pointer-events:none;z-index:20;font-family:'Inter',sans-serif;}
+.fr-elev{margin-top:26px;}
+.fr-elev-lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:9px;}
+.fr-elev-stats{display:flex;gap:20px;margin-top:8px;}
+.fr-elev-stat{font-size:11px;color:rgba(255,255,255,.35);}
+.fr-elev-stat strong{color:rgba(255,255,255,.7);}
+.fr-analysis{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(19px,2.2vw,27px);line-height:1.5;color:var(--ink);margin-bottom:28px;}
+.fr-body{font-size:14px;color:var(--mid);line-height:1.8;margin-bottom:28px;}
+.fr-flags{display:flex;flex-direction:column;gap:9px;}
+.fr-flag{display:flex;gap:10px;font-size:13px;color:var(--mid);align-items:flex-start;line-height:1.5;padding:8px 10px;border-radius:8px;transition:background .15s;cursor:default;}
+.fr-flag:hover{background:rgba(20,18,16,.05);}
+.fr-pace-wrap{position:relative;margin-top:4px;}
+.fr-pace-tip{position:absolute;background:var(--ink);color:#fff;border-radius:7px;padding:5px 9px;font-size:11px;pointer-events:none;opacity:0;transition:opacity .12s;z-index:20;white-space:nowrap;}
+
+#calendar{background:var(--ink);padding:88px 0 88px 64px;overflow:hidden;}
+.cal-header{display:flex;justify-content:space-between;align-items:flex-end;padding-right:64px;margin-bottom:48px;flex-wrap:wrap;gap:18px;}
+.cal-month-nav{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:5px 8px;}
+.cal-nav-btn{width:30px;height:30px;background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;border-radius:7px;font-size:17px;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.cal-nav-btn:hover{background:rgba(255,255,255,.08);color:#fff;}
+.cal-nav-btn:disabled{opacity:.2;cursor:default;}
+.cal-month-label{font-size:14px;font-weight:600;color:#fff;min-width:100px;text-align:center;}
+.cal-sync-btn{background:rgba(90,138,98,.15);border:1px solid rgba(90,138,98,.3);color:var(--sage);border-radius:9px;padding:9px 16px;font-size:12px;font-weight:600;cursor:pointer;display:flex;gap:7px;align-items:center;font-family:'Inter',sans-serif;transition:all .2s;}
+.cal-sync-btn:hover{background:rgba(90,138,98,.25);}
+.cal-days-header{display:grid;grid-template-columns:60px repeat(7,1fr);gap:4px;margin-bottom:4px;padding-right:64px;}
+.cal-day-lbl{text-align:center;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.2);padding:3px 0;}
+.cal-week{display:grid;grid-template-columns:60px repeat(7,1fr);gap:4px;margin-bottom:4px;padding-right:64px;}
+.cal-wk-lbl{display:flex;flex-direction:column;justify-content:center;font-size:10px;color:rgba(255,255,255,.2);font-weight:600;padding-right:6px;}
+.cal-wk-tss{font-size:9px;color:rgba(255,255,255,.12);margin-top:2px;}
+.cal-cell{min-height:96px;border-radius:10px;padding:10px 10px 8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);transition:all .2s cubic-bezier(.16,1,.3,1);cursor:default;display:flex;flex-direction:column;}
+.cal-cell.clickable{cursor:pointer;}
+.cal-cell.clickable:hover{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.12);transform:translateY(-2px);}
+.cal-cell.today{background:rgba(184,255,79,.06);border-color:rgba(184,255,79,.22);}
+.cal-cell.selected{background:rgba(184,255,79,.1);border-color:rgba(184,255,79,.4);}
+.cal-cell.done{border-color:rgba(90,138,98,.25);}
+.cal-cell.empty{opacity:.15;pointer-events:none;}
+.cc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;}
+.cc-emoji{font-size:14px;}
+.cc-mi{font-size:11px;font-weight:700;color:#fff;}
+.cc-name{font-size:11px;font-weight:500;color:rgba(255,255,255,.75);line-height:1.3;margin-bottom:3px;}
+.cc-sub{font-size:10px;color:rgba(255,255,255,.3);line-height:1.4;}
+.cc-tss{font-size:9px;color:rgba(255,255,255,.2);margin-top:2px;}
+.cc-int{display:flex;gap:2px;margin-top:auto;padding-top:5px;}
+.cc-int-seg{flex:1;height:3px;border-radius:1.5px;}
+.cc-done{font-size:9px;color:var(--sage);font-weight:600;margin-top:auto;padding-top:4px;}
+.cc-done-bar{height:3px;border-radius:1.5px;margin-top:3px;}
+#cal-detail{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:22px 24px;margin-top:16px;margin-right:64px;display:none;animation:fadeUp .3s ease;}
+#cal-detail.show{display:block;}
+.cd-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
+.cd-title{font-family:'Bebas Neue',sans-serif;font-size:36px;color:#fff;}
+.cd-close{background:rgba(255,255,255,.06);border:none;color:rgba(255,255,255,.4);width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;}
+.cd-close:hover{background:rgba(255,255,255,.12);color:#fff;}
+.cd-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;}
+.cd-stat{background:rgba(255,255,255,.04);border-radius:8px;padding:10px 12px;}
+.cd-stat-v{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;}
+.cd-stat-l{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.28);}
+.cd-note{font-family:'DM Serif Display',serif;font-style:italic;font-size:15px;color:rgba(255,255,255,.45);line-height:1.65;border-top:1px solid rgba(255,255,255,.07);padding-top:14px;}
+.cal-legend{display:flex;gap:14px;margin-top:16px;flex-wrap:wrap;padding-right:64px;}
+.cl-item{display:flex;gap:6px;align-items:center;font-size:11px;color:rgba(255,255,255,.3);}
+.cl-dot{width:8px;height:8px;border-radius:50%;}
+
+#activities{background:var(--paper);padding:88px 64px;}
+.act-card{background:#fff;border:1px solid var(--border);border-radius:14px;margin-bottom:12px;overflow:hidden;transition:box-shadow .2s;}
+.act-card:hover{box-shadow:0 4px 24px rgba(20,18,16,.08);}
+.act-card-top{padding:20px 22px;cursor:pointer;display:flex;gap:16px;align-items:center;}
+.act-icon{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.act-title{font-weight:600;font-size:16px;margin-bottom:3px;}
+.act-meta{display:flex;gap:16px;font-size:13px;color:var(--mid);flex-wrap:wrap;}
+.act-date{font-size:12px;color:var(--dim);}
+.act-expand-icon{margin-left:auto;flex-shrink:0;transition:transform .25s;}
+.act-expand-icon.open{transform:rotate(180deg);}
+.act-body{display:none;padding:0 22px 22px;border-top:1px solid var(--bordersoft);animation:fadeUp .2s ease;}
+.act-body.show{display:block;}
+.act-grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px;}
+.act-bio-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.act-bio-card{background:var(--surface);border-radius:9px;padding:10px 12px;cursor:pointer;transition:all .2s;position:relative;}
+.act-bio-card:hover{background:var(--surface2);transform:translateY(-1px);}
+.act-bio-v{font-size:15px;font-weight:700;margin-bottom:2px;}
+.act-bio-l{font-size:10px;color:var(--mid);letter-spacing:.06em;text-transform:uppercase;}
+.act-bio-status{position:absolute;top:8px;right:8px;width:6px;height:6px;border-radius:50%;}
+.run-chart-wrap{position:relative;margin-top:6px;}
+.run-chart-tip{position:absolute;background:var(--ink);color:#fff;border-radius:7px;padding:6px 10px;font-size:11px;pointer-events:none;opacity:0;transition:opacity .12s;z-index:10;white-space:nowrap;}
+.zone-track{height:12px;display:flex;gap:1.5px;}
+.zone-seg{height:100%;transform:scaleX(0);transform-origin:left;transition:transform .8s cubic-bezier(.16,1,.3,1);cursor:default;position:relative;}
+.zone-seg:first-child{border-radius:6px 0 0 6px;}
+.zone-seg:last-child{border-radius:0 6px 6px 0;}
+.zone-seg:only-child{border-radius:6px;}
+.zone-seg.anim{transform:scaleX(1);}
+.zone-seg:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100%+7px);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:10px;white-space:nowrap;padding:5px 9px;border-radius:6px;pointer-events:none;z-index:20;font-family:'Inter',sans-serif;}
+
+#story{background:var(--ink);padding:88px 64px;}
+.story-chart-wrap{position:relative;height:180px;margin-bottom:8px;}
+.story-week-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:0;margin-bottom:16px;}
+.sw-col{padding:12px 8px 0;border-top:1px solid rgba(255,255,255,.07);cursor:pointer;transition:background .2s;}
+.sw-col:hover{background:rgba(255,255,255,.04);}
+.sw-col.sel{background:rgba(184,255,79,.05);border-top-color:var(--lime);}
+.sw-wk{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.22);margin-bottom:5px;}
+.sw-mi{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#fff;line-height:1;}
+.sw-mi.now{color:var(--lime);}
+.sw-key{font-size:9px;color:rgba(255,255,255,.3);margin-top:2px;line-height:1.4;}
+#sw-detail{display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px 22px;margin-top:8px;animation:fadeUp .3s ease;}
+#sw-detail.show{display:block;}
+.swd-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.swd-stat{background:rgba(255,255,255,.04);border-radius:8px;padding:10px 12px;}
+.swd-v{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#fff;}
+.swd-l{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.28);}
+.swd-quote{font-family:'DM Serif Display',serif;font-style:italic;font-size:15px;color:rgba(255,255,255,.42);line-height:1.6;border-top:1px solid rgba(255,255,255,.07);padding-top:12px;}
+
+#race{min-height:100vh;background:var(--ink);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:88px 64px;position:relative;overflow:hidden;}
+.rc-ring{position:absolute;border-radius:50%;border:1px solid rgba(184,255,79,.05);pointer-events:none;animation:ringPulse 4s ease-in-out infinite;}
+.rc-days{font-family:'Bebas Neue',sans-serif;font-size:clamp(100px,18vw,240px);line-height:.82;color:#fff;}
+.rc-days em{color:var(--lime);display:block;font-style:normal;font-size:.27em;letter-spacing:.06em;}
+.rc-race{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(18px,2.5vw,34px);color:rgba(255,255,255,.38);margin:12px 0 56px;}
+.rc-cards{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;}
+.rc-card{border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:18px 22px;min-width:172px;text-align:left;transition:all .25s;cursor:default;}
+.rc-card:hover{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.16);transform:translateY(-3px);}
+.rc-cd{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:6px;}
+.rc-cv{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#fff;line-height:1;margin-bottom:3px;}
+.rc-cs{font-size:10px;color:rgba(255,255,255,.3);}
+
+#miles{background:var(--ink);padding:110px 64px;overflow:hidden;}
+.miles-eye{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:18px;display:block;}
+.miles-hed{font-family:'Bebas Neue',sans-serif;font-size:clamp(56px,11vw,160px);line-height:.86;color:#fff;margin-bottom:6px;}
+.miles-hed em{color:var(--lime);font-style:normal;}
+.miles-sub{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(16px,2vw,22px);color:rgba(255,255,255,.42);margin-bottom:42px;max-width:640px;}
+.miles-meta{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:32px;font-size:11px;color:rgba(255,255,255,.4);}
+.miles-meta-item{display:flex;align-items:center;gap:6px;}
+.miles-meta-dot{width:10px;height:10px;border-radius:50%;}
+.miles-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(11px, 1fr));gap:3px;margin-bottom:42px;}
+.miles-dot{aspect-ratio:1;border-radius:2px;background:var(--lime);opacity:0;transform:scale(.4);transition:opacity .35s cubic-bezier(.16,1,.3,1),transform .35s cubic-bezier(.16,1,.3,1);cursor:default;position:relative;}
+.miles-dot.in{opacity:.85;transform:none;}
+.miles-dot.planned{background:rgba(255,255,255,.18);}
+.miles-dot.planned.in{opacity:.6;}
+.miles-dot:hover{opacity:1;transform:scale(1.6);z-index:5;}
+.miles-tip{position:fixed;background:var(--ink);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:6px 10px;font-size:11px;pointer-events:none;opacity:0;transition:opacity .12s;z-index:100;white-space:nowrap;}
+.miles-tip.show{opacity:1;}
+.miles-overflow{font-size:11px;color:rgba(255,255,255,.35);margin-top:-30px;margin-bottom:42px;}
+.miles-landmark{padding-top:28px;border-top:1px solid rgba(255,255,255,.07);display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;}
+.miles-landmark-num{font-family:'Bebas Neue',sans-serif;font-size:clamp(40px,6vw,80px);line-height:1;color:var(--lime);}
+.miles-landmark-txt{flex:1;min-width:240px;}
+.miles-landmark-name{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(18px,2.4vw,30px);line-height:1.35;color:#fff;margin-bottom:6px;}
+.miles-landmark-sub{font-size:12px;color:rgba(255,255,255,.42);letter-spacing:.04em;}
+
+#coachsays{background:var(--sage);padding:110px 64px;text-align:center;position:relative;overflow:hidden;}
+#coachsays::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");pointer-events:none;}
+.cq-text{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(22px,3.5vw,50px);line-height:1.3;color:#fff;max-width:800px;margin:0 auto 28px;position:relative;z-index:1;}
+.cq-dash{width:32px;height:2px;background:rgba(255,255,255,.3);margin:0 auto 18px;}
+.cq-attr{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);}
+#cq-nav{display:flex;justify-content:center;gap:8px;margin-top:22px;}
+.cqd{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.3);cursor:pointer;transition:all .25s;}
+.cqd.active{background:#fff;transform:scale(1.4);}
+
+#chat-fab{position:fixed;bottom:28px;right:28px;z-index:500;width:54px;height:54px;border-radius:50%;background:var(--ink);border:1px solid rgba(255,255,255,.12);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,.45);transition:all .25s cubic-bezier(.16,1,.3,1);}
+#chat-fab::before{content:'';position:absolute;inset:-4px;border-radius:50%;border:1px solid rgba(184,255,79,.28);animation:chatRing 3.5s ease-in-out infinite;}
+#chat-fab.open::before{animation:none;opacity:0;}
+#chat-fab:hover{transform:scale(1.08);box-shadow:0 8px 28px rgba(0,0,0,.55);}
+.fab-av{width:36px;height:36px;border-radius:50%;background:var(--stone);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:17px;color:#fff;transition:transform .3s,opacity .3s;}
+#chat-fab.open .fab-av{transform:rotate(90deg) scale(.7);opacity:0;}
+.fab-x{position:absolute;color:rgba(255,255,255,.6);font-size:17px;opacity:0;transition:opacity .2s;}
+#chat-fab.open .fab-x{opacity:1;}
+#chat-panel{position:fixed;bottom:94px;right:22px;width:352px;z-index:499;background:rgba(16,14,10,.97);border:1px solid rgba(255,255,255,.1);border-radius:20px;box-shadow:0 24px 64px rgba(0,0,0,.65);backdrop-filter:blur(20px);display:flex;flex-direction:column;max-height:510px;transform:translateY(16px) scale(.96);opacity:0;pointer-events:none;transition:transform .35s cubic-bezier(.16,1,.3,1),opacity .3s ease;}
+#chat-panel.open{transform:none;opacity:1;pointer-events:all;}
+.cph{padding:14px 16px 12px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;gap:10px;align-items:center;flex-shrink:0;}
+.cph-av{width:34px;height:34px;border-radius:10px;background:var(--stone);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:16px;color:#fff;flex-shrink:0;}
+.cph-name{font-size:13px;font-weight:600;color:#fff;}
+.cph-status{font-size:10px;color:var(--sage);display:flex;align-items:center;gap:5px;margin-top:1px;}
+.cph-dot{width:5px;height:5px;border-radius:50%;background:var(--sage);animation:pulse 2.5s infinite;}
+.cp-ctx{padding:9px 13px;background:rgba(184,255,79,.05);border-bottom:1px solid rgba(255,255,255,.04);flex-shrink:0;}
+.cp-ctx-txt{font-size:10px;color:rgba(255,255,255,.32);line-height:1.5;}
+.cp-ctx-txt strong{color:rgba(184,255,79,.6);}
+.cp-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:9px;min-height:140px;max-height:240px;}
+.cp-msgs::-webkit-scrollbar{width:2px;}
+.cp-msg{display:flex;gap:7px;align-items:flex-end;}
+.cp-msg.user{flex-direction:row-reverse;}
+.cp-bubble{max-width:80%;padding:8px 11px;font-size:12px;line-height:1.55;border-radius:13px;}
+.cp-msg.coach .cp-bubble{background:rgba(255,255,255,.07);color:rgba(255,255,255,.78);border-radius:13px 13px 13px 3px;}
+.cp-msg.user .cp-bubble{background:var(--sage);color:#fff;border-radius:13px 13px 3px 13px;}
+.cp-time{font-size:9px;color:rgba(255,255,255,.18);margin-bottom:1px;}
+.cp-typing-row{display:flex;gap:3px;padding:8px 11px;background:rgba(255,255,255,.07);border-radius:13px 13px 13px 3px;width:fit-content;}
+.cp-typing-dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.4);animation:pulse 1.2s infinite;}
+.cp-typing-dot:nth-child(2){animation-delay:.2s;}
+.cp-typing-dot:nth-child(3){animation-delay:.4s;}
+.cp-chips{padding:7px 12px;display:flex;gap:5px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.05);flex-shrink:0;}
+.cp-chip{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:4px 9px;font-size:10px;color:rgba(255,255,255,.45);cursor:pointer;transition:all .15s;white-space:nowrap;font-family:'Inter',sans-serif;}
+.cp-chip:hover{background:rgba(255,255,255,.1);color:#fff;}
+.cp-inp-row{padding:9px 11px;display:flex;gap:7px;align-items:center;border-top:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+.cp-inp{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:7px 11px;font-size:12px;color:#fff;outline:none;font-family:'Inter',sans-serif;transition:border-color .15s;}
+.cp-inp:focus{border-color:rgba(255,255,255,.2);}
+.cp-inp::placeholder{color:rgba(255,255,255,.2);}
+.cp-send{width:32px;height:32px;border-radius:8px;border:none;background:var(--sage);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;}
+.cp-send:hover{background:#6fa877;}
+.cp-send:disabled{background:rgba(255,255,255,.1);cursor:default;}
+
+/* Tablet / narrow desktop */
+@media (max-width:900px){
+  #morning,#featrun{grid-template-columns:1fr;}
+  .m-left,.m-right,.fr-left,.fr-right{padding:64px 32px;}
+  .fr-left,.fr-right{gap:28px;}
+  .pad,#activities,#story,#race,#coachsays,#miles{padding-left:32px;padding-right:32px;}
+  #calendar{padding:88px 0 88px 32px;}
+  .cal-header,.cal-days-header,.cal-week,.cal-legend{padding-right:32px;}
+  #cal-detail{margin-right:32px;}
+  .nav-links{display:none;}
+  .act-grid2{grid-template-columns:1fr;}
+}
+
+/* Phone */
+@media (max-width:760px){
+  /* Top nav */
+  #topnav{padding:0 14px;height:48px;}
+  .nav-brand{display:none;}
+  .coach-picker-btn{padding:5px 8px 5px 6px;}
+  .coach-picker-name,.coach-picker-caret{display:none;}
+  .coach-picker-menu{min-width:240px;right:-50px;}
+  .nav-mode-btn{width:30px;height:30px;}
+  .nav-profile{width:30px;height:30px;font-size:13px;}
+
+  /* Section nav dots — touch-hostile, hide */
+  #snav{display:none;}
+
+  /* Hero */
+  #hero{padding:36px 22px;min-height:88vh;}
+  .hero-eye{font-size:9px;letter-spacing:.2em;margin-bottom:14px;}
+  .hero-name{font-size:clamp(56px,16vw,96px);}
+  .hero-tag{font-size:14px;line-height:1.45;margin-top:18px;}
+  .hero-strip{gap:22px;margin-top:30px;padding-top:18px;}
+  .hs-v{font-size:24px;}
+  .hs-l{font-size:8px;}
+  .hero-scroll{right:22px;bottom:30px;font-size:8px;}
+
+  /* Morning */
+  .m-left,.m-right{padding:48px 22px;}
+  .flip-card{height:84px;}
+  .fv{font-size:30px;}
+
+  /* Featured Run */
+  .fr-left,.fr-right{padding:48px 22px;gap:22px;}
+  .fr-hed{font-size:clamp(44px,11vw,68px);}
+  .fr-dek{font-size:15px;}
+  .fr-stats{gap:10px;}
+  .fr-stat{padding:12px 14px;border-radius:10px;}
+  .fr-stat-v{font-size:32px;}
+  .fr-stat-l{font-size:8px;}
+
+  /* Calendar */
+  #calendar{padding:48px 0 48px 14px;}
+  .cal-header{margin-bottom:28px;padding-right:14px;}
+  .cal-header .hed-lg{font-size:clamp(34px,9vw,52px);}
+  .cal-days-header,.cal-week,.cal-legend{padding-right:14px;}
+  #cal-detail{margin-right:14px;padding:16px 18px;}
+  .cal-days-header,.cal-week{grid-template-columns:30px repeat(7,1fr);gap:2px;}
+  .cal-day-lbl{font-size:8px;}
+  .cal-wk-lbl{font-size:8px;padding-right:3px;}
+  .cal-wk-tss{display:none;}
+  .cal-cell{min-height:54px;padding:5px 4px 4px;border-radius:7px;}
+  /* Hide most-detailed sub-content on phones — full detail moves to the detail panel */
+  .cc-name,.cc-sub,.cc-tss,.cc-int{display:none;}
+  .cc-mi{font-size:9px;}
+  .cc-emoji{font-size:12px;}
+  .cc-done{font-size:8px;padding-top:2px;}
+  .cd-stats{grid-template-columns:repeat(2,1fr);}
+  .cd-title{font-size:28px;}
+  .cal-nav-btn{width:34px;height:34px;}
+  .cal-month-label{font-size:13px;min-width:80px;}
+  .cal-sync-btn{font-size:11px;padding:8px 12px;}
+  .cal-legend{margin-top:12px;}
+
+  /* Activities */
+  #activities{padding:56px 22px;}
+  .act-card-top{padding:14px 16px;gap:10px;}
+  .act-icon{width:42px;height:42px;font-size:18px;border-radius:11px;}
+  .act-title{font-size:14px;}
+  .act-meta{gap:10px;font-size:12px;}
+
+  /* Story — horizontal scroll so all 8 weeks remain readable */
+  #story{padding:56px 22px;}
+  .story-chart-wrap{height:140px;}
+  .story-week-grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;margin:0 -22px;padding:0 22px 8px;gap:0;}
+  .sw-col{min-width:88px;flex:0 0 88px;scroll-snap-align:start;}
+
+  /* Miles */
+  #miles{padding:64px 22px;}
+  .miles-hed{font-size:clamp(48px,13vw,88px);}
+  .miles-sub{font-size:15px;margin-bottom:28px;}
+  .miles-grid{gap:2px;margin-bottom:28px;}
+  .miles-landmark{padding-top:22px;gap:18px;}
+  .miles-landmark-num{font-size:clamp(36px,9vw,56px);}
+  .miles-landmark-name{font-size:18px;}
+
+  /* Race */
+  #race{padding:64px 22px;}
+  .rc-cards{gap:10px;}
+  .rc-card{min-width:138px;padding:14px 16px;}
+
+  /* Coach Says */
+  #coachsays{padding:72px 22px;}
+
+  /* Time-series modal */
+  #ts-overlay{padding:14px;align-items:flex-start;padding-top:8vh;}
+  #ts-modal{padding:22px;border-radius:14px;max-height:88vh;overflow-y:auto;}
+  .tsm-title{font-size:30px;}
+  .tsm-val{font-size:22px;}
+  .tsm-insight{font-size:14px;margin:10px 0 16px;}
+
+  /* Floating chat */
+  #chat-fab{bottom:16px;right:16px;width:50px;height:50px;}
+  .fab-av{width:32px;height:32px;font-size:15px;}
+  #chat-panel{
+    width:calc(100vw - 24px);
+    right:12px;
+    bottom:78px;
+    max-height:70vh;
+    border-radius:16px;
+  }
+  .cp-msgs{max-height:42vh;}
+}
+
+/* Touch-only — hover effects don't fire on tap, so convert to tap-toggle */
+@media (hover:none){
+  /* Flip cards: turn off CSS hover, JS toggles .tapped instead */
+  .flip-card:hover .flip-inner{transform:none;}
+  .flip-card.tapped .flip-inner{transform:rotateY(180deg);}
+  .flip-card{cursor:pointer;}
+  /* Zone segment tooltip: hover-only ::after won't fire on touch — show via .show-tip */
+  .fr-zone-seg:hover::after,.zone-seg:hover::after{display:none;}
+  .fr-zone-seg.show-tip::after{
+    content:attr(data-tip);position:absolute;bottom:calc(100%+7px);left:50%;
+    transform:translateX(-50%);background:var(--ink);color:#fff;font-size:10px;
+    white-space:nowrap;padding:5px 9px;border-radius:6px;pointer-events:none;
+    z-index:20;font-family:'Inter',sans-serif;
+  }
+  .zone-seg.show-tip::after{
+    content:attr(data-tip);position:absolute;bottom:calc(100%+7px);left:50%;
+    transform:translateX(-50%);background:var(--ink);color:#fff;font-size:10px;
+    white-space:nowrap;padding:5px 9px;border-radius:6px;pointer-events:none;
+    z-index:20;font-family:'Inter',sans-serif;
+  }
+}
+</style>
+</head>
+<body>
+
+<div id="prog"></div>
+
+<nav id="topnav">
+  <div class="nav-brand" id="nav-brand">RunCoach</div>
+  <div class="nav-links" id="nav-links">
+    <div class="nav-link" data-target="morning">Morning</div>
+    <div class="nav-link" data-target="featrun">Last Run</div>
+    <div class="nav-link" data-target="calendar">Calendar</div>
+    <div class="nav-link" data-target="activities">Activities</div>
+    <div class="nav-link" data-target="story">Progress</div>
+    <div class="nav-link" data-target="miles">Miles</div>
+    <div class="nav-link" data-target="race">Race</div>
+  </div>
+  <div class="nav-right">
+    <div class="coach-picker">
+      <button class="coach-picker-btn" id="coach-picker-btn" onclick="toggleCoachMenu(event)" title="Switch coach">
+        <span class="coach-picker-av" id="coach-picker-av">—</span>
+        <span class="coach-picker-name" id="coach-picker-name">Coach</span>
+        <span class="coach-picker-caret">▾</span>
+      </button>
+      <div class="coach-picker-menu" id="coach-picker-menu"></div>
+    </div>
+    <div class="nav-profile" id="nav-profile" title="Profile">—</div>
+  </div>
+</nav>
+
+<div id="snav">
+  <div class="snd ondark active" data-s="hero"></div>
+  <div class="snd ondark" data-s="morning"></div>
+  <div class="snd ondark" data-s="featrun"></div>
+  <div class="snd ondark" data-s="calendar"></div>
+  <div class="snd" data-s="activities"></div>
+  <div class="snd ondark" data-s="story"></div>
+  <div class="snd ondark" data-s="miles"></div>
+  <div class="snd" data-s="coachsays"></div>
+  <div class="snd ondark" data-s="race"></div>
+</div>
+
+<section id="hero">
+  <div id="hero-glow"></div>
+  <svg class="terrain-svg" id="terrain-svg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice">
+    <path d="M-100,400 C100,375 200,315 400,305 S600,285 700,255 S900,195 1100,175 S1300,155 1400,145" stroke="white" stroke-width="1" fill="none"/>
+    <path d="M-100,435 C100,418 250,348 450,338 S650,315 780,290 S980,235 1100,215 S1250,190 1400,180" stroke="white" stroke-width="1" fill="none" opacity=".75"/>
+    <path d="M-100,468 C100,455 300,405 500,394 S700,368 850,338 S1050,288 1200,263" stroke="white" stroke-width="1" fill="none" opacity=".55"/>
+    <path d="M-100,500 C150,486 350,445 550,436 S750,412 900,378 S1100,332 1300,308" stroke="white" stroke-width="1" fill="none" opacity=".35"/>
+    <path d="M200,245 C300,234 355,195 405,185 S485,180 525,155 S584,126 644,116" stroke="white" stroke-width="1" fill="none" opacity=".45"/>
+  </svg>
+  <div id="hero-content">
+    <div class="hero-eye" id="hero-eye">Your Personal Record</div>
+    <h1 class="hero-name" id="hero-name" data-first="RUN" data-last="COACH">RUN<br><em>COACH</em></h1>
+    <p class="hero-tag" id="hero-tag" style="visibility:hidden;">&nbsp;</p>
+    <div class="hero-strip" id="hero-strip" style="visibility:hidden;">
+      <div><div class="hs-v"><span class="cnt" data-t="0" id="hero-days">0</span></div><div class="hs-l" id="hero-days-lbl">Days to Race</div></div>
+      <div><div class="hs-v"><span class="cnt" data-t="0" id="hero-week">0</span><em id="hero-total-weeks"></em></div><div class="hs-l">Weeks of Training</div></div>
+      <div><div class="hs-v"><span class="cnt" data-t="0" id="hero-season-mi">0</span></div><div class="hs-l">Season Miles</div></div>
+      <div><div class="hs-v"><span class="cnt" data-t="0" id="hero-hrv">0</span></div><div class="hs-l" id="hero-hrv-lbl">HRV ms</div></div>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <svg width="14" height="18" viewBox="0 0 14 18" fill="none"><path d="M7 1v12M2 9l5 6 5-6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Scroll
+  </div>
+</section>
+
+<section id="morning">
+  <div class="m-left">
+    <span class="eye eye-inv R" id="m-eye">Morning Readiness</span>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:clamp(90px,14vw,200px);line-height:.85;color:var(--lime);cursor:pointer;" class="R d1" onclick="openTS('hrv')" title="View HRV history">
+      <span class="cnt2" data-t="0" id="m-hrv-num">—</span>
+    </div>
+    <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-top:10px;" class="R d2" id="m-hrv-lbl">ms HRV · Click to explore →</div>
+    <div style="display:flex;gap:12px;margin-top:36px;flex-wrap:wrap;" class="R d3">
+      <div class="mcard mcard-inv" style="flex:1;min-width:120px;" onclick="openTS('battery')">
+        <div class="mc-label mc-label-inv">Body Battery</div>
+        <div class="mc-val mc-val-inv"><span id="m-bb">—</span><span class="mc-unit">%</span></div>
+        <div class="mc-sub mc-sub-inv" id="m-bb-sub">&nbsp;</div>
+        <span class="mc-expand-hint">↗ trend</span>
+      </div>
+      <div class="mcard mcard-inv" style="flex:1;min-width:120px;" onclick="openTS('sleep')">
+        <div class="mc-label mc-label-inv">Sleep</div>
+        <div class="mc-val mc-val-inv"><span id="m-sleep">—</span><span class="mc-unit">h</span></div>
+        <div class="mc-sub mc-sub-inv" id="m-sleep-sub">&nbsp;</div>
+        <span class="mc-expand-hint">↗ trend</span>
+      </div>
+      <div class="mcard mcard-inv" style="flex:1;min-width:120px;" onclick="openTS('rhr')">
+        <div class="mc-label mc-label-inv">Resting HR</div>
+        <div class="mc-val mc-val-inv"><span id="m-rhr">—</span><span class="mc-unit">bpm</span></div>
+        <div class="mc-sub mc-sub-inv" id="m-rhr-sub">&nbsp;</div>
+        <span class="mc-expand-hint">↗ trend</span>
+      </div>
+    </div>
+  </div>
+  <div class="m-right">
+    <div style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--mid);margin-bottom:32px;" class="R" id="m-date">Today</div>
+    <div class="coach-tag R d1">
+      <div class="coach-av" style="background:var(--stone);" id="m-coach-av">A</div>
+      <div><div style="font-size:13px;font-weight:600;" id="m-coach-name">Coach Alex</div><div style="font-size:11px;color:var(--mid);" id="m-coach-tag-line">Elite · Data-Driven</div></div>
+    </div>
+    <p style="font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(18px,2.2vw,28px);line-height:1.5;color:var(--ink);margin-bottom:40px;visibility:hidden;" class="R d2" id="m-coach-msg">&nbsp;</p>
+    <div class="flip-grid R d3">
+      <div class="flip-card"><div class="flip-inner">
+        <div class="flip-f"><div class="fv" id="fc-phase-val">Base</div><div class="fl">Training Phase</div></div>
+        <div class="flip-b"><div class="fb-stat" id="fc-phase-back">Base</div><div class="fb-text" id="fc-phase-text">Currently in base phase of training.</div></div>
+      </div></div>
+      <div class="flip-card"><div class="flip-inner">
+        <div class="flip-f"><div class="fv" id="fc-tempo-val">—</div><div class="fl">Tempo PR pace</div></div>
+        <div class="flip-b"><div class="fb-stat">Best effort</div><div class="fb-text" id="fc-tempo-text">Lactate threshold pace at this HR is your training best.</div></div>
+      </div></div>
+      <div class="flip-card"><div class="flip-inner">
+        <div class="flip-f"><div class="fv" id="fc-week-val">Week 1</div><div class="fl">Plan Position</div></div>
+        <div class="flip-b"><div class="fb-stat">Plan</div><div class="fb-text" id="fc-week-text">Your current position in the training plan.</div></div>
+      </div></div>
+      <div class="flip-card"><div class="flip-inner">
+        <div class="flip-f"><div class="fv" id="fc-load-val">—</div><div class="fl">Weekly Miles</div></div>
+        <div class="flip-b"><div class="fb-stat" id="fc-load-stat">This week</div><div class="fb-text" id="fc-load-text">Mileage planned for the current week.</div></div>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<section id="featrun">
+  <div class="fr-left">
+    <span class="eye eye-inv R" id="fr-eye">Featured Run</span>
+    <h2 class="fr-hed R d1" id="fr-hed" style="visibility:hidden;">&nbsp;<br>&nbsp;</h2>
+    <p class="fr-dek R d2" id="fr-dek" style="visibility:hidden;">&nbsp;</p>
+    <div class="fr-stats R d3">
+      <div class="fr-stat"><div class="fr-stat-v" id="fr-mi">—</div><div class="fr-stat-l">Miles</div></div>
+      <div class="fr-stat"><div class="fr-stat-v"><em id="fr-pace">—</em></div><div class="fr-stat-l">Avg Pace /mi</div></div>
+      <div class="fr-stat"><div class="fr-stat-v" id="fr-hr">—</div><div class="fr-stat-l">Avg HR bpm</div></div>
+      <div class="fr-stat"><div class="fr-stat-v" id="fr-load">—</div><div class="fr-stat-l">Training Load</div></div>
+      <div class="fr-stat"><div class="fr-stat-v" id="fr-cad">—</div><div class="fr-stat-l">Cadence spm</div></div>
+      <div class="fr-stat"><div class="fr-stat-v" id="fr-pow">—</div><div class="fr-stat-l">Power W</div></div>
+    </div>
+    <div class="R d4">
+      <div class="fr-zone-lbl">Pace per Mile · hover to inspect</div>
+      <div class="fr-pace-wrap">
+        <svg id="fr-pace-svg" viewBox="0 0 400 96" width="100%" height="96" style="display:block;overflow:visible;"></svg>
+        <div class="fr-pace-tip" id="fr-pace-tip"></div>
+      </div>
+    </div>
+    <div class="R d4" style="margin-top:20px;">
+      <div class="fr-zone-lbl">Heart Rate Zones</div>
+      <div class="fr-zone-track" id="fr-zones">
+        <div class="fr-zone-seg" style="width:8%;background:#5e7e96;" data-tip="Z1 Recovery · 8%"></div>
+        <div class="fr-zone-seg" style="width:12%;background:#5a8a62;" data-tip="Z2 Aerobic · 12%"></div>
+        <div class="fr-zone-seg" style="width:31%;background:#c4a040;" data-tip="Z3 Tempo · 31%"></div>
+        <div class="fr-zone-seg" style="width:38%;background:#b8673e;" data-tip="Z4 Threshold · 38%"></div>
+        <div class="fr-zone-seg" style="width:11%;background:#c05040;" data-tip="Z5 VO2max · 11%"></div>
+      </div>
+      <div id="fr-zone-lbls" style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
+        <span style="font-size:10px;color:rgba(255,255,255,.3);">Z1 8%</span>
+        <span style="font-size:10px;color:rgba(255,255,255,.3);">Z2 12%</span>
+        <span style="font-size:10px;color:rgba(255,255,255,.3);">Z3 31%</span>
+        <span style="font-size:10px;color:rgba(255,255,255,.3);">Z4 38%</span>
+        <span style="font-size:10px;color:rgba(255,255,255,.3);">Z5 11%</span>
+      </div>
+    </div>
+    <div class="fr-elev R d5" id="fr-elev-wrap">
+      <div class="fr-elev-lbl">Elevation Profile</div>
+      <svg id="fr-elev-svg" viewBox="0 0 400 80" preserveAspectRatio="none" width="100%" height="80" style="display:block;">
+        <defs>
+          <linearGradient id="freg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#b8ff4f" stop-opacity=".18"/>
+            <stop offset="100%" stop-color="#b8ff4f" stop-opacity="0"/>
+          </linearGradient>
+          <clipPath id="frec"><rect id="frecr" x="0" y="0" width="0" height="80"/></clipPath>
+        </defs>
+        <path id="fr-elev-area" d="M0,42 C20,38 38,28 60,18 S90,8 110,6 S134,9 154,20 S172,34 188,30 S210,16 232,11 S260,4 278,2 S302,7 322,16 S350,36 380,44 L400,46 L400,56 L0,56 Z" fill="url(#freg)" clip-path="url(#frec)"/>
+        <path id="fr-elev-line" d="M0,42 C20,38 38,28 60,18 S90,8 110,6 S134,9 154,20 S172,34 188,30 S210,16 232,11 S260,4 278,2 S302,7 322,16 S350,36 380,44 L400,46" stroke="rgba(184,255,79,.65)" stroke-width="1.5" fill="none" stroke-linecap="round" clip-path="url(#frec)"/>
+      </svg>
+      <div class="fr-elev-stats" id="fr-elev-stats">
+        <div class="fr-elev-stat">Gain <strong id="fr-elev-gain">—</strong></div>
+      </div>
+    </div>
+  </div>
+  <div class="fr-right">
+    <span class="eye R" style="color:var(--mid);" id="fr-r-eye">Coach Analysis</span>
+    <p class="fr-analysis R d1" id="fr-analysis" style="visibility:hidden;">&nbsp;</p>
+    <p class="fr-body R d2" id="fr-body" style="visibility:hidden;">&nbsp;</p>
+    <div class="fr-flags R d3" id="fr-flags"></div>
+    <div style="margin-top:32px;" class="R d4">
+      <div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mid);margin-bottom:9px;">HR per Mile · hover to inspect</div>
+      <div class="fr-pace-wrap">
+        <svg id="fr-hr-svg" viewBox="0 0 400 88" width="100%" height="88" style="display:block;overflow:visible;"></svg>
+        <div class="fr-pace-tip" id="fr-hr-tip"></div>
+      </div>
+    </div>
+    <div id="fr-recovery" style="margin-top:28px;padding:16px 18px;background:rgba(90,138,98,.08);border:1px solid rgba(90,138,98,.2);border-radius:11px;display:none;" class="R d5">
+      <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--sage);margin-bottom:6px;">Aerobic Training Effect</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--ink);line-height:1;margin-bottom:4px;"><span id="fr-aer-effect">—</span></div>
+      <div style="font-size:12px;color:var(--mid);line-height:1.6;" id="fr-aer-text">Aerobic training stimulus from this run.</div>
+    </div>
+  </div>
+</section>
+
+<section id="calendar">
+  <div class="cal-header R">
+    <div>
+      <span class="eye eye-inv" style="margin-bottom:10px;">Training Calendar</span>
+      <div class="hed hed-lg hed-inv" id="cal-hed">APRIL <em>2026</em></div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <div class="cal-month-nav">
+        <button class="cal-nav-btn" id="cal-prev" onclick="calNav(-1)">‹</button>
+        <span class="cal-month-label" id="cal-mlbl">April 2026</span>
+        <button class="cal-nav-btn" id="cal-next" onclick="calNav(1)">›</button>
+      </div>
+      <button class="cal-sync-btn" id="cal-sync-btn" onclick="handleSync()">
+        <span id="cal-sync-icon">⌚</span> Sync to Garmin
+      </button>
+    </div>
+  </div>
+  <div class="cal-days-header">
+    <div></div>
+    <div class="cal-day-lbl">Mon</div><div class="cal-day-lbl">Tue</div><div class="cal-day-lbl">Wed</div>
+    <div class="cal-day-lbl">Thu</div><div class="cal-day-lbl">Fri</div><div class="cal-day-lbl">Sat</div><div class="cal-day-lbl">Sun</div>
+  </div>
+  <div id="cal-grid"></div>
+  <div id="cal-detail"></div>
+  <div class="cal-legend" id="cal-legend"></div>
+</section>
+
+<section id="activities">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:36px;flex-wrap:wrap;gap:18px;">
+    <div>
+      <span class="eye R">Activity Feed</span>
+      <h2 class="hed hed-lg R d1">RECENT <em class="terra">RUNS</em></h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:360px;" class="Rr">
+      <div class="mcard" onclick="openTS('ytd')"><div class="mc-label">YTD Miles</div><div class="mc-val" id="act-ytd">—</div><div class="mc-sub" id="act-ytd-sub">Season total</div></div>
+      <div class="mcard" onclick="openTS('weekvol')"><div class="mc-label">This Week</div><div class="mc-val"><span id="act-week">—</span><span class="mc-unit">mi</span></div><div class="mc-sub" id="act-week-sub">Planned</div></div>
+      <div class="mcard" onclick="openTS('load')"><div class="mc-label">Load</div><div class="mc-val" style="color:var(--terra);" id="act-load">—</div><div class="mc-sub" id="act-load-sub">&nbsp;</div></div>
+    </div>
+  </div>
+  <div id="act-list" class="R d2"></div>
+</section>
+
+<section id="story" class="sec-dark">
+  <span class="eye eye-inv R">The Arc · 8 Weeks of Work</span>
+  <h2 class="hed hed-lg hed-inv R d1">WHERE YOU'VE<br><em>BEEN BUILDING</em></h2>
+  <div class="story-chart-wrap R d2"><svg id="story-svg" viewBox="0 0 800 180" preserveAspectRatio="none" width="100%" height="100%"></svg></div>
+  <div class="story-week-grid R d3" id="sw-grid"></div>
+  <div id="sw-detail"></div>
+</section>
+
+<section id="miles">
+  <span class="miles-eye R">The Season · Mile by Mile</span>
+  <h2 class="miles-hed R d1"><span id="miles-num">0</span> <em>MILES</em></h2>
+  <p class="miles-sub R d2" id="miles-sub">Each block is one mile of work — one decision to lace up and go.</p>
+  <div class="miles-meta R d3" id="miles-meta"></div>
+  <div class="miles-grid R d3" id="miles-grid"></div>
+  <div class="miles-overflow" id="miles-overflow" style="display:none;"></div>
+  <div class="miles-landmark R d4" id="miles-landmark" style="display:none;">
+    <div class="miles-landmark-num" id="miles-landmark-num">—</div>
+    <div class="miles-landmark-txt">
+      <div class="miles-landmark-name" id="miles-landmark-name">—</div>
+      <div class="miles-landmark-sub" id="miles-landmark-sub">—</div>
+    </div>
+  </div>
+  <div class="miles-tip" id="miles-tip"></div>
+</section>
+
+<section id="coachsays">
+  <span class="eye R" style="color:rgba(255,255,255,.4);" id="cq-eye">Coach Assessment</span>
+  <p class="cq-text R d1" id="cq-text">"Loading your coach's assessment…"</p>
+  <div class="cq-dash R d2"></div>
+  <div class="cq-attr R d3" id="cq-attr">Coach</div>
+  <div id="cq-nav" class="R d4"></div>
+</section>
+
+<section id="race">
+  <div class="rc-ring" style="width:500px;height:500px;top:50%;left:50%;transform:translate(-50%,-50%);"></div>
+  <div class="rc-ring" style="width:700px;height:700px;top:50%;left:50%;transform:translate(-50%,-50%);animation-delay:.9s;opacity:.55;"></div>
+  <div class="rc-ring" style="width:900px;height:900px;top:50%;left:50%;transform:translate(-50%,-50%);animation-delay:1.8s;opacity:.28;"></div>
+  <span class="eye eye-inv R">The Goal · The Reason · The Whole Point</span>
+  <div class="rc-days R d1"><em>DAYS</em><span class="cnt3" data-t="63" id="rc-days">0</span></div>
+  <div class="rc-race R d2" id="rc-race">Your Race</div>
+  <div class="rc-cards R d3" id="rc-cards"></div>
+</section>
+
+<div id="ts-overlay" onclick="if(event.target===this)closeTS()">
+  <div id="ts-modal">
+    <button class="tsm-close" onclick="closeTS()">✕</button>
+    <div class="tsm-eye" id="tsm-eye"></div>
+    <div class="tsm-title" id="tsm-title"></div>
+    <div class="tsm-val" id="tsm-val"></div>
+    <div class="tsm-insight" id="tsm-insight"></div>
+    <div class="tsm-toggle" id="tsm-toggle">
+      <button class="tsm-toggle-btn active" data-view="daily" onclick="switchTSView('daily')">30 Days · Daily</button>
+      <button class="tsm-toggle-btn" data-view="weekly" onclick="switchTSView('weekly')">8 Weeks · Avg</button>
+    </div>
+    <div class="tsm-svg-wrap">
+      <svg id="tsm-svg" width="100%" height="180" viewBox="0 0 620 180" style="display:block;overflow:visible;"></svg>
+      <div class="ts-tip" id="ts-tip"></div>
+    </div>
+  </div>
+</div>
+
+<button id="chat-fab" onclick="toggleChat()">
+  <div class="fab-av" id="fab-av">A</div>
+  <span class="fab-x">✕</span>
+</button>
+<div id="chat-panel">
+  <div class="cph">
+    <div class="cph-av" id="cph-av">A</div>
+    <div><div class="cph-name" id="cph-name">Coach</div><div class="cph-status"><span class="cph-dot"></span><span id="cph-tagline">Online</span></div></div>
+  </div>
+  <div class="cp-ctx"><div class="cp-ctx-txt" id="cp-ctx-txt">Ready to chat about your training.</div></div>
+  <div class="cp-msgs" id="cp-msgs"></div>
+  <div class="cp-chips" id="cp-chips">
+    <div class="cp-chip" onclick="cpSend(this.textContent)">How's my pace trend?</div>
+    <div class="cp-chip" onclick="cpSend(this.textContent)">Am I on track for race day?</div>
+    <div class="cp-chip" onclick="cpSend(this.textContent)">Why did HRV dip recently?</div>
+    <div class="cp-chip" onclick="cpSend(this.textContent)">What should I focus on today?</div>
+  </div>
+  <div class="cp-inp-row">
+    <input class="cp-inp" id="cp-inp" placeholder="Ask your coach…" onkeydown="if(event.key==='Enter')cpSend(this.value)"/>
+    <button class="cp-send" id="cp-send" onclick="cpSend(document.getElementById('cp-inp').value)">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1 11L11 6 1 1v3.5l7 1.5-7 1.5V11z" fill="#fff"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+// ───────────────────────────────────────────────────────────────
+// Hydrated from /api/magazine. Static defaults are only used as
+// fallback so the page renders even without API data.
+// ───────────────────────────────────────────────────────────────
+const SECTIONS = ['hero','morning','featrun','calendar','activities','story','miles','coachsays','race'];
+const DARK_SECS = new Set(['hero','morning','featrun','calendar','story','miles','race']);
+
+const TYPE_META = {
+  rest:{col:'#a09080',emoji:'🛌'},easy:{col:'#5a8a62',emoji:'🏃'},tempo:{col:'#b8673e',emoji:'⚡'},
+  long:{col:'#5e7e96',emoji:'🏔'},long_run:{col:'#5e7e96',emoji:'🏔'},
+  strength:{col:'#8a7aba',emoji:'💪'},workout:{col:'#c4a040',emoji:'🎯'},
+  interval:{col:'#c4a040',emoji:'🎯'},recovery:{col:'#5a8a62',emoji:'🔄'},
+  strides:{col:'#8a7aba',emoji:'⚡'},race:{col:'#b8ff4f',emoji:'🏆'},
+  cross_training:{col:'#8a7868',emoji:'🚴'},
+};
+function tm(type){return TYPE_META[type] || TYPE_META.easy;}
+const INT_COLORS = ['','#5a8a62','#c4a040','#b8673e','#c05040'];
+
+let WEEK_DATA = [
+  {wk:'W1', mi:0,hrv:null,tss:0,key:'No Data',col:'#5a8a62',runs:[],note:'No data yet for this week.'},
+];
+let ACTIVITIES_DATA = [];
+let METRIC_TS = {
+  hrv:    {eye:'HRV · 8-Week Trend', title:'HRV', unit:'ms', val:'—', color:'#b8ff4f', data:[], labels:[], insight:'No data yet.'},
+  battery:{eye:'Body Battery', title:'Body Battery', unit:'%', val:'—', color:'#b8673e', data:[], labels:[], insight:'No data yet.'},
+  sleep:  {eye:'Sleep Duration', title:'Sleep', unit:'h', val:'—', color:'#5e7e96', data:[], labels:[], insight:'No data yet.'},
+  rhr:    {eye:'Resting Heart Rate', title:'Resting HR', unit:'bpm', val:'—', color:'#5a8a62', data:[], labels:[], insight:'No data yet.'},
+  ytd:    {eye:'Season Mileage · Week by Week', title:'YTD Miles', unit:'mi', val:'—', color:'#b8673e', data:[], labels:[], insight:'No data yet.'},
+  weekvol:{eye:'Weekly Volume · 8-Week Trend', title:'Weekly Miles', unit:'mi', val:'—', color:'#5a8a62', data:[], labels:[], insight:'No data yet.'},
+  load:   {eye:'Training Load · 8-Week Trend', title:'Load', unit:'TSS', val:'—', color:'#b8673e', data:[], labels:[], insight:'No data yet.'},
+};
+let QUOTES = [{q:'"Loading your coach\'s assessment…"', attr:''}];
+
+// Calendar driven by API `calendar` map (date_iso → day data) and `calendar_range`.
+let CAL_DATA = {};
+let CAL_RANGE = {start: null, end: null};
+let CAL_TODAY_ISO = null;
+const _MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const _MONTH_NAMES_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Default to today's month — overwritten by hydrate() from API today_iso.
+const _now = new Date();
+let calYear = _now.getFullYear();
+let calMonth = _now.getMonth(); // 0-11
+let calSelDate = null; // YYYY-MM-DD or null
+let syncDone = false;
+
+function _ymd(y, m, d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+function _daysInMonth(y, m) { return new Date(y, m+1, 0).getDate(); }
+function _monthFirstWeekdayMon0(y, m) { return (new Date(y, m, 1).getDay() + 6) % 7; } // Mon=0..Sun=6
+
+function _monthEntirelyBefore(y, m, isoStart) {
+  if (!isoStart) return false;
+  const lastDay = _ymd(y, m, _daysInMonth(y, m));
+  return lastDay < isoStart;
+}
+function _monthEntirelyAfter(y, m, isoEnd) {
+  if (!isoEnd) return false;
+  const firstDay = _ymd(y, m, 1);
+  return firstDay > isoEnd;
+}
+
+function renderCalendar() {
+  const today = CAL_TODAY_ISO || '';
+  document.getElementById('cal-hed').innerHTML = `${_MONTH_NAMES[calMonth].toUpperCase()}<br><em>${calYear}</em>`;
+  document.getElementById('cal-mlbl').textContent = `${_MONTH_NAMES[calMonth]} ${calYear}`;
+
+  // Disable navigation at boundary
+  let prevY = calYear, prevM = calMonth - 1;
+  if (prevM < 0) { prevM = 11; prevY--; }
+  let nextY = calYear, nextM = calMonth + 1;
+  if (nextM > 11) { nextM = 0; nextY++; }
+  document.getElementById('cal-prev').disabled = _monthEntirelyBefore(prevY, prevM, CAL_RANGE.start);
+  document.getElementById('cal-next').disabled = _monthEntirelyAfter(nextY, nextM, CAL_RANGE.end);
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  const firstWd = _monthFirstWeekdayMon0(calYear, calMonth);
+  const numDays = _daysInMonth(calYear, calMonth);
+  // Build cells: leading blanks + days + trailing blanks → 6 rows × 7 cols
+  const cells = [];
+  for (let i = 0; i < firstWd; i++) cells.push(null);
+  for (let d = 1; d <= numDays; d++) cells.push(d);
+  while (cells.length < 42) cells.push(null);
+  // Render in 6 rows of 7
+  for (let row = 0; row < 6; row++) {
+    const rowCells = cells.slice(row * 7, row * 7 + 7);
+    if (rowCells.every(c => c === null)) continue; // skip empty trailing row
+    // Week label: first non-null cell's date as "Mon D"
+    let wkLabel = '';
+    let wkTSS = 0;
+    for (const c of rowCells) {
+      if (c === null) continue;
+      const iso = _ymd(calYear, calMonth, c);
+      const data = CAL_DATA[iso];
+      if (data && data.tss) wkTSS += data.tss;
+      if (!wkLabel) {
+        const dt = new Date(calYear, calMonth, c);
+        wkLabel = `${_MONTH_NAMES_SHORT[dt.getMonth()]} ${dt.getDate()}`;
+      }
+    }
+    let html = `<div class="cal-wk-lbl"><div>${wkLabel}</div><div class="cal-wk-tss">${wkTSS>0?wkTSS+' Load':''}</div></div>`;
+    rowCells.forEach(d => {
+      if (d === null) { html += `<div class="cal-cell empty"></div>`; return; }
+      const iso = _ymd(calYear, calMonth, d);
+      const inRange = (!CAL_RANGE.start || iso >= CAL_RANGE.start) && (!CAL_RANGE.end || iso <= CAL_RANGE.end);
+      const data = CAL_DATA[iso];
+      const isToday = iso === today;
+      const isSel = iso === calSelDate;
+      const isDone = data && data.status === 'done';
+      let classes = 'cal-cell';
+      if (!inRange) classes += ' empty';
+      else if (data) classes += ' clickable';
+      else classes += ' clickable'; // empty in-range cell still clickable to show "no plan"
+      if (isSel) classes += ' selected';
+      else if (isToday) classes += ' today';
+      else if (isDone) classes += ' done';
+      if (data) {
+        const meta = tm(data.type);
+        const intensity = data.intensity || 1;
+        const intSegs = [1,2,3,4].map(j => `<div class="cc-int-seg" style="background:${j<=intensity?INT_COLORS[intensity]||'rgba(255,255,255,.2)':'rgba(255,255,255,.08)'};"></div>`).join('');
+        const mi = data.actual_mi || data.target_mi || 0;
+        const sub = data.target_dur || data.target_pace_mi || '';
+        const subStr = sub ? `${data.target_dur||''}${data.target_pace_mi?` · ${data.target_pace_mi}/mi`:''}` : '';
+        const doneLine = isDone && data.actual_pace_mi
+          ? `<div class="cc-done">✓ ${data.actual_pace_mi}/mi</div>`
+          : isDone ? `<div class="cc-done">✓ done</div>` : '';
+        html += `<div class="${classes}" onclick="selectCalDay('${iso}')" data-iso="${iso}">
+          <div class="cc-top"><span class="cc-emoji">${meta.emoji}</span>${mi>0?`<span class="cc-mi">${mi}mi</span>`:''}</div>
+          <div class="cc-name">${data.name||data.type_label||'Run'}</div>
+          <div class="cc-sub">${subStr}</div>
+          ${data.tss>0?`<div class="cc-tss">${data.tss} Load</div>`:''}
+          <div class="cc-int">${intSegs}</div>
+          ${doneLine}
+        </div>`;
+      } else if (inRange) {
+        // Empty in-range day — light grey, day number only
+        html += `<div class="${classes}${isToday?'':' faint'}" onclick="selectCalDay('${iso}')" data-iso="${iso}" style="opacity:.4;">
+          <div class="cc-top"><span style="font-size:11px;color:rgba(255,255,255,.35);">${d}</span></div>
+        </div>`;
+      } else {
+        html += `<div class="${classes}" data-iso="${iso}"><div class="cc-top"><span style="font-size:10px;color:rgba(255,255,255,.18);">${d}</span></div></div>`;
+      }
+    });
+    const wRow = document.createElement('div');
+    wRow.className = 'cal-week';
+    wRow.innerHTML = html;
+    grid.appendChild(wRow);
+  }
+  // Legend
+  const leg = document.getElementById('cal-legend');
+  const legendTypes = ['easy','tempo','long_run','interval','workout','strength','rest'];
+  leg.innerHTML = legendTypes.map(t=>`<div class="cl-item"><div class="cl-dot" style="background:${tm(t).col}"></div>${t.replace('_',' ')}</div>`).join('')
+    + `<div class="cl-item" style="margin-left:auto"><div style="display:flex;gap:2px;">${[1,2,3,4].map(i=>`<div style="width:10px;height:4px;border-radius:2px;background:${INT_COLORS[i]};"></div>`).join('')}</div>&nbsp;Intensity Easy→Peak</div>`;
+  if (!calSelDate) document.getElementById('cal-detail').classList.remove('show');
+}
+
+function selectCalDay(iso) {
+  if (calSelDate === iso) {
+    calSelDate = null;
+    document.getElementById('cal-detail').classList.remove('show');
+    renderCalendar();
+    return;
+  }
+  calSelDate = iso;
+  renderCalendar();
+  const data = CAL_DATA[iso];
+  const det = document.getElementById('cal-detail');
+  const today = CAL_TODAY_ISO;
+  const isToday = iso === today;
+  const isDone = data && data.status === 'done';
+  const dt = new Date(iso + 'T12:00:00Z');
+  const dayLabel = `${_MONTH_NAMES[dt.getUTCMonth()]} ${dt.getUTCDate()}`;
+  if (!data) {
+    det.innerHTML = `
+      <div class="cd-header">
+        <div><div class="cd-title">${dayLabel}</div></div>
+        <button class="cd-close" onclick="calSelDate=null;document.getElementById('cal-detail').classList.remove('show');renderCalendar();">✕</button>
+      </div>
+      <div class="cd-note">No workout planned or recorded for this day.</div>
+      ${isToday?`<div style="margin-top:12px;background:rgba(184,255,79,.07);border:1px solid rgba(184,255,79,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:rgba(184,255,79,.8);">← Today</div>`:''}
+    `;
+    det.classList.add('show');
+    det.scrollIntoView({behavior:'smooth', block:'nearest'});
+    return;
+  }
+  const meta = tm(data.type);
+  const coachNotes = {
+    long_run:'Your most important workout. First half conversational, second half controlled-hard.',
+    long:'Your most important workout. First half conversational, second half controlled-hard.',
+    tempo:'Warm-up, LT effort, cool-down. Smooth breathing at effort is your cue for right pace.',
+    easy:'True zone 2 — full conversation throughout. The aerobic base is built here.',
+    recovery:'True zone 2 — full conversation throughout. Keep effort easy.',
+    strength:'Hip circuit + plyometrics. Single-leg stability is the priority.',
+    workout:'Track work. Precise recovery between reps. Stop if form deteriorates.',
+    interval:'Track work. Precise recovery between reps. Stop if form deteriorates.',
+    rest:'Full recovery. Walk, stretch, sleep early. This is training too.',
+    cross_training:'Aerobic cross-training to build base without impact.',
+    race:'Race day. Trust the training. Pacing discipline early, courage late.',
+  };
+  det.innerHTML = `
+    <div class="cd-header">
+      <div><div class="cd-title">${meta.emoji} ${data.name || data.type_label || 'Run'} <span style="font-family:'Inter',sans-serif;font-size:13px;color:rgba(255,255,255,.4);font-weight:400;margin-left:8px;">${dayLabel}</span></div></div>
+      <button class="cd-close" onclick="calSelDate=null;document.getElementById('cal-detail').classList.remove('show');renderCalendar();">✕</button>
+    </div>
+    <div class="cd-stats">
+      ${(data.actual_mi||data.target_mi)?`<div class="cd-stat"><div class="cd-stat-v">${data.actual_mi||data.target_mi}</div><div class="cd-stat-l">${data.actual_mi?'Actual mi':'Planned mi'}</div></div>`:''}
+      ${data.target_dur?`<div class="cd-stat"><div class="cd-stat-v">${data.target_dur}</div><div class="cd-stat-l">Est. Time</div></div>`:''}
+      ${data.target_pace_mi?`<div class="cd-stat"><div class="cd-stat-v">${data.target_pace_mi}</div><div class="cd-stat-l">Target Pace</div></div>`:''}
+      ${data.actual_pace_mi?`<div class="cd-stat"><div class="cd-stat-v">${data.actual_pace_mi}</div><div class="cd-stat-l">Actual Pace</div></div>`:''}
+      ${data.tss>0?`<div class="cd-stat"><div class="cd-stat-v">${data.tss}</div><div class="cd-stat-l">Load</div></div>`:''}
+    </div>
+    <div class="cd-note">${coachNotes[data.type]||'Workout details.'}</div>
+    ${isDone?`<div style="margin-top:12px;background:rgba(90,138,98,.1);border:1px solid rgba(90,138,98,.25);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--sage);">✓ Completed${data.actual_pace_mi?` · ${data.actual_pace_mi}/mi`:''} · From Garmin</div>`:''}
+    ${isToday && !isDone?`<div style="margin-top:12px;background:rgba(184,255,79,.07);border:1px solid rgba(184,255,79,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:rgba(184,255,79,.8);">← Today's workout · Synced to your Garmin watch</div>`:''}
+  `;
+  det.classList.add('show');
+  det.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function calNav(dir) {
+  let y = calYear, m = calMonth + dir;
+  if (m < 0) { m = 11; y--; }
+  if (m > 11) { m = 0; y++; }
+  if (_monthEntirelyBefore(y, m, CAL_RANGE.start) || _monthEntirelyAfter(y, m, CAL_RANGE.end)) return;
+  calYear = y; calMonth = m;
+  calSelDate = null;
+  renderCalendar();
+}
+
+function handleSync() {
+  const btn = document.getElementById('cal-sync-btn');
+  const icon = document.getElementById('cal-sync-icon');
+  if (syncDone) return;
+  icon.style.animation = 'spin .7s linear infinite';
+  icon.textContent = '↻';
+  btn.textContent = '';
+  btn.appendChild(icon);
+  btn.append(' Syncing…');
+  setTimeout(() => {
+    syncDone = true;
+    icon.style.animation = '';
+    btn.innerHTML = '✓ Synced to Garmin';
+    btn.style.color = '#b8ff4f';
+    btn.style.borderColor = 'rgba(184,255,79,.3)';
+    btn.style.background = 'rgba(184,255,79,.08)';
+  }, 2000);
+}
+
+// ── Featured Run charts (built lazily after data hydrates) ────
+function buildFeaturedRunCharts() {
+  const lr = window.__MAG_DATA && window.__MAG_DATA.last_run;
+  // Pace per mile from laps if available
+  let pace = [], hr = [];
+  if (lr && lr.laps && lr.laps.length) {
+    pace = lr.laps.filter(l => l.pace).map(l => {
+      const [m, s] = l.pace.split(':').map(Number);
+      return m + s/60;
+    });
+    hr = lr.laps.filter(l => l.hr).map(l => l.hr);
+  }
+  if (pace.length >= 2) {
+    buildMileBarChart('fr-pace-svg','fr-pace-tip', pace, '#b8673e',
+      (v,i)=>`Mile ${i+1} · ${Math.floor(v)}:${String(Math.round((v%1)*60)).padStart(2,'0')}/mi`, 400, 96);
+  } else {
+    document.getElementById('fr-pace-svg').parentElement.parentElement.style.display='none';
+  }
+  if (hr.length >= 2) {
+    buildMileLineChart('fr-hr-svg','fr-hr-tip', hr, '#5e7e96',
+      (v,i)=>`Mile ${i+1} · ${v} bpm`, 400, 88);
+  } else {
+    document.getElementById('fr-hr-svg').parentElement.parentElement.style.display='none';
+  }
+  // Count-up the numeric stats once the section enters the viewport.
+  const statSpec = [
+    {id:'fr-mi',  decimals:1},
+    {id:'fr-hr',  decimals:0},
+    {id:'fr-load',decimals:0},
+    {id:'fr-cad', decimals:0},
+    {id:'fr-pow', decimals:0},
+  ];
+  const frStatIO = new IntersectionObserver(e=>{
+    if(!e[0].isIntersecting) return;
+    statSpec.forEach(s=>{
+      const el = document.getElementById(s.id);
+      if (!el) return;
+      const target = parseFloat(el.textContent);
+      if (isNaN(target)) return;
+      const dur = 1100, start = performance.now();
+      const tick = n => {
+        const p = Math.min((n-start)/dur, 1), eased = 1 - Math.pow(1-p, 3);
+        el.textContent = (eased * target).toFixed(s.decimals);
+        if (p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    frStatIO.disconnect();
+  },{threshold:.35});
+  const frEl = document.getElementById('featrun');
+  if (frEl) frStatIO.observe(frEl);
+}
+
+// Scroll-linked progress for the Featured Run section: drives the elevation
+// clip-path width and the staggered HR-zone segment reveal as the section
+// enters the viewport — chart literally draws itself as you scroll.
+function featRunScroll(y, vh) {
+  const el = document.getElementById('featrun');
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  // p ramps 0→1 as the section's top moves from vh*.85 down to vh*.05
+  const p = Math.max(0, Math.min(1, 1 - rect.top / (vh * .85)));
+  if (p <= 0) return;
+  const ecr = document.getElementById('frecr');
+  if (ecr) ecr.setAttribute('width', (p * 400).toFixed(1));
+  const segs = document.querySelectorAll('#fr-zones .fr-zone-seg');
+  segs.forEach((s,i) => {
+    const threshold = .25 + (i / Math.max(segs.length, 1)) * .55;
+    if (p >= threshold) s.classList.add('anim');
+  });
+}
+
+// Measure container width so the SVG renders at real pixels — bars/circles/tooltips align without preserveAspectRatio letterboxing.
+function _measureWidth(svgEl, fallback){
+  const r = svgEl.getBoundingClientRect();
+  if (r.width >= 40) return Math.round(r.width);
+  const pr = svgEl.parentElement && svgEl.parentElement.getBoundingClientRect();
+  if (pr && pr.width >= 40) return Math.round(pr.width);
+  return fallback;
+}
+
+function buildMileBarChart(svgId, tipId, data, color, labelFn, _wIgnored, H=80) {
+  const svgEl=document.getElementById(svgId);
+  if(!svgEl||svgEl.dataset.built==='1'||data.length<1)return;
+  svgEl.dataset.built='1';
+  const tipEl=document.getElementById(tipId);
+  const W = _measureWidth(svgEl, 340);
+  svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svgEl.setAttribute('preserveAspectRatio', 'none');
+  const pad=4, bw=Math.max(2,(W-pad*2)/data.length-3);
+  const mn=Math.min(...data)*.985, mx=Math.max(...data)*1.015;
+  const range = mx - mn || 1;
+  const minVal = Math.min(...data);
+  let html=`<defs><linearGradient id="bg${svgId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity=".35"/><stop offset="100%" stop-color="${color}" stop-opacity=".1"/></linearGradient></defs>`;
+  data.forEach((v,i)=>{
+    const bh=Math.max(4,((v-mn)/range)*(H-8)+4);
+    const x=pad+i*(bw+3);
+    const y=H-bh;
+    const isBest=v===minVal;
+    html+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="3" fill="${isBest?'#b8ff4f':color}" opacity="${isBest?1:.75}" style="transform-origin:${(x+bw/2).toFixed(1)}px ${H}px;animation:barRise .6s ${i*.04}s ease both;" class="mile-bar" data-label="${labelFn(v,i)}"/>`;
+  });
+  svgEl.innerHTML=html;
+  svgEl.addEventListener('mousemove',e=>{
+    const rect=svgEl.getBoundingClientRect();
+    const mxLocal=(e.clientX-rect.left)*(W/rect.width);
+    let best=-1,bDist=999;
+    data.forEach((_,i)=>{const cx=pad+i*(bw+3)+bw/2;const d2=Math.abs(cx-mxLocal);if(d2<bDist){bDist=d2;best=i;}});
+    if(best>=0&&bDist<(bw+3)){
+      const bar=svgEl.querySelectorAll('.mile-bar')[best];
+      if(bar){
+        const cx=pad+best*(bw+3)+bw/2;
+        const lx=cx*(rect.width/W);
+        tipEl.textContent=bar.dataset.label;
+        tipEl.style.left=`${Math.max(0,lx-42)}px`;
+        tipEl.style.top='-34px';
+        tipEl.style.opacity='1';
+      }
+    } else { tipEl.style.opacity='0'; }
+  });
+  svgEl.addEventListener('mouseleave',()=>tipEl.style.opacity='0');
+}
+
+function buildMileLineChart(svgId, tipId, data, color, labelFn, _wIgnored, H=60) {
+  const svgEl=document.getElementById(svgId);
+  if(!svgEl||svgEl.dataset.built==='1'||data.length<2)return;
+  svgEl.dataset.built='1';
+  const tipEl=document.getElementById(tipId);
+  const W = _measureWidth(svgEl, 340);
+  svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  const pad=6;
+  const mn=Math.min(...data)*.98, mx=Math.max(...data)*1.02;
+  const range = mx - mn || 1;
+  const pts=data.map((v,i)=>[pad+(i/(data.length-1))*(W-pad*2),(H-4)-((v-mn)/range)*(H-12)]);
+  const pathD=pts.map((p,i)=>`${i===0?'M':'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const areaD=pathD+` L${pts[pts.length-1][0]},${H-4} L${pts[0][0]},${H-4} Z`;
+  const uid=`lc${svgId.replace(/-/g,'')}`;
+  svgEl.innerHTML=`<defs><linearGradient id="${uid}" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="${color}" stop-opacity=".2"/>
+    <stop offset="100%" stop-color="${color}" stop-opacity=".02"/>
+  </linearGradient></defs>
+  <path d="${areaD}" fill="url(#${uid})"/>
+  <path d="${pathD}" stroke="${color}" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-dasharray="${W*2}" stroke-dashoffset="${W*2}" style="animation:drawLine 1s ease forwards;"/>
+  ${pts.map((p,i)=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="${color}" opacity=".8"/>
+    <circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="14" fill="transparent" class="lr-hit" data-label="${labelFn(data[i],i)}" data-x="${p[0].toFixed(1)}" data-y="${p[1].toFixed(1)}"/>`).join('')}`;
+  svgEl.querySelectorAll('.lr-hit').forEach(dot=>{
+    dot.addEventListener('mouseenter',()=>{
+      tipEl.textContent=dot.dataset.label;
+      const rect=svgEl.getBoundingClientRect();
+      const sx=parseFloat(dot.dataset.x)*(rect.width/W);
+      tipEl.style.left=`${Math.max(0,sx-48)}px`;tipEl.style.top='-32px';tipEl.style.opacity='1';
+    });
+    dot.addEventListener('mouseleave',()=>tipEl.style.opacity='0');
+  });
+}
+
+// ── Activity feed ─────────────────────────────────────────────
+function buildActFeed() {
+  const ZCOLS = ['#5e7e96','#5a8a62','#c4a040','#b8673e','#c05040'];
+  const ZLBLS = ['Z1','Z2','Z3','Z4','Z5'];
+  const list = document.getElementById('act-list');
+  list.innerHTML = '';
+  if (!ACTIVITIES_DATA.length) {
+    list.innerHTML = `<div style="text-align:center;padding:48px 24px;color:var(--mid);font-style:italic;font-family:'DM Serif Display',serif;font-size:18px;">No recent runs yet — once you sync workouts, they'll appear here.</div>`;
+    return;
+  }
+  ACTIVITIES_DATA.forEach(a => {
+    const meta = tm(a.type);
+    const card = document.createElement('div');
+    card.className = 'act-card R';
+    const zonesArr = a.zones || [0,0,0,0,0];
+    card.innerHTML = `
+      <div class="act-card-top" onclick="toggleAct(${a.id})">
+        <div class="act-icon" style="background:${meta.col}18;border:1px solid ${meta.col}30;">${meta.emoji}</div>
+        <div style="flex:1;">
+          <div class="act-title">${a.label}</div>
+          <div class="act-meta">
+            <span style="font-weight:600;">${a.dist} mi</span>
+            <span>${a.time||''}</span>
+            <span>${a.pace||''}</span>
+            ${a.hr?`<span>Avg ${a.hr} bpm</span>`:''}
+          </div>
+          ${zonesArr.some(z=>z>0)?`<div style="margin-top:8px;">
+            <div style="display:flex;height:7px;border-radius:4px;overflow:hidden;gap:1px;">
+              ${zonesArr.map((z,i)=>z>0?`<div style="width:${z}%;background:${ZCOLS[i]};"></div>`:'').join('')}
+            </div>
+          </div>`:''}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div style="font-size:11px;color:var(--dim);">${a.date}</div>
+          <svg class="act-expand-icon" id="act-icon-${a.id}" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="#b8a898" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </div>
+      </div>
+      <div class="act-body" id="act-body-${a.id}">
+        <div class="act-grid2">
+          <div>
+            ${a.pacePerMile&&a.pacePerMile.length>=2?`
+            <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);margin-bottom:10px;">Pace per Mile <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0;">· hover to inspect</span></div>
+            <div class="run-chart-wrap">
+              <svg id="pace-chart-${a.id}" width="100%" height="80" viewBox="0 0 340 80" style="display:block;overflow:visible;"></svg>
+              <div class="run-chart-tip" id="pace-tip-${a.id}"></div>
+            </div>`:''}
+            ${a.hrPerMile&&a.hrPerMile.length>=2?`
+            <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);margin:14px 0 10px;">HR per Mile <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0;">· hover to inspect</span></div>
+            <div class="run-chart-wrap">
+              <svg id="hr-chart-${a.id}" width="100%" height="60" viewBox="0 0 340 60" style="display:block;overflow:visible;"></svg>
+              <div class="run-chart-tip" id="hr-tip-${a.id}"></div>
+            </div>`:''}
+          </div>
+          <div>
+            <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);margin-bottom:10px;">Run Stats</div>
+            <div class="act-bio-grid">
+              ${[
+                a.cadence?{k:'Cadence',v:`${a.cadence} spm`,good:a.cadence>=178&&a.cadence<=185,tip:'Target 178–185 spm.'}:null,
+                a.power?{k:'Power',v:`${a.power} W`,good:true,tip:'Average running power.'}:null,
+                a.elevation_ft?{k:'Elevation',v:`${a.elevation_ft.toLocaleString()} ft`,good:true,tip:'Total ascent.'}:null,
+                a.tss?{k:'Load',v:`${a.tss}`,good:true,tip:'Training load score.'}:null,
+              ].filter(Boolean).map(b=>`<div class="act-bio-card" title="${b.tip}">
+                <div class="act-bio-status" style="background:${b.good?'#5a8a62':'#b8673e'};"></div>
+                <div class="act-bio-v">${b.v}</div>
+                <div class="act-bio-l">${b.k}</div>
+              </div>`).join('')}
+            </div>
+            ${zonesArr.some(z=>z>0)?`
+            <div style="margin-top:14px;">
+              <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);margin-bottom:8px;">HR Zones</div>
+              <div class="zone-track" id="zones-${a.id}">
+                ${zonesArr.map((z,i)=>z>0?`<div class="zone-seg" style="width:${z}%;background:${ZCOLS[i]};" data-tip="${ZLBLS[i]} · ${z}%"></div>`:'').join('')}
+              </div>
+              <div style="display:flex;gap:10px;margin-top:7px;flex-wrap:wrap;">
+                ${zonesArr.map((z,i)=>z>0?`<span style="font-size:10px;color:var(--mid);"><span style="color:${ZCOLS[i]}">●</span> ${ZLBLS[i]} ${z}%</span>`:'').join('')}
+              </div>
+            </div>`:''}
+          </div>
+        </div>
+        ${a.note?`<div style="margin-top:16px;background:var(--surface);border-radius:10px;padding:14px 16px;">
+          <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);margin-bottom:8px;">Coach Analysis</div>
+          <div style="font-family:'DM Serif Display',serif;font-style:italic;font-size:16px;line-height:1.6;">${a.note}</div>
+        </div>`:''}
+      </div>
+    `;
+    list.appendChild(card);
+  });
+  // Trigger reveal animations on the new cards
+  document.querySelectorAll('#act-list .R').forEach(el=>io.observe(el));
+}
+
+function toggleAct(id) {
+  const body = document.getElementById(`act-body-${id}`);
+  const icon = document.getElementById(`act-icon-${id}`);
+  const isOpen = body.classList.contains('show');
+  body.classList.toggle('show', !isOpen);
+  icon.classList.toggle('open', !isOpen);
+  if (!isOpen) {
+    setTimeout(() => {
+      const a = ACTIVITIES_DATA.find(x => x.id === id);
+      if (!a) return;
+      if (a.pacePerMile && a.pacePerMile.length >= 2)
+        buildMileBarChart(`pace-chart-${id}`, `pace-tip-${id}`, a.pacePerMile, '#b8673e',
+          (v,i)=>`Mile ${i+1} · ${Math.floor(v)}:${String(Math.round((v%1)*60)).padStart(2,'0')}/mi`, 340, 80);
+      if (a.hrPerMile && a.hrPerMile.length >= 2)
+        buildMileLineChart(`hr-chart-${id}`, `hr-tip-${id}`, a.hrPerMile, '#5e7e96',
+          (v,i)=>`Mile ${i+1} · ${v} bpm`, 340, 60);
+      const zoneEl = document.getElementById(`zones-${id}`);
+      if (zoneEl && zoneEl.dataset.anim !== '1') {
+        zoneEl.dataset.anim = '1';
+        zoneEl.querySelectorAll('.zone-seg').forEach((s,i)=>setTimeout(()=>s.classList.add('anim'), i*110));
+      }
+    }, 50);
+  }
+}
+
+// ── Story chart ───────────────────────────────────────────────
+function buildStoryChart() {
+  const container = document.getElementById('sw-grid');
+  const svgEl = document.getElementById('story-svg');
+  const detEl = document.getElementById('sw-detail');
+  container.innerHTML = '';
+  let selIdx = -1;
+  WEEK_DATA.forEach((d,i) => {
+    const col = document.createElement('div');
+    col.className = 'sw-col';
+    col.innerHTML = `<div class="sw-wk">${d.wk}</div><div class="sw-mi${i===WEEK_DATA.length-1?' now':''}">${d.mi}</div><div class="sw-key">${d.key}</div>`;
+    col.onclick = () => {
+      if (selIdx === i) { selIdx=-1; document.querySelectorAll('.sw-col').forEach(c=>c.classList.remove('sel')); detEl.classList.remove('show'); return; }
+      selIdx = i;
+      document.querySelectorAll('.sw-col').forEach(c=>c.classList.remove('sel'));
+      col.classList.add('sel');
+      detEl.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:#fff;">${d.wk} · ${d.key}</div>
+          <button style="background:rgba(255,255,255,.06);border:none;color:rgba(255,255,255,.4);width:26px;height:26px;border-radius:7px;cursor:pointer;font-size:14px;" onclick="this.closest('#sw-detail').classList.remove('show');document.querySelectorAll('.sw-col').forEach(c=>c.classList.remove('sel'));">✕</button>
+        </div>
+        <div class="swd-grid">
+          <div class="swd-stat"><div class="swd-v">${d.mi}</div><div class="swd-l">Miles</div></div>
+          <div class="swd-stat"><div class="swd-v" style="color:var(--lime);">${d.hrv ?? '—'}</div><div class="swd-l">HRV ms</div></div>
+          <div class="swd-stat"><div class="swd-v">${d.tss}</div><div class="swd-l">Load</div></div>
+        </div>
+        ${d.runs.length?`<div style="margin-bottom:10px;">
+          ${d.runs.map(r=>`<div style="display:flex;gap:16px;font-size:11px;color:rgba(255,255,255,.4);padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);">
+            <span style="color:rgba(255,255,255,.22);width:28px;">${r.d}</span><span>${r.r}</span></div>`).join('')}
+        </div>`:''}
+        <div class="swd-quote">"${d.note}"</div>`;
+      setTimeout(() => detEl.classList.add('show'), 10);
+    };
+    container.appendChild(col);
+  });
+  // Build SVG
+  const W=800,H=180,pad=22;
+  const maxMi = Math.max(...WEEK_DATA.map(d=>d.mi||0), 1);
+  const cols = Math.max(WEEK_DATA.length, 2);
+  const pts = WEEK_DATA.map((d,i)=>[pad+(i/(cols-1))*(W-pad*2), H-pad-(((d.mi||0)/maxMi)*(H-pad*2))]);
+  const pathD = pts.map((p,i)=>`${i===0?'M':'L'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const areaD = pathD + ` L${pts[pts.length-1][0]},${H} L${pts[0][0]},${H} Z`;
+  svgEl.innerHTML = `
+    <defs><linearGradient id="stg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#b8ff4f" stop-opacity=".18"/><stop offset="100%" stop-color="#b8ff4f" stop-opacity=".02"/>
+    </linearGradient>
+    <clipPath id="stclip"><rect id="stcr" x="0" y="0" width="0" height="${H}"/></clipPath></defs>
+    <path d="${areaD}" fill="url(#stg)" clip-path="url(#stclip)"/>
+    <path d="${pathD}" stroke="#b8ff4f" stroke-width="2.5" fill="none" stroke-linecap="round" clip-path="url(#stclip)"/>
+    ${pts.map((p,i)=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i===pts.length-1?6:3.5}" fill="${i===pts.length-1?'#b8ff4f':'rgba(184,255,79,.55)'}" opacity="0" class="std" data-i="${i}"/>`).join('')}`;
+}
+
+function storyScroll(y, vh) {
+  const el = document.getElementById('story');
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const p = Math.max(0, Math.min(1, 1 - rect.top / (vh * .85)));
+  if (p > 0) {
+    const cr = document.getElementById('stcr');
+    if (cr) cr.setAttribute('width', (p * 800).toFixed(1));
+    document.querySelectorAll('.std').forEach((d) => {
+      const idx = +d.dataset.i;
+      if (idx / Math.max(WEEK_DATA.length-1,1) <= p) d.setAttribute('opacity','1');
+    });
+  }
+}
+
+// ── Time series modal ─────────────────────────────────────────
+let _tsCurrentKey = null;
+let _tsCurrentView = 'daily';
+
+function openTS(key) {
+  const d = METRIC_TS[key];
+  if (!d) return;
+  _tsCurrentKey = key;
+  document.getElementById('tsm-eye').textContent = d.eye;
+  document.getElementById('tsm-title').textContent = d.title;
+  document.getElementById('tsm-val').textContent = d.val;
+  document.getElementById('tsm-insight').innerHTML = d.insight;
+  // Pick default view: daily if available, otherwise weekly
+  const hasDaily = !!(d.daily && d.daily.length >= 2);
+  const hasWeekly = !!(d.weekly && d.weekly.data && d.weekly.data.length >= 2);
+  _tsCurrentView = hasDaily ? 'daily' : 'weekly';
+  // Toggle button states
+  const dailyBtn = document.querySelector('.tsm-toggle-btn[data-view="daily"]');
+  const weeklyBtn = document.querySelector('.tsm-toggle-btn[data-view="weekly"]');
+  dailyBtn.disabled = !hasDaily; weeklyBtn.disabled = !hasWeekly;
+  dailyBtn.classList.toggle('active', _tsCurrentView === 'daily');
+  weeklyBtn.classList.toggle('active', _tsCurrentView === 'weekly');
+  document.getElementById('tsm-toggle').style.display = (hasDaily && hasWeekly) ? '' : 'none';
+  renderTSChart();
+  document.getElementById('ts-overlay').classList.add('show');
+}
+function closeTS() { document.getElementById('ts-overlay').classList.remove('show'); }
+
+function switchTSView(view){
+  if (view === _tsCurrentView) return;
+  _tsCurrentView = view;
+  document.querySelectorAll('.tsm-toggle-btn').forEach(b=>b.classList.toggle('active', b.dataset.view === view));
+  renderTSChart();
+}
+
+function renderTSChart(){
+  const d = METRIC_TS[_tsCurrentKey];
+  if (!d) return;
+  const svgEl = document.getElementById('tsm-svg');
+  const tipEl = document.getElementById('ts-tip');
+  const W=620, H=180, pad=36;
+
+  // Build the value series + per-point labels + per-segment "hasGap" flag
+  let series; // array of {value, label, missing:bool}
+  if (_tsCurrentView === 'daily' && d.daily && d.daily.length) {
+    series = d.daily; // already pre-built with date gaps as {missing:true}
+  } else if (d.weekly && d.weekly.data) {
+    series = d.weekly.data.map((v,i)=>({value:v, label:d.weekly.labels[i]||'', missing:false}));
+  } else {
+    series = [];
+  }
+  const real = series.filter(s => !s.missing && s.value != null);
+  if (real.length < 2) {
+    svgEl.innerHTML = `<text x="310" y="90" text-anchor="middle" font-size="14" fill="rgba(255,255,255,.4)" font-family="Inter">Not enough data yet for a trend.</text>`;
+    return;
+  }
+  const vals = real.map(s=>s.value);
+  const mn = Math.min(...vals)*0.97, mx = Math.max(...vals)*1.02;
+  const range = mx - mn || 1;
+  const N = series.length;
+  const xAt = i => pad + (i/(N-1)) * (W - pad*2);
+  const yAt = v => H - pad - ((v - mn)/range) * (H - pad*2);
+
+  // Build segments — solid path between consecutive real points; dashed when crossing gaps.
+  let solidPath = '', dashedPath = '';
+  let prevIdx = -1;
+  series.forEach((s, i) => {
+    if (s.missing || s.value == null) return;
+    if (prevIdx >= 0) {
+      const gap = i - prevIdx > 1; // any missing entries between
+      const x1 = xAt(prevIdx).toFixed(1), y1 = yAt(series[prevIdx].value).toFixed(1);
+      const x2 = xAt(i).toFixed(1), y2 = yAt(s.value).toFixed(1);
+      const seg = `M${x1},${y1} L${x2},${y2}`;
+      if (gap) dashedPath += seg + ' '; else solidPath += seg + ' ';
+    }
+    prevIdx = i;
+  });
+  // Build area under whole curve (using solid+dashed combined as a continuous fill)
+  const realPts = series.map((s, i) => s.missing || s.value == null ? null : [xAt(i), yAt(s.value)]).filter(Boolean);
+  const areaD = realPts.length >= 2
+    ? `M${realPts[0][0]},${realPts[0][1]} ` + realPts.slice(1).map(p=>`L${p[0]},${p[1]}`).join(' ') + ` L${realPts[realPts.length-1][0]},${H-pad} L${realPts[0][0]},${H-pad} Z`
+    : '';
+
+  // Smart x-axis labels: show ~6 evenly distributed labels for readability
+  const maxLabels = 7;
+  const labelStep = Math.max(1, Math.ceil(N / maxLabels));
+
+  const id = 'ts'+d.title.replace(/\s/g,'');
+  svgEl.innerHTML = `
+    <defs>
+      <linearGradient id="${id}g" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${d.color}" stop-opacity=".2"/>
+        <stop offset="100%" stop-color="${d.color}" stop-opacity=".02"/>
+      </linearGradient>
+    </defs>
+    ${[0,0.25,0.5,0.75,1].map(p=>{
+      const y=pad+(p*(H-pad*2)); const v=(mx-(p*(mx-mn))).toFixed(1);
+      return `<line x1="${pad}" y1="${y.toFixed(1)}" x2="${W-pad}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>
+      <text x="${pad-5}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="9" fill="rgba(255,255,255,.2)" font-family="Inter">${v}</text>`;
+    }).join('')}
+    ${series.map((s,i)=>i%labelStep===0||i===N-1?`<text x="${xAt(i).toFixed(1)}" y="${H-4}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.25)" font-family="Inter">${s.label||''}</text>`:'').join('')}
+    ${areaD ? `<path d="${areaD}" fill="url(#${id}g)"/>` : ''}
+    ${solidPath ? `<path d="${solidPath}" stroke="${d.color}" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+    ${dashedPath ? `<path d="${dashedPath}" stroke="${d.color}" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3,4" opacity=".55"/>` : ''}
+    ${series.map((s,i)=>{
+      if (s.missing || s.value == null) return '';
+      const cx = xAt(i).toFixed(1), cy = yAt(s.value).toFixed(1);
+      const isLast = i === series.length - 1;
+      return `<circle class="ts-dot" cx="${cx}" cy="${cy}" r="${isLast?5:3}" fill="${d.color}" opacity="${isLast?1:0.6}"/>
+              <circle cx="${cx}" cy="${cy}" r="14" fill="transparent" class="ts-hit" data-v="${s.value}" data-lbl="${s.label||''}" data-x="${cx}" data-y="${cy}"/>`;
+    }).join('')}`;
+  svgEl.querySelectorAll('.ts-hit').forEach(dot => {
+    dot.addEventListener('mouseenter', () => {
+      tipEl.innerHTML = `<strong style="color:${d.color}">${dot.dataset.lbl} · ${dot.dataset.v} ${d.unit}</strong>`;
+      const sx = parseFloat(dot.dataset.x) * (svgEl.clientWidth / W);
+      const sy = parseFloat(dot.dataset.y) * (svgEl.clientHeight / H);
+      tipEl.style.left = `${sx - 60}px`; tipEl.style.top = `${sy - 44}px`;
+      tipEl.style.opacity = '1';
+    });
+    dot.addEventListener('mouseleave', () => tipEl.style.opacity = '0');
+  });
+}
+
+// ── Quote cycler ──────────────────────────────────────────────
+let qIdx = 0;
+let qTimer = null;
+function buildQuoteNav() {
+  const nav = document.getElementById('cq-nav');
+  nav.innerHTML = '';
+  if (qTimer) { clearInterval(qTimer); qTimer = null; }
+  if (!QUOTES.length) return;
+  QUOTES.forEach((_,i) => {
+    const d = document.createElement('div'); d.className = 'cqd'+(i===0?' active':'');
+    d.onclick = () => showQuote(i); nav.appendChild(d);
+  });
+  showQuote(0);
+  if (QUOTES.length > 1) qTimer = setInterval(() => showQuote((qIdx+1)%QUOTES.length), 5500);
+}
+function showQuote(i) {
+  qIdx = i;
+  const t = document.getElementById('cq-text'), a = document.getElementById('cq-attr');
+  t.style.cssText='opacity:0;transform:translateY(14px);transition:opacity .4s ease,transform .4s cubic-bezier(.16,1,.3,1);';
+  setTimeout(() => { t.textContent=QUOTES[i].q; a.textContent=QUOTES[i].attr || ''; t.style.opacity='1'; t.style.transform='none'; a.style.opacity='1'; }, 280);
+  document.querySelectorAll('.cqd').forEach((d,j)=>d.classList.toggle('active',j===i));
+}
+
+// ── Counter animation ─────────────────────────────────────────
+function animCount(el, target, dur=1800) {
+  if (target == null || isNaN(target)) { el.textContent = '—'; return; }
+  const s=performance.now();
+  const tick=n=>{const p=Math.min((n-s)/dur,1),e=1-Math.pow(1-p,3);el.textContent=Math.round(e*target);if(p<1)requestAnimationFrame(tick);};
+  requestAnimationFrame(tick);
+}
+
+// ── Scroll handler ────────────────────────────────────────────
+let ticking=false;
+window.addEventListener('scroll',()=>{if(!ticking){requestAnimationFrame(handleScroll);ticking=true;}},{passive:true});
+function handleScroll() {
+  ticking=false;
+  const y=window.scrollY, vh=window.innerHeight, total=document.body.scrollHeight-vh;
+  document.getElementById('prog').style.width=`${Math.min(y/total*100,100)}%`;
+  if(y<vh*1.3){
+    const p=y/vh;
+    const ter=document.getElementById('terrain-svg');
+    const hc=document.getElementById('hero-content');
+    if(ter)ter.style.transform=`translateY(${y*.22}px)`;
+    if(hc)hc.style.transform=`translateY(${y*.07}px)`;
+    const hs=document.getElementById('hero-strip');
+    if(hs)hs.style.opacity=Math.max(0,1-p*2.2);
+  }
+  const nav=document.getElementById('topnav');
+  const curSec=getCurrentSection(y,vh);
+  nav.classList.toggle('scrolled',y>60&&!DARK_SECS.has(curSec));
+  nav.classList.toggle('dark',y>60&&DARK_SECS.has(curSec));
+  if(y<40){nav.classList.remove('scrolled','dark');}
+  document.querySelectorAll('.nav-link').forEach(l=>{l.classList.toggle('active', l.dataset.target===curSec);});
+  const snav=document.getElementById('snav');
+  SECTIONS.forEach((s,i)=>{const d=snav.children[i];if(!d)return;d.classList.toggle('active',s===curSec);d.classList.toggle('ondark',DARK_SECS.has(curSec));});
+  storyScroll(y,vh);
+  featRunScroll(y,vh);
+}
+function getCurrentSection(y,vh){let cur='hero';SECTIONS.forEach(s=>{const el=document.getElementById(s);if(el&&el.getBoundingClientRect().top<=vh*.55)cur=s;});return cur;}
+
+function scrollToSection(id){document.getElementById(id)?.scrollIntoView({behavior:'smooth'});}
+document.querySelectorAll('.snd').forEach(d=>{d.addEventListener('click',()=>scrollToSection(d.dataset.s));});
+document.querySelectorAll('.nav-link').forEach(l=>{l.addEventListener('click',()=>scrollToSection(l.dataset.target));});
+
+const io=new IntersectionObserver(e=>{e.forEach(en=>{if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});},{threshold:.1});
+document.querySelectorAll('.R,.Rl,.Rr').forEach(el=>io.observe(el));
+
+[['#morning','.cnt2'],['#race','.cnt3']].forEach(([sec,cls])=>{
+  const io2=new IntersectionObserver(e=>{if(e[0].isIntersecting){document.querySelectorAll(cls).forEach(el=>setTimeout(()=>animCount(el,+el.dataset.t,1200),300));io2.disconnect();}},{threshold:.2});
+  const s=document.querySelector(sec);if(s)io2.observe(s);
+});
+
+const hero=document.getElementById('hero'),glow=document.getElementById('hero-glow');
+hero.addEventListener('mousemove',e=>{const r=hero.getBoundingClientRect();glow.style.left=(e.clientX-r.left)+'px';glow.style.top=(e.clientY-r.top)+'px';});
+
+
+// ── Floating chat (wired to /api/chat/message) ────────────────
+let cpMsgs=[],cpBusy=false;
+function toggleChat(){
+  const fab=document.getElementById('chat-fab'),pan=document.getElementById('chat-panel');
+  const o=pan.classList.contains('open');
+  fab.classList.toggle('open',!o);
+  pan.classList.toggle('open',!o);
+  if(!o&&cpMsgs.length===0){
+    const m = window.__MAG_DATA;
+    const greeting = m && m.coach && m.coach.message
+      ? m.coach.message.length > 180 ? m.coach.message.slice(0, 180).trim() + '…' : m.coach.message
+      : "Morning. What's on your mind today?";
+    setTimeout(()=>cpAdd('coach', greeting), 400);
+  }
+  if(!o)setTimeout(()=>document.getElementById('cp-inp')?.focus(),420);
+}
+function cpAdd(role,text){
+  cpMsgs.push({role,text});
+  const now=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  const m=document.getElementById('cp-msgs');
+  const d=document.createElement('div');
+  d.className=`cp-msg ${role}`;
+  d.innerHTML=`<div><div class="cp-bubble">${escapeHtml(text).replace(/\n/g,'<br>')}</div><div class="cp-time" style="text-align:${role==='user'?'right':'left'}">${now}</div></div>`;
+  m.appendChild(d);
+  m.scrollTop=m.scrollHeight;
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function cpTyping(){
+  const m=document.getElementById('cp-msgs');
+  const d=document.createElement('div');
+  d.className='cp-msg coach';
+  d.id='cp-typing';
+  d.innerHTML=`<div><div class="cp-typing-row"><div class="cp-typing-dot"></div><div class="cp-typing-dot"></div><div class="cp-typing-dot"></div></div></div>`;
+  m.appendChild(d);
+  m.scrollTop=m.scrollHeight;
+}
+function cpRemTyping(){document.getElementById('cp-typing')?.remove();}
+async function cpSend(text){
+  if(!text||!text.trim()||cpBusy)return;
+  document.getElementById('cp-inp').value='';
+  document.getElementById('cp-chips').style.display='none';
+  cpAdd('user',text.trim());
+  cpBusy=true;document.getElementById('cp-send').disabled=true;
+  cpTyping();
+  try{
+    const r = await fetch('/api/chat/message', {
+      method:'POST',
+      credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message: text.trim()}),
+    });
+    const data = await r.json();
+    cpRemTyping();
+    if (r.ok && data.response) {
+      cpAdd('coach', data.response);
+    } else {
+      cpAdd('coach', data.error || 'Coach is unavailable — try again in a moment.');
+    }
+  }catch{
+    cpRemTyping();
+    cpAdd('coach','Connection dropped — try again.');
+  }
+  cpBusy=false;document.getElementById('cp-send').disabled=false;
+  document.getElementById('cp-inp').focus();
+}
+
+// ── Miles dot grid ────────────────────────────────────────────
+function buildMilesGrid(m){
+  const grid = document.getElementById('miles-grid');
+  const numEl = document.getElementById('miles-num');
+  const subEl = document.getElementById('miles-sub');
+  const metaEl = document.getElementById('miles-meta');
+  const overflowEl = document.getElementById('miles-overflow');
+  const lmEl = document.getElementById('miles-landmark');
+  if (!grid) return;
+
+  const seasonDone = (m && m.season && m.season.miles_completed) || 0;
+  const seasonPlannedRemaining = (m && m.season && m.season.miles_remaining) || 0;
+  const total = seasonDone + seasonPlannedRemaining;
+  numEl.textContent = seasonDone;
+
+  if (total <= 0) {
+    subEl.textContent = 'Once miles start logging, every mile becomes a block here.';
+    grid.innerHTML = '';
+    metaEl.innerHTML = '';
+    return;
+  }
+
+  // Walk calendar by date — completed first (earliest → latest), then planned upcoming.
+  const cal = (m && m.calendar) || {};
+  const dates = Object.keys(cal).sort();
+  const doneEntries = []; // [{date, type, mi}]
+  const plannedEntries = [];
+  for (const d of dates) {
+    const c = cal[d];
+    if (!c) continue;
+    if (c.status === 'done' && c.actual_mi) {
+      doneEntries.push({date: d, type: c.type, mi: c.actual_mi});
+    } else if ((c.status === 'upcoming' || c.status === 'today') && c.target_mi && c.status !== 'done') {
+      plannedEntries.push({date: d, type: c.type, mi: c.target_mi});
+    }
+  }
+
+  // Tally a base "miles per dot" so total dot count stays under cap.
+  const MAX_DOTS = 1500;
+  let perDot = 1;
+  while (Math.ceil(total / perDot) > MAX_DOTS) perDot += perDot < 5 ? 1 : 5;
+
+  if (perDot > 1) {
+    subEl.innerHTML = `Each block represents <strong style="color:var(--lime);">${perDot} miles</strong> · ${seasonDone} run, ${seasonPlannedRemaining} remaining.`;
+  } else {
+    subEl.textContent = `Each block is one mile · ${seasonDone} completed, ${seasonPlannedRemaining} remaining.`;
+  }
+
+  // Build dot list (color by workout type for completed, grey for planned)
+  function emitDots(entries, isPlanned) {
+    const out = [];
+    let bucket = 0; // accumulator of miles in current dot
+    for (const e of entries) {
+      let remaining = e.mi;
+      while (remaining > 0) {
+        const consume = Math.min(remaining, perDot - bucket);
+        bucket += consume;
+        remaining -= consume;
+        if (bucket >= perDot - 1e-9) {
+          out.push({date: e.date, type: e.type, planned: isPlanned});
+          bucket = 0;
+        }
+      }
+    }
+    return out;
+  }
+  const doneDots = emitDots(doneEntries, false);
+  const plannedDots = emitDots(plannedEntries, true);
+  const allDots = [...doneDots, ...plannedDots];
+
+  // Lookup week index by date — derived from weekly_history wk_start_iso
+  const weekStarts = ((m && m.weekly_history) || []).map(w => w.wk_start_iso).filter(Boolean).sort();
+  function weekLabel(dateStr) {
+    if (!weekStarts.length) return '';
+    let label = '';
+    for (let i = 0; i < weekStarts.length; i++) {
+      if (dateStr >= weekStarts[i]) {
+        const idx = i;
+        const totalW = (m.training && m.training.total_weeks) || weekStarts.length;
+        const startIdx = (m.training && m.training.current_week) ? m.training.current_week - (weekStarts.length - 1) : null;
+        if (startIdx != null) return `Week ${startIdx + idx} of ${totalW}`;
+        return `Week ${idx + 1}`;
+      }
+    }
+    return '';
+  }
+
+  grid.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  allDots.forEach((d, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'miles-dot' + (d.planned ? ' planned' : '');
+    if (!d.planned) {
+      const meta = (typeof tm === 'function') ? tm(d.type) : {col: '#b8ff4f'};
+      dot.style.background = meta.col || '#b8ff4f';
+    }
+    const mileN = (i + 1) * perDot;
+    const tooltipBase = perDot > 1 ? `Mile ${mileN-perDot+1}–${mileN}` : `Mile ${mileN}`;
+    const wk = weekLabel(d.date);
+    dot.dataset.tip = wk ? `${tooltipBase} · ${wk}` : tooltipBase;
+    frag.appendChild(dot);
+  });
+  grid.appendChild(frag);
+  overflowEl.style.display = 'none';
+
+  // Wire tooltip
+  const tip = document.getElementById('miles-tip');
+  grid.addEventListener('mousemove', e => {
+    const dot = e.target.closest('.miles-dot');
+    if (!dot) { tip.classList.remove('show'); return; }
+    tip.textContent = dot.dataset.tip;
+    tip.style.left = (e.clientX + 12) + 'px';
+    tip.style.top = (e.clientY + 12) + 'px';
+    tip.classList.add('show');
+  });
+  grid.addEventListener('mouseleave', () => tip.classList.remove('show'));
+
+  // Meta legend
+  const legendTypes = [];
+  const seenTypes = new Set(doneEntries.map(e => e.type));
+  ['easy','tempo','long_run','interval','workout','recovery','strength','race'].forEach(t => {
+    if (seenTypes.has(t)) {
+      const meta = (typeof tm === 'function') ? tm(t) : {col:'#b8ff4f'};
+      legendTypes.push(`<div class="miles-meta-item"><div class="miles-meta-dot" style="background:${meta.col}"></div>${t.replace('_',' ')}</div>`);
+    }
+  });
+  if (seasonPlannedRemaining > 0)
+    legendTypes.push(`<div class="miles-meta-item"><div class="miles-meta-dot" style="background:rgba(255,255,255,.18)"></div>planned</div>`);
+  metaEl.innerHTML = legendTypes.join('');
+
+  // Stagger-animate dots in on IntersectionObserver
+  const dotEls = grid.querySelectorAll('.miles-dot');
+  const milesIO = new IntersectionObserver(e => {
+    if (!e[0].isIntersecting) return;
+    const stagger = Math.max(2, Math.min(8, 2000 / Math.max(dotEls.length, 1)));
+    dotEls.forEach((d, i) => setTimeout(() => d.classList.add('in'), i * stagger));
+    milesIO.disconnect();
+  }, {threshold: .15});
+  milesIO.observe(document.getElementById('miles'));
+
+  // Landmark
+  if (m && m.miles_landmark) {
+    lmEl.style.display = '';
+    document.getElementById('miles-landmark-num').textContent = m.miles_landmark.miles + ' mi';
+    document.getElementById('miles-landmark-name').textContent = m.miles_landmark.name;
+    document.getElementById('miles-landmark-sub').textContent = m.miles_landmark.sub;
+  }
+}
+
+// ── Coach picker ──────────────────────────────────────────────
+// Hardcoded client-side fallback so the menu always renders, even before
+// /api/coach responds (or if the backend hasn't been restarted yet).
+let COACH_OPTIONS = [
+  {key:'classic', name:'Coach Alex',  description:'Elite, polarized-training purist. HRV-obsessed, warm but demanding, data-precise.'},
+  {key:'maya',    name:'Coach Maya',  description:'Consistency-first for busy athletes. Practical, schedule-aware, low-friction.'},
+  {key:'jordan',  name:'Coach Jordan',description:'Resilience and longevity. Calm, recovery-first, injury-prevention focused.'},
+];
+let CURRENT_COACH_KEY = 'classic';
+let coachMenuBuilt = false;
+
+async function loadCoachOptions(){
+  try {
+    const r = await fetch('/api/coach', {credentials:'same-origin'});
+    if (!r.ok) { renderCoachPicker(); return; }
+    const data = await r.json();
+    if (Array.isArray(data.options) && data.options.length) COACH_OPTIONS = data.options;
+    if (data.current) CURRENT_COACH_KEY = data.current;
+    renderCoachPicker();
+  } catch (e) {
+    console.warn('Coach options fetch failed:', e);
+    renderCoachPicker();
+  }
+}
+
+function renderCoachPicker(){
+  if (!COACH_OPTIONS.length) return;
+  const cur = COACH_OPTIONS.find(o => o.key === CURRENT_COACH_KEY) || COACH_OPTIONS[0];
+  document.getElementById('coach-picker-av').textContent = (cur.name || 'C').replace('Coach ', '').charAt(0).toUpperCase();
+  document.getElementById('coach-picker-name').textContent = cur.name || 'Coach';
+  const menu = document.getElementById('coach-picker-menu');
+  menu.innerHTML = COACH_OPTIONS.map(o => `
+    <div class="coach-picker-item${o.key===CURRENT_COACH_KEY?' active':''}" onclick="pickCoach('${o.key}')">
+      <div class="coach-picker-item-av">${(o.name||'C').replace('Coach ','').charAt(0).toUpperCase()}</div>
+      <div>
+        <div class="coach-picker-item-name">${o.name||o.key}</div>
+        <div class="coach-picker-item-desc">${o.description||''}</div>
+      </div>
+    </div>
+  `).join('');
+  coachMenuBuilt = true;
+}
+
+function toggleCoachMenu(e){
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('coach-picker-menu');
+  menu.classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const picker = document.querySelector('.coach-picker');
+  if (picker && !picker.contains(e.target)) {
+    document.getElementById('coach-picker-menu').classList.remove('open');
+  }
+});
+
+async function pickCoach(key){
+  if (key === CURRENT_COACH_KEY) { document.getElementById('coach-picker-menu').classList.remove('open'); return; }
+  const menu = document.getElementById('coach-picker-menu');
+  menu.innerHTML = `<div class="coach-picker-saving">Switching…</div>`;
+  try {
+    const r = await fetch('/api/coach', {
+      method:'POST',
+      credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({coach_key: key}),
+    });
+    if (!r.ok) throw new Error('switch failed');
+    const data = await r.json();
+    CURRENT_COACH_KEY = data.current;
+    // Re-fetch magazine data so morning quote, persona, quotes refresh in place
+    await hydrate();
+    renderCoachPicker();
+    // Reset chat state so the new persona greets next open
+    cpMsgs = [];
+    document.getElementById('cp-msgs').innerHTML = '';
+    document.getElementById('cp-chips').style.display = '';
+    document.getElementById('coach-picker-menu').classList.remove('open');
+  } catch {
+    menu.innerHTML = `<div class="coach-picker-saving" style="color:var(--terra);">Could not switch · try again</div>`;
+    setTimeout(renderCoachPicker, 1500);
+  }
+}
+
+// ── Hydration ─────────────────────────────────────────────────
+async function hydrate(){
+  let m;
+  try {
+    const r = await fetch('/api/magazine', {credentials:'same-origin'});
+    if (!r.ok) return null;
+    m = await r.json();
+  } catch (e) { console.warn('Magazine hydration failed:', e); return null; }
+  window.__MAG_DATA = m;
+
+  // Hero
+  const nameEl = document.getElementById('hero-name');
+  if (m.athlete && m.athlete.name && m.athlete.name.trim()) {
+    const parts = m.athlete.name.trim().split(/\s+/);
+    nameEl.dataset.first = (parts[0] || '').toUpperCase();
+    nameEl.dataset.last  = (parts.slice(1).join(' ') || '').toUpperCase();
+    document.getElementById('nav-brand').textContent = `RunCoach · ${m.athlete.name}`;
+    document.getElementById('nav-profile').textContent = (parts[0]||'?').charAt(0).toUpperCase() + ((parts[1]||'').charAt(0).toUpperCase());
+    document.getElementById('nav-profile').title = m.athlete.name;
+  } else {
+    nameEl.dataset.first = 'ATHLETE';
+    nameEl.dataset.last  = '';
+    document.getElementById('nav-profile').textContent = 'A';
+  }
+  if (m.today_pretty) document.getElementById('hero-eye').textContent = `Your Personal Record · ${m.today_pretty}`;
+  if (m.race && m.race.days_to_race != null) document.getElementById('hero-days').dataset.t = String(m.race.days_to_race);
+  if (m.race && m.race.name) document.getElementById('hero-days-lbl').textContent = `Days to ${m.race.name}`;
+  if (m.training && m.training.current_week) document.getElementById('hero-week').dataset.t = String(m.training.current_week);
+  if (m.training && m.training.total_weeks) document.getElementById('hero-total-weeks').textContent = `/${m.training.total_weeks}`;
+  if (m.season && m.season.miles_completed != null) document.getElementById('hero-season-mi').dataset.t = String(m.season.miles_completed);
+  if (m.health && m.health.hrv != null) document.getElementById('hero-hrv').dataset.t = String(m.health.hrv);
+  else document.getElementById('hero-hrv').textContent = '—';
+
+  // Hero tagline — keep poetic default but personalize when we have a race
+  if (m.race && m.race.name && m.athlete && m.athlete.name) {
+    const first = m.athlete.name.split(' ')[0];
+    document.getElementById('hero-tag').textContent = `"${first} is not running from something. ${first} is running toward ${m.race.name}."`;
+  }
+
+  // Morning
+  if (m.today_pretty) {
+    const wkPart = (m.training && m.training.current_week)
+      ? ` · Week ${m.training.current_week}${m.training.total_weeks ? ' of ' + m.training.total_weeks : ''}` : '';
+    document.getElementById('m-eye').textContent = `Morning Readiness · ${m.today_pretty.split(',').slice(0,2).join(',')}`;
+    document.getElementById('m-date').textContent = m.today_pretty + wkPart;
+  }
+  if (m.health) {
+    if (m.health.hrv != null) document.getElementById('m-hrv-num').dataset.t = String(m.health.hrv);
+    else document.getElementById('m-hrv-num').textContent = '—';
+    const lbl = document.getElementById('m-hrv-lbl');
+    const trend = m.health.hrv_trend;
+    if (trend != null) lbl.textContent = trend > 0 ? `ms HRV · +${trend} vs 7-day ↑ · Click to explore →`
+                          : trend < 0 ? `ms HRV · ${trend} vs 7-day ↓ · Click to explore →`
+                                      : 'ms HRV · steady · Click to explore →';
+    else lbl.textContent = 'ms HRV · Click to explore →';
+    if (m.health.body_battery != null) document.getElementById('m-bb').textContent = m.health.body_battery;
+    else document.getElementById('m-bb').textContent = '—';
+    if (m.health.sleep_hours != null) document.getElementById('m-sleep').textContent = m.health.sleep_hours;
+    else document.getElementById('m-sleep').textContent = '—';
+    if (m.health.resting_hr != null) document.getElementById('m-rhr').textContent = m.health.resting_hr;
+    else document.getElementById('m-rhr').textContent = '—';
+  }
+  if (m.coach) {
+    if (m.coach.key) CURRENT_COACH_KEY = m.coach.key;
+    if (m.coach.name) document.getElementById('m-coach-av').textContent = m.coach.name.charAt(0).toUpperCase();
+    if (m.coach.display) document.getElementById('m-coach-name').textContent = m.coach.display;
+    if (m.coach.tagline) document.getElementById('m-coach-tag-line').textContent = m.coach.tagline;
+    if (m.coach.message) document.getElementById('m-coach-msg').textContent = `"${m.coach.message}"`;
+    document.getElementById('cph-av').textContent = (m.coach.name || 'C').charAt(0).toUpperCase();
+    document.getElementById('fab-av').textContent = (m.coach.name || 'C').charAt(0).toUpperCase();
+    document.getElementById('cph-name').textContent = m.coach.display || 'Coach';
+    document.getElementById('cph-tagline').textContent = `Online · ${m.coach.tagline || ''}`;
+    if (coachMenuBuilt) renderCoachPicker();
+    const ctxBits = [];
+    if (m.training && m.training.current_week) ctxBits.push(`Week <strong>${m.training.current_week}${m.training.total_weeks?'/'+m.training.total_weeks:''}</strong>`);
+    if (m.health && m.health.hrv != null) ctxBits.push(`HRV <strong>${m.health.hrv}ms</strong>`);
+    if (m.race && m.race.days_to_race != null) ctxBits.push(`<strong>${m.race.days_to_race} days</strong> to ${m.race.name||'race'}`);
+    if (ctxBits.length) document.getElementById('cp-ctx-txt').innerHTML = ctxBits.join(' · ');
+  }
+  if (m.flipcards) {
+    document.getElementById('fc-phase-val').textContent = m.flipcards.phase || '—';
+    document.getElementById('fc-phase-back').textContent = m.flipcards.phase || '—';
+    document.getElementById('fc-phase-text').textContent = `Currently in ${m.flipcards.phase || 'training'} phase.`;
+    document.getElementById('fc-tempo-val').textContent = m.flipcards.tempo_pr ? m.flipcards.tempo_pr : '—';
+    document.getElementById('fc-week-val').textContent = m.flipcards.week_label || '—';
+    document.getElementById('fc-week-text').textContent = m.training && m.training.total_weeks
+      ? `Week ${m.training.current_week} of ${m.training.total_weeks}.` : 'Your current plan position.';
+  }
+  if (m.this_week) {
+    document.getElementById('fc-load-val').textContent = m.this_week.miles != null ? `${m.this_week.miles}mi` : '—';
+    document.getElementById('fc-load-text').textContent = `${m.this_week.completed_mi||0} of ${m.this_week.planned_mi||0} planned miles completed.`;
+    document.getElementById('act-week').textContent = String(m.this_week.miles ?? '—');
+    document.getElementById('act-week-sub').textContent = m.this_week.label || 'This week';
+    if (m.this_week.load_pct != null) {
+      document.getElementById('act-load').textContent = m.this_week.load_pct + '%';
+      document.getElementById('act-load-sub').textContent = 'Of plan';
+    }
+  }
+  if (m.season) {
+    document.getElementById('act-ytd').textContent = String(m.season.miles_completed ?? '—');
+    document.getElementById('act-ytd-sub').textContent = m.season.pct_complete != null ? `${m.season.pct_complete}% of season` : 'Season';
+  }
+
+  // Featured run
+  if (m.last_run) {
+    const lr = m.last_run;
+    document.getElementById('fr-eye').textContent = `${lr.date_pretty || 'Recent'} · Featured Run`;
+    const dayLabel = lr.date_pretty ? lr.date_pretty.split(',')[0].toUpperCase() : 'RECENT';
+    document.getElementById('fr-hed').innerHTML = `${dayLabel}<br>${(lr.type_label || 'Run').toUpperCase()}`;
+    document.getElementById('fr-dek').textContent = lr.type_label
+      ? `${lr.type_label} · ${lr.miles||'—'} miles${lr.pace_mi?` at ${lr.pace_mi}/mi`:''}` : 'Your last completed session.';
+    document.getElementById('fr-mi').textContent = lr.miles != null ? lr.miles : '—';
+    document.getElementById('fr-pace').textContent = lr.pace_mi || '—';
+    document.getElementById('fr-hr').textContent = lr.avg_hr != null ? lr.avg_hr : '—';
+    document.getElementById('fr-load').textContent = lr.training_load != null ? lr.training_load : '—';
+    document.getElementById('fr-cad').textContent = lr.cadence != null ? lr.cadence : '—';
+    document.getElementById('fr-pow').textContent = lr.power_w != null ? lr.power_w : '—';
+    if (lr.elevation_ft) {
+      document.getElementById('fr-elev-gain').textContent = `+${lr.elevation_ft.toLocaleString()} ft`;
+    } else {
+      document.getElementById('fr-elev-wrap').style.display = 'none';
+    }
+    document.getElementById('fr-r-eye').textContent = `Coach Analysis · ${lr.date_pretty || 'Post-Run'}`;
+    document.getElementById('fr-analysis').textContent = lr.coach_analysis ? `"${lr.coach_analysis}"` : '"No coach analysis available for this run yet."';
+    document.getElementById('fr-body').textContent = lr.coach_analysis_full && lr.coach_analysis_full.length > (lr.coach_analysis||'').length
+      ? lr.coach_analysis_full.slice((lr.coach_analysis||'').length).trim() : '';
+    if (!document.getElementById('fr-body').textContent) document.getElementById('fr-body').style.display = 'none';
+
+    const flagsEl = document.getElementById('fr-flags');
+    const flags = [];
+    if (lr.cadence) flags.push({ok: lr.cadence>=178&&lr.cadence<=185, t:`Cadence ${lr.cadence} spm`});
+    if (lr.avg_hr) flags.push({ok: true, t:`Average HR ${lr.avg_hr} bpm${lr.max_hr?` · peak ${lr.max_hr}`:''}`});
+    if (lr.elevation_ft) flags.push({ok: true, t:`+${lr.elevation_ft.toLocaleString()} ft of climbing`});
+    if (lr.aerobic_effect) flags.push({ok: true, t:`Aerobic training effect ${lr.aerobic_effect}`});
+    flagsEl.innerHTML = flags.map(f=>`<div class="fr-flag"><span style="color:${f.ok?'var(--sage)':'var(--terra)'};margin-top:1px;flex-shrink:0;">${f.ok?'✓':'⚠'}</span>${f.t}</div>`).join('');
+
+    // HR zones
+    if (lr.hr_zones && lr.hr_zones.some(z=>z.pct>0)) {
+      const zt = document.getElementById('fr-zones');
+      zt.innerHTML = lr.hr_zones.filter(z=>z.pct>0).map(z=>`<div class="fr-zone-seg" style="width:${z.pct}%;background:${z.color};" data-tip="${z.label} ${z.name} · ${z.pct}%"></div>`).join('');
+      document.getElementById('fr-zone-lbls').innerHTML = lr.hr_zones.filter(z=>z.pct>0).map(z=>`<span style="font-size:10px;color:rgba(255,255,255,.3);">${z.label} ${z.pct}%</span>`).join('');
+    }
+
+    // Elevation profile
+    if (lr.elevation_pts && lr.elevation_pts.length >= 2) {
+      const eW=400,eH=80,ePad=6;
+      const pts = lr.elevation_pts;
+      const xS = (eW-ePad*2) / (pts.length-1);
+      const coords = pts.map((v,i) => [+(ePad+i*xS).toFixed(1), +(eH-ePad - v/100*(eH-ePad*2)).toFixed(1)]);
+      const lineD = 'M' + coords.map(p=>p.join(',')).join(' L');
+      const areaD = lineD + ` L${coords[coords.length-1][0]},${eH} L${coords[0][0]},${eH} Z`;
+      document.getElementById('fr-elev-line').setAttribute('d', lineD);
+      document.getElementById('fr-elev-area').setAttribute('d', areaD);
+    } else {
+      // No elevation telemetry — clear placeholder shape
+      document.getElementById('fr-elev-line').setAttribute('d', 'M0,40 L400,40');
+      document.getElementById('fr-elev-area').setAttribute('d', 'M0,40 L400,40 L400,80 L0,80 Z');
+    }
+
+    if (lr.aerobic_effect) {
+      document.getElementById('fr-recovery').style.display = '';
+      document.getElementById('fr-aer-effect').textContent = lr.aerobic_effect;
+      document.getElementById('fr-aer-text').textContent = lr.aerobic_effect >= 4 ? 'Highly improving aerobic capacity.' : lr.aerobic_effect >= 3 ? 'Improving aerobic capacity.' : lr.aerobic_effect >= 2 ? 'Maintaining aerobic capacity.' : 'Minor aerobic stimulus.';
+    }
+  } else {
+    document.getElementById('fr-eye').textContent = 'No recent runs yet';
+    document.getElementById('fr-hed').innerHTML = 'NO<br>RUNS YET';
+    document.getElementById('fr-dek').textContent = 'Once you complete a run, the breakdown lives here.';
+  }
+
+  // Activity feed — derive from last_run + history
+  ACTIVITIES_DATA = [];
+  if (m.last_run) {
+    const lr = m.last_run;
+    const ppm = (lr.laps||[]).filter(l=>l.pace).map(l=>{const [mn,sc]=l.pace.split(':').map(Number);return mn+sc/60;});
+    const hpm = (lr.laps||[]).filter(l=>l.hr).map(l=>l.hr);
+    ACTIVITIES_DATA.push({
+      id: 1,
+      date: lr.date_pretty ? lr.date_pretty.split(',').slice(1).join(',').trim() : '—',
+      label: lr.type_label || 'Run',
+      type: lr.type || 'easy',
+      dist: lr.miles ?? 0,
+      time: '',
+      pace: lr.pace_mi ? lr.pace_mi + '/mi' : '',
+      hr: lr.avg_hr,
+      tss: lr.training_load,
+      cadence: lr.cadence,
+      power: lr.power_w,
+      elevation_ft: lr.elevation_ft,
+      zones: lr.hr_zones ? lr.hr_zones.map(z=>z.pct) : [0,0,0,0,0],
+      pacePerMile: ppm,
+      hrPerMile: hpm,
+      note: lr.coach_analysis ? `"${lr.coach_analysis}"` : null,
+    });
+  }
+  buildActFeed();
+
+  // Story / weekly history
+  if (m.weekly_history && m.weekly_history.length) {
+    WEEK_DATA = m.weekly_history.map((w,i)=>({
+      wk: w.wk_label || `W${i+1}`,
+      mi: w.mi || 0,
+      hrv: w.hrv,
+      tss: w.load || 0,
+      key: w.key || (w.is_current ? 'Current' : 'Build'),
+      col: '#5a8a62',
+      runs: w.runs || [],
+      note: w.is_current ? `Current week — ${w.mi||0} miles logged so far.`
+                          : `${w.mi||0} miles · ${w.key || 'training'}.`,
+    }));
+  }
+  buildStoryChart();
+
+  // ── Time series modals ─────────────────────────────────────────
+  // Build daily series from health_history (last ~60 days) — fill date gaps
+  // as {missing:true} so the chart can render dashed segments across them.
+  const hh = m.health_history || {};
+  function buildDailySeries(rawList){
+    if (!rawList || rawList.length === 0) return [];
+    const map = {};
+    rawList.forEach(p => { map[p.date] = p.value; });
+    const start = new Date(rawList[0].date + 'T12:00:00Z');
+    const end = new Date(rawList[rawList.length-1].date + 'T12:00:00Z');
+    const out = [];
+    const cur = new Date(start);
+    while (cur <= end) {
+      const iso = cur.toISOString().slice(0,10);
+      const lbl = `${_MONTH_NAMES_SHORT[cur.getUTCMonth()]} ${cur.getUTCDate()}`;
+      if (iso in map) out.push({value: map[iso], label: lbl, missing: false});
+      else out.push({value: null, label: lbl, missing: true});
+      cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+    // Trim to last 60 entries to keep chart legible
+    return out.slice(-60);
+  }
+
+  const labels = (m.weekly_history || []).map(w => w.wk_label);
+  const miSeries = (m.weekly_history || []).map(w => w.mi || 0);
+  const hrvWeekly = (m.weekly_history || []).filter(w=>w.hrv!=null).map(w=>({mi:w.mi, hrv:w.hrv, lbl:w.wk_label}));
+  const loadSeries = (m.weekly_history || []).map(w => w.load || 0);
+
+  METRIC_TS.hrv = {
+    eye:'Heart Rate Variability', title:'HRV', unit:'ms',
+    val: m.health && m.health.hrv != null ? m.health.hrv + ' ms' : '—',
+    color:'#b8ff4f',
+    daily: buildDailySeries(hh.hrv),
+    weekly: { data: hrvWeekly.map(w=>w.hrv), labels: hrvWeekly.map(w=>w.lbl) },
+    insight: m.health && m.health.hrv != null
+      ? '"Your HRV trend shows how your body is adapting to training load — daily for variability, weekly for the trend."'
+      : '"Wear your watch overnight to start building HRV history."',
+  };
+  METRIC_TS.battery = {
+    eye:'Body Battery · Start of Day', title:'Body Battery', unit:'%',
+    val: m.health && m.health.body_battery != null ? m.health.body_battery + '%' : '—',
+    color:'#b8673e',
+    daily: buildDailySeries(hh.body_battery),
+    weekly: { data: [], labels: [] },
+    insight: '"Body Battery at wake-up reflects how much energy your body has banked from sleep."',
+  };
+  METRIC_TS.sleep = {
+    eye:'Sleep Duration', title:'Sleep', unit:'h',
+    val: m.health && m.health.sleep_hours != null ? m.health.sleep_hours + 'h' : '—',
+    color:'#5e7e96',
+    daily: buildDailySeries(hh.sleep_hours),
+    weekly: { data: [], labels: [] },
+    insight: '"Sleep is when adaptation happens. Aim for 7–9 hours during heavy training blocks."',
+  };
+  METRIC_TS.rhr = {
+    eye:'Resting Heart Rate', title:'Resting HR', unit:'bpm',
+    val: m.health && m.health.resting_hr != null ? m.health.resting_hr + ' bpm' : '—',
+    color:'#5a8a62',
+    daily: buildDailySeries(hh.resting_hr),
+    weekly: { data: [], labels: [] },
+    insight: '"A drop in resting HR over weeks is one of the clearest signs of improving aerobic fitness."',
+  };
+  METRIC_TS.weekvol = {
+    eye:'Weekly Volume · 8-Week Trend', title:'Weekly Miles', unit:'mi',
+    val: m.this_week && m.this_week.miles != null ? m.this_week.miles + ' mi' : '—',
+    color:'#5a8a62',
+    daily: [],
+    weekly: { data: miSeries, labels },
+    insight: '"Volume is the long-game lever — consistency beats any single big week."',
+  };
+  METRIC_TS.load = {
+    eye:'Training Load · 8-Week Trend', title:'Load', unit:'TSS',
+    val: loadSeries.length ? String(loadSeries[loadSeries.length-1]) : '—',
+    color:'#b8673e',
+    daily: [],
+    weekly: { data: loadSeries, labels },
+    insight: '"Training load combines volume and intensity. Watch the slope, not the single number."',
+  };
+  METRIC_TS.ytd = {
+    eye:'Season Mileage · Cumulative', title:'YTD Miles', unit:'mi',
+    val: m.season && m.season.miles_completed != null ? m.season.miles_completed + ' mi' : '—',
+    color:'#b8673e',
+    daily: [],
+    weekly: { data: miSeries.reduce((acc,v)=>{acc.push((acc[acc.length-1]||0)+v); return acc;}, []), labels },
+    insight: m.season && m.season.total_miles
+      ? `"${m.season.miles_completed} of ${m.season.total_miles} season miles done — ${m.season.pct_complete}% complete."`
+      : '"Every mile is one decision to lace up."',
+  };
+
+  // Race
+  if (m.race) {
+    if (m.race.days_to_race != null) document.getElementById('rc-days').dataset.t = String(m.race.days_to_race);
+    document.getElementById('rc-race').textContent = m.race.name + (m.race.date_pretty ? ` · ${m.race.date_pretty}` : '');
+    const cards = document.getElementById('rc-cards');
+    if (m.race.upcoming && m.race.upcoming.length) {
+      cards.innerHTML = m.race.upcoming.map(u=>`<div class="rc-card"><div class="rc-cd">${u.day}</div><div class="rc-cv">${u.headline}</div><div class="rc-cs">${u.sub}</div></div>`).join('');
+    } else {
+      cards.innerHTML = `<div class="rc-card" style="border-color:rgba(184,255,79,.18);"><div class="rc-cd" style="color:rgba(184,255,79,.45);">No upcoming workouts</div><div class="rc-cv" style="color:var(--lime);">Plan ahead</div><div class="rc-cs">Add workouts to see them here</div></div>`;
+    }
+  }
+
+  // Miles dot grid (renders if season miles > 0)
+  buildMilesGrid(m);
+
+  // Coach quotes
+  if (m.coach && m.coach.quotes && m.coach.quotes.length) {
+    QUOTES = m.coach.quotes.map(q => ({q: q.q, attr: q.attr}));
+    document.getElementById('cq-eye').textContent = `${m.coach.display || 'Coach'} · Weekly Assessment`;
+    buildQuoteNav();
+  }
+
+  // Calendar — driven by API calendar map (Jan 1 → race day)
+  if (m.calendar && typeof m.calendar === 'object') {
+    CAL_DATA = m.calendar;
+  }
+  if (m.calendar_range) {
+    CAL_RANGE = {start: m.calendar_range.start_iso, end: m.calendar_range.end_iso};
+  }
+  CAL_TODAY_ISO = m.today_iso || null;
+  // Default open month = today's month
+  if (m.today_iso) {
+    const t = new Date(m.today_iso + 'T12:00:00Z');
+    calYear = t.getUTCFullYear();
+    calMonth = t.getUTCMonth();
+  } else {
+    const t = new Date();
+    calYear = t.getFullYear();
+    calMonth = t.getMonth();
+  }
+  return m;
+}
+
+// ── Boot ──────────────────────────────────────────────────────
+window.addEventListener('load', async () => {
+  // Render coach picker immediately with hardcoded defaults so it's visible right away
+  renderCoachPicker();
+  // Run hydrate + coach-options fetch in parallel
+  const [m] = await Promise.all([hydrate(), loadCoachOptions()]);
+
+  // Hero name char split — uses data attrs from hydrate; fall back to "Athlete" if hydrate failed entirely
+  const n = document.getElementById('hero-name');
+  if (!m) { n.dataset.first = 'ATHLETE'; n.dataset.last = ''; }
+  const first = (n.dataset.first || 'ATHLETE').toUpperCase();
+  const last = (n.dataset.last || '').toUpperCase();
+  const firstHtml = first.split('').map((c,i)=>`<span class="char" style="animation-delay:${.42+i*.07}s">${c==' '?'&nbsp;':c}</span>`).join('');
+  const lastHtml  = last ? '<br><em>' + last.split('').map((c,i)=>`<span class="char" style="animation-delay:${.68+i*.08}s">${c==' '?'&nbsp;':c}</span>`).join('') + '</em>' : '';
+  n.innerHTML = firstHtml + lastHtml;
+
+  // Reveal elements that were hidden to avoid the flash-of-default-text
+  ['hero-tag','hero-strip','m-coach-msg','fr-hed','fr-dek','fr-analysis','fr-body'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.style.visibility = '';
+  });
+
+  document.querySelectorAll('.cnt').forEach(el=>setTimeout(()=>animCount(el,+el.dataset.t,1800),1400));
+  renderCalendar();
+  buildFeaturedRunCharts();
+  buildQuoteNav();
+  handleScroll();
+  setupTouchInteractions();
+});
+
+// ── Touch interaction helpers (hover→tap) ─────────────────────
+// Only wire these on coarse-pointer devices so desktop hover keeps working.
+function setupTouchInteractions(){
+  const isTouch = window.matchMedia('(hover:none)').matches;
+  if (!isTouch) return;
+
+  // Flip cards — tap toggles, tap elsewhere collapses all
+  document.body.addEventListener('click', e => {
+    const card = e.target.closest('.flip-card');
+    document.querySelectorAll('.flip-card.tapped').forEach(c => {
+      if (c !== card) c.classList.remove('tapped');
+    });
+    if (card) {
+      card.classList.toggle('tapped');
+      e.stopPropagation();
+    }
+  });
+
+  // Zone segments (Featured Run + Activity Feed) — tap to show tooltip,
+  // tap again or anywhere else to dismiss. Auto-clear after 2.5s.
+  let _activeTipSeg = null;
+  let _tipTimer = null;
+  function showSegTip(seg){
+    if (_activeTipSeg && _activeTipSeg !== seg) _activeTipSeg.classList.remove('show-tip');
+    seg.classList.add('show-tip');
+    _activeTipSeg = seg;
+    if (_tipTimer) clearTimeout(_tipTimer);
+    _tipTimer = setTimeout(() => {
+      seg.classList.remove('show-tip');
+      _activeTipSeg = null;
+    }, 2500);
+  }
+  document.body.addEventListener('click', e => {
+    const seg = e.target.closest('.fr-zone-seg, .zone-seg');
+    if (seg) {
+      e.stopPropagation();
+      if (seg === _activeTipSeg) {
+        seg.classList.remove('show-tip');
+        _activeTipSeg = null;
+        if (_tipTimer) clearTimeout(_tipTimer);
+        return;
+      }
+      showSegTip(seg);
+    } else if (_activeTipSeg) {
+      _activeTipSeg.classList.remove('show-tip');
+      _activeTipSeg = null;
+    }
+  });
+
+  // Miles dots — tap to show the floating tip near the dot
+  const milesGrid = document.getElementById('miles-grid');
+  const milesTip = document.getElementById('miles-tip');
+  if (milesGrid && milesTip) {
+    let _milesTipTimer = null;
+    milesGrid.addEventListener('click', e => {
+      const dot = e.target.closest('.miles-dot');
+      if (!dot) { milesTip.classList.remove('show'); return; }
+      milesTip.textContent = dot.dataset.tip;
+      const r = dot.getBoundingClientRect();
+      milesTip.style.left = Math.max(8, r.left - 10) + 'px';
+      milesTip.style.top  = Math.max(8, r.top - 32) + 'px';
+      milesTip.classList.add('show');
+      if (_milesTipTimer) clearTimeout(_milesTipTimer);
+      _milesTipTimer = setTimeout(() => milesTip.classList.remove('show'), 2200);
+      e.stopPropagation();
+    });
+  }
+}
+</script>
+</body>
+</html>
