@@ -133,6 +133,19 @@ def create_app() -> Flask:
         logger.info("DB uploaded to %s (%s bytes)", db_path, os.path.getsize(db_path))
         return ("OK — restart the service to use the new DB", 200)
 
+    @app.route('/admin/db-info')
+    def db_info():
+        token = os.environ.get('DB_UPLOAD_TOKEN')
+        if not token or request.args.get('token') != token:
+            return ("Forbidden", 403)
+        with get_session() as db:
+            athletes = db.query(Athlete).all()
+            rows = [{"id": a.id, "slack_user_id": a.slack_user_id, "name": a.name,
+                     "web_username": a.web_username, "onboarding_complete": a.onboarding_complete}
+                    for a in athletes]
+        import json
+        return (json.dumps(rows, indent=2), 200, {"Content-Type": "application/json"})
+
     @app.route('/admin/upload-garmin-session/<athlete_id>/<filename>', methods=['POST'])
     def upload_garmin_session(athlete_id, filename):
         token = os.environ.get('DB_UPLOAD_TOKEN')
