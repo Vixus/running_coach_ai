@@ -2,6 +2,8 @@
 
 import logging
 import os
+import subprocess
+import sys
 
 from flask import Flask, redirect, render_template, request, send_from_directory, session
 from sqlalchemy import event, text
@@ -55,7 +57,30 @@ def _bootstrap_admin() -> None:
     logger.info("Bootstrap admin set: username=%s slack_id=%s", username, slack_id)
 
 
+def _apply_migrations() -> None:
+    """Apply any pending alembic migrations.
+
+    Base.metadata.create_all only creates *missing tables* — it never adds
+    columns to existing tables. Without this, model columns added via
+    migrations (e.g. athletes.email) drift ahead of the schema and queries
+    fail at startup with "no such column". Alembic is idempotent at head,
+    so this is safe to call on every boot regardless of entrypoint
+    (web.py, start.py, gunicorn).
+    """
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    rc = subprocess.call(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=repo_root,
+    )
+    if rc != 0:
+        logger.error("alembic upgrade failed (exit %d) — startup will likely fail", rc)
+    else:
+        logger.info("alembic upgrade head applied successfully")
+
+
 def create_app() -> Flask:
+    _apply_migrations()
+
     from running_coach_ai.database.models import Base
     try:
         Base.metadata.create_all(engine)
