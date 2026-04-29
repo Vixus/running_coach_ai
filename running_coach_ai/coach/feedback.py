@@ -61,11 +61,11 @@ RUNNING PROFILE TRENDS (30-day rolling averages):
 
 Write post-run feedback in coach voice. Be a data nerd — cite the specific numbers from above. Use the decile table to pinpoint exactly when and how things changed during the run. Connect the dots between metrics (e.g., if cadence dropped AND GCT increased AND stride shortened, that's a textbook fatigue cascade — say so and explain what it means). Compare today to the 30-day profile trends where relevant.
 
-Structure (no bullet lists — write in paragraphs like a real coach message):
-1. Opening: overall picture of the run and how it went vs the plan
-2. The data story: what the numbers actually reveal — use the decile table to show where HR started to drift, when form started to break down, what the economy index tells us
-3. The key finding: the most important single insight from today (could be great or concerning)
-4. One actionable takeaway for next time based on the patterns
+Structure (no bullet lists — write in paragraphs like a real coach message). Separate paragraphs with a blank line. Lead paragraphs 2–4 with a short bold mini-heading (2–4 words, ending in a period) using markdown bold syntax — e.g. **The data.** or **Key finding.** — followed by the paragraph text on the same line. Paragraph 1 stays a clean opening hook with no heading.
+1. Opening (no heading): overall picture of the run and how it went vs the plan
+2. **The data.** — what the numbers actually reveal. Use the decile table to show where HR started to drift, when form started to break down, what the economy index tells us
+3. **Key finding.** — the most important single insight from today (could be great or concerning)
+4. **Next time.** — one actionable takeaway based on the patterns
 
 Keep it to 3–4 paragraphs. If you spot a pattern worth tracking over time (e.g., form reliably breaks down after 70 min), add a <remember> tag.{overtraining_flag}"""
 

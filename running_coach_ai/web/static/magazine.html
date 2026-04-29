@@ -194,6 +194,9 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
 .fr-elev-stat strong{color:rgba(255,255,255,.7);}
 .fr-analysis{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(19px,2.2vw,27px);line-height:1.5;color:var(--ink);margin-bottom:28px;}
 .fr-body{font-size:14px;color:var(--mid);line-height:1.8;margin-bottom:28px;}
+.fr-body p{margin-bottom:14px;}
+.fr-body p:last-child{margin-bottom:0;}
+.fr-body strong{color:var(--ink);font-weight:600;letter-spacing:.01em;}
 .fr-flags{display:flex;flex-direction:column;gap:9px;}
 .fr-flag{display:flex;gap:10px;font-size:13px;color:var(--mid);align-items:flex-start;line-height:1.5;padding:8px 10px;border-radius:8px;transition:background .15s;cursor:default;}
 .fr-flag:hover{background:rgba(20,18,16,.05);}
@@ -576,7 +579,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
   </svg>
   <div id="hero-content">
     <div class="hero-eye" id="hero-eye">Your Personal Record</div>
-    <h1 class="hero-name" id="hero-name" data-first="RUN" data-last="COACH">RUN<br><em>COACH</em></h1>
+    <h1 class="hero-name" id="hero-name" data-first="WELCOME" data-last="ATHLETE">WELCOME<br><em>ATHLETE</em></h1>
     <p class="hero-tag" id="hero-tag" style="visibility:hidden;">&nbsp;</p>
     <div class="hero-strip" id="hero-strip" style="visibility:hidden;">
       <div><div class="hs-v"><span class="cnt" data-t="0" id="hero-days">0</span></div><div class="hs-l" id="hero-days-lbl">Days to Race</div></div>
@@ -1947,6 +1950,17 @@ async function pickCoach(key){
   }
 }
 
+// ── Coach prose renderer ──────────────────────────────────────
+// Renders coach analysis text as HTML: paragraphs split on blank lines,
+// **bold** runs converted to <strong>. Escapes HTML first.
+function renderCoachProse(text){
+  if (!text) return '';
+  const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const bolded  = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  const paras   = bolded.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  return paras.map(p => `<p>${p.replace(/\n/g, ' ')}</p>`).join('');
+}
+
 // ── Hydration ─────────────────────────────────────────────────
 async function hydrate(){
   let m;
@@ -1967,8 +1981,8 @@ async function hydrate(){
     document.getElementById('nav-profile').textContent = (parts[0]||'?').charAt(0).toUpperCase() + ((parts[1]||'').charAt(0).toUpperCase());
     document.getElementById('nav-profile').title = m.athlete.name;
   } else {
-    nameEl.dataset.first = 'ATHLETE';
-    nameEl.dataset.last  = '';
+    nameEl.dataset.first = 'WELCOME';
+    nameEl.dataset.last  = 'ATHLETE';
     document.getElementById('nav-profile').textContent = 'A';
   }
   if (m.today_pretty) document.getElementById('hero-eye').textContent = `Your Personal Record · ${m.today_pretty}`;
@@ -2072,9 +2086,16 @@ async function hydrate(){
     }
     document.getElementById('fr-r-eye').textContent = `Coach Analysis · ${lr.date_pretty || 'Post-Run'}`;
     document.getElementById('fr-analysis').textContent = lr.coach_analysis ? `"${lr.coach_analysis}"` : '"No coach analysis available for this run yet."';
-    document.getElementById('fr-body').textContent = lr.coach_analysis_full && lr.coach_analysis_full.length > (lr.coach_analysis||'').length
+    const bodyEl = document.getElementById('fr-body');
+    const bodyText = lr.coach_analysis_full && lr.coach_analysis_full.length > (lr.coach_analysis||'').length
       ? lr.coach_analysis_full.slice((lr.coach_analysis||'').length).trim() : '';
-    if (!document.getElementById('fr-body').textContent) document.getElementById('fr-body').style.display = 'none';
+    if (bodyText) {
+      bodyEl.innerHTML = renderCoachProse(bodyText);
+      bodyEl.style.display = '';
+    } else {
+      bodyEl.innerHTML = '';
+      bodyEl.style.display = 'none';
+    }
 
     const flagsEl = document.getElementById('fr-flags');
     const flags = [];
@@ -2302,8 +2323,8 @@ window.addEventListener('load', async () => {
 
   // Hero name char split — uses data attrs from hydrate; fall back to "Athlete" if hydrate failed entirely
   const n = document.getElementById('hero-name');
-  if (!m) { n.dataset.first = 'ATHLETE'; n.dataset.last = ''; }
-  const first = (n.dataset.first || 'ATHLETE').toUpperCase();
+  if (!m) { n.dataset.first = 'WELCOME'; n.dataset.last = 'ATHLETE'; }
+  const first = (n.dataset.first || 'WELCOME').toUpperCase();
   const last = (n.dataset.last || '').toUpperCase();
   const firstHtml = first.split('').map((c,i)=>`<span class="char" style="animation-delay:${.42+i*.07}s">${c==' '?'&nbsp;':c}</span>`).join('');
   const lastHtml  = last ? '<br><em>' + last.split('').map((c,i)=>`<span class="char" style="animation-delay:${.68+i*.08}s">${c==' '?'&nbsp;':c}</span>`).join('') + '</em>' : '';
