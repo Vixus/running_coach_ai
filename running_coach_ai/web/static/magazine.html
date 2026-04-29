@@ -14,7 +14,7 @@
   --surface:rgba(20,18,16,.04); --surface2:rgba(20,18,16,.07);
   --border:rgba(20,18,16,.1); --bordersoft:rgba(20,18,16,.06);
 }
-html{scroll-behavior:smooth;}
+html{scroll-behavior:smooth;overflow-x:hidden;}
 body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);overflow-x:hidden;}
 ::-webkit-scrollbar{width:3px;} ::-webkit-scrollbar-thumb{background:rgba(20,18,16,.15);border-radius:3px;}
 
@@ -48,7 +48,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
 .nav-link:hover,.nav-link.active{background:rgba(20,18,16,.07);color:var(--ink);}
 #topnav.dark .nav-link:hover,#topnav.dark .nav-link.active{background:rgba(255,255,255,.1);color:#fff;}
 #topnav.dark .nav-link{color:rgba(255,255,255,.4);}
-.nav-right{display:flex;gap:8px;align-items:center;opacity:0;transition:opacity .3s;}
+.nav-right{display:flex;gap:8px;align-items:center;margin-left:auto;opacity:0;transition:opacity .3s;}
 #topnav.scrolled .nav-right,#topnav.dark .nav-right{opacity:1;}
 .nav-mode-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .2s;}
 .nav-mode-btn:hover{background:var(--surface2);}
@@ -398,7 +398,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
   .nav-brand{display:none;}
   .coach-picker-btn{padding:5px 8px 5px 6px;}
   .coach-picker-name,.coach-picker-caret{display:none;}
-  .coach-picker-menu{min-width:240px;right:-50px;}
+  .coach-picker-menu{min-width:240px;right:0;max-width:calc(100vw - 28px);}
   .nav-mode-btn{width:30px;height:30px;}
   .nav-profile{width:30px;height:30px;font-size:13px;}
 
