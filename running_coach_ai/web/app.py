@@ -43,6 +43,10 @@ def create_app() -> Flask:
     from running_coach_ai.web.auth import bp as auth_bp  # added by T011
     app.register_blueprint(auth_bp, url_prefix='/auth')
 
+    @app.route('/')
+    def index():
+        return redirect('/login')
+
     @app.route('/login')
     def login_page():
         if "athlete_id" in session:
