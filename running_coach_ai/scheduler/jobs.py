@@ -607,7 +607,7 @@ def _upsert_weekly_review_summary(athlete_id: int, week_start, week_summary: dic
     logger.info("WeeklyReviewSummary upserted for athlete %d week %s", athlete_id, week_start)
 
 
-def _run_weekly_review(slack_client) -> None:
+def _run_weekly_review(slack_client=None) -> None:
     """Weekly review job — runs Sunday 20:00."""
     from running_coach_ai.database.models import Athlete
     from running_coach_ai.database.session import get_session
@@ -658,10 +658,20 @@ def _run_weekly_review(slack_client) -> None:
                                 athlete.id, target_week, sync_e,
                             )
 
-                # Send review message
-                from running_coach_ai.slack.bot import send_dm
-                send_dm(slack_client, athlete, review_message, db_session)
-                logger.info("Weekly review sent to athlete %d", athlete.id)
+                # Deliver: in-app notification (always) + transitional Slack DM
+                from running_coach_ai.coach.notify import notify
+                notify(
+                    db_session, athlete,
+                    kind="weekly_review",
+                    title="Weekly review",
+                    body=review_message,
+                    action_path="/app#review",
+                )
+                db_session.commit()
+                if slack_client is not None:
+                    from running_coach_ai.slack.bot import send_dm
+                    send_dm(slack_client, athlete, review_message, db_session)
+                logger.info("Weekly review delivered to athlete %d (slack=%s)", athlete.id, slack_client is not None)
 
             except Exception as e:
                 logger.error("Weekly review failed for athlete %d: %s", athlete.id, e)
@@ -739,7 +749,55 @@ def register_jobs(scheduler: BlockingScheduler, slack_app) -> None:
         misfire_grace_time=1800,
     )
 
+    # Refresh athlete morning jobs every 5 minutes — picks up athletes onboarded
+    # via the web after the scheduler started, without a restart.
+    scheduler.add_job(
+        _refresh_athlete_morning_jobs,
+        IntervalTrigger(minutes=5),
+        args=[scheduler, slack_client],
+        id="refresh_athlete_morning_jobs",
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
+
     logger.info("All scheduler jobs registered")
+
+
+def _refresh_athlete_morning_jobs(scheduler, slack_client) -> None:
+    """Idempotently ensure every onboarded athlete has a morning check-in job.
+
+    Picks up athletes onboarded via the web after the scheduler started.
+    Runs every 5 minutes; calling `add_job` with `replace_existing=True` is
+    a no-op when the job already exists with the same args.
+    """
+    from running_coach_ai.database.models import Athlete
+    from running_coach_ai.database.session import get_session
+
+    with get_session() as db_session:
+        athletes = (
+            db_session.query(Athlete)
+            .filter(
+                Athlete.allowed == True,
+                Athlete.onboarding_complete == True,
+                ~(Athlete.slack_user_id.like("__test_%")),
+            )
+            .all()
+        )
+        existing = {j.id for j in scheduler.get_jobs()}
+        for athlete in athletes:
+            job_id = f"morning_checkin_{athlete.id}"
+            if job_id in existing:
+                continue
+            tz = athlete.timezone or "America/New_York"
+            scheduler.add_job(
+                _run_morning_checkin_for_athlete,
+                IntervalTrigger(minutes=30, start_date=_next_checkin_start(tz), timezone=tz),
+                args=[athlete.id, slack_client],
+                id=job_id,
+                replace_existing=True,
+                misfire_grace_time=300,
+            )
+            logger.info("Refresh: registered morning check-in for athlete %d (%s)", athlete.id, tz)
 
 
 def register_athlete_morning_job(scheduler: BlockingScheduler, athlete, slack_client) -> None:

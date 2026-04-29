@@ -27,8 +27,9 @@ class Athlete(Base):
     __tablename__ = "athletes"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    slack_user_id = Column(Text, unique=True, nullable=False)
+    slack_user_id = Column(Text, unique=True, nullable=True)
     slack_dm_channel_id = Column(Text, nullable=True)
+    email = Column(Text, unique=True, nullable=True)
     name = Column(Text, nullable=True)
     age = Column(Integer, nullable=True)
     home_lat = Column(Float, nullable=True)
@@ -58,6 +59,7 @@ class Athlete(Base):
     run_feedbacks = relationship("RunFeedback", back_populates="athlete")
     weekly_review_summaries = relationship("WeeklyReviewSummary", back_populates="athlete")
     web_events = relationship("WebEvent", back_populates="athlete")
+    notifications = relationship("Notification", back_populates="athlete")
 
 
 class Goal(Base):
@@ -344,4 +346,38 @@ class WebEvent(Base):
     __table_args__ = (
         Index("ix_web_events_timestamp", "timestamp"),
         Index("ix_web_events_category_timestamp", "category", "timestamp"),
+    )
+
+
+class InviteToken(Base):
+    __tablename__ = "invite_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    token = Column(Text, unique=True, nullable=False)
+    email_hint = Column(Text, nullable=True)
+    created_by_athlete_id = Column(Integer, ForeignKey("athletes.id"), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=True)
+    used_by_athlete_id = Column(Integer, ForeignKey("athletes.id"), nullable=True)
+    used_at = Column(DateTime, nullable=True)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    athlete_id = Column(Integer, ForeignKey("athletes.id"), nullable=False)
+    kind = Column(Text, nullable=False)  # morning_checkin | post_run_feedback | weekly_review | system
+    title = Column(Text, nullable=False)
+    body = Column(Text, nullable=False)
+    action_path = Column(Text, nullable=True)
+    related_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    read_at = Column(DateTime, nullable=True)
+
+    athlete = relationship("Athlete", back_populates="notifications")
+
+    __table_args__ = (
+        Index("ix_notifications_athlete_created", "athlete_id", "created_at"),
+        Index("ix_notifications_athlete_unread", "athlete_id", "read_at"),
     )

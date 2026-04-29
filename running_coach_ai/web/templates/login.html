@@ -80,17 +80,30 @@
       font-size: 0.9rem;
       margin-bottom: 1rem;
     }
+    .switch {
+      text-align: center;
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: #666;
+    }
+    .switch a {
+      color: #5a8a62;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .switch a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
   <div class="card">
     <div class="logo">Running Coach</div>
-    <div class="subtitle">Analytics Dashboard</div>
+    <div class="subtitle" id="subtitle">Sign in to continue</div>
 
     <div id="error-msg" class="error" style="display:none"></div>
 
     <form id="login-form">
-      <label for="username">Username</label>
+      <label for="username">Email or username</label>
       <input type="text" id="username" name="username" autocomplete="username" autofocus />
 
       <label for="password">Password</label>
@@ -98,27 +111,96 @@
 
       <button type="submit" class="btn">Sign In</button>
     </form>
+
+    <form id="signup-form" style="display:none">
+      <label for="signup-email">Email</label>
+      <input type="text" id="signup-email" name="email" autocomplete="email" />
+
+      <label for="signup-password">Password (8+ characters)</label>
+      <input type="password" id="signup-password" name="password" autocomplete="new-password" />
+
+      <label for="signup-token">Invite code</label>
+      <input type="text" id="signup-token" name="invite_token" />
+
+      <button type="submit" class="btn">Create account</button>
+    </form>
+
+    <div class="switch">
+      <span id="switch-text">First time here? <a id="show-signup">Create an account</a></span>
+    </div>
   </div>
 
   <script>
-    document.getElementById('login-form').addEventListener('submit', async function(e) {
+    const params = new URLSearchParams(window.location.search);
+    const inviteFromUrl = params.get('invite') || params.get('token');
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    const switchText = document.getElementById('switch-text');
+    const subtitle = document.getElementById('subtitle');
+    const errorEl = document.getElementById('error-msg');
+
+    function showSignup() {
+      loginForm.style.display = 'none';
+      signupForm.style.display = 'block';
+      subtitle.textContent = 'Create your athlete account';
+      switchText.innerHTML = 'Already have an account? <a id="show-login">Sign in</a>';
+      document.getElementById('show-login').addEventListener('click', showLogin);
+      errorEl.style.display = 'none';
+    }
+    function showLogin() {
+      signupForm.style.display = 'none';
+      loginForm.style.display = 'block';
+      subtitle.textContent = 'Sign in to continue';
+      switchText.innerHTML = 'First time here? <a id="show-signup">Create an account</a>';
+      document.getElementById('show-signup').addEventListener('click', showSignup);
+      errorEl.style.display = 'none';
+    }
+    document.getElementById('show-signup').addEventListener('click', showSignup);
+
+    if (inviteFromUrl) {
+      document.getElementById('signup-token').value = inviteFromUrl;
+      showSignup();
+    }
+
+    loginForm.addEventListener('submit', async function(e) {
       e.preventDefault();
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
-      const errorEl = document.getElementById('error-msg');
       errorEl.style.display = 'none';
-
       try {
         const res = await fetch('/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
         });
-        if (res.ok) {
-          window.location.href = '/app';
-        } else {
+        if (res.ok) { window.location.href = '/app'; }
+        else {
           const data = await res.json();
           errorEl.textContent = data.error || 'Login failed';
+          errorEl.style.display = 'block';
+        }
+      } catch (err) {
+        errorEl.textContent = 'Network error — please try again';
+        errorEl.style.display = 'block';
+      }
+    });
+
+    signupForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      const invite_token = document.getElementById('signup-token').value.trim();
+      errorEl.style.display = 'none';
+      try {
+        const res = await fetch('/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, invite_token }),
+        });
+        if (res.ok) { window.location.href = '/app'; }
+        else {
+          const data = await res.json();
+          errorEl.textContent = data.error || 'Signup failed';
           errorEl.style.display = 'block';
         }
       } catch (err) {

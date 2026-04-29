@@ -61,7 +61,7 @@ def _garmin_morning_data_complete(snapshot) -> bool:
     return all(getattr(snapshot, f) is not None for f in _HEALTH_KEY_FIELDS)
 
 
-def run_morning_checkin(athlete: Athlete, db_session: Session, slack_client) -> None:
+def run_morning_checkin(athlete: Athlete, db_session: Session, slack_client=None) -> None:
     """Run the morning check-in for a single athlete.
 
     Fetches health data, weather, evaluates today's session, adapts if
@@ -212,21 +212,30 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, slack_client) -> 
     # Apply any plan mutations
     response = extract_and_apply_plan(athlete.id, response, db_session)
 
-    # Send Slack DM and mark today's check-in complete (FR-033)
+    # Persist conversation turn, in-app notification, and (transitionally) Slack DM.
     try:
-        from running_coach_ai.slack.bot import send_dm
         from running_coach_ai.database.models import ConversationMessage
+        from running_coach_ai.coach.notify import notify
         db_session.add(ConversationMessage(
             athlete_id=athlete.id,
             role="assistant",
             content=response,
         ))
-        send_dm(slack_client, athlete, response, db_session)
+        notify(
+            db_session, athlete,
+            kind="morning_checkin",
+            title="Morning check-in",
+            body=response,
+            action_path="/app#chat",
+        )
+        if slack_client is not None:
+            from running_coach_ai.slack.bot import send_dm
+            send_dm(slack_client, athlete, response, db_session)
         athlete.last_morning_checkin_date = today
         db_session.commit()
-        logger.info("Morning check-in sent to athlete %d", athlete.id)
+        logger.info("Morning check-in delivered to athlete %d (slack=%s)", athlete.id, slack_client is not None)
     except Exception as e:
-        logger.error("Failed to send morning check-in DM to athlete %d: %s", athlete.id, e)
+        logger.error("Failed to deliver morning check-in to athlete %d: %s", athlete.id, e)
 
 
 def adapt_next_week(athlete: Athlete, week_summary: dict, db_session: Session) -> None:

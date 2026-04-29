@@ -74,6 +74,24 @@ def chat_message():
         if not athlete:
             return jsonify({"error": "Athlete not found"}), 404
 
+        # First-time onboarding: run the chat-driven Q&A instead of the regular coach path.
+        if not athlete.onboarding_complete:
+            from running_coach_ai.coach.onboarding import handle_turn
+            try:
+                result = handle_turn(athlete, message, db)
+            except Exception as exc:
+                logger.error("Onboarding turn failed for athlete %s: %s", athlete_id, exc)
+                return jsonify({"error": "Coach is unavailable — try again in a moment."}), 503
+            return jsonify({
+                "response": result["response"],
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "onboarding": {
+                    "is_complete": result["is_complete"],
+                    "pending_garmin": result["pending_garmin"],
+                    "expired": result["expired"],
+                },
+            })
+
         start = time.monotonic()
         try:
             response_text = process_message(
