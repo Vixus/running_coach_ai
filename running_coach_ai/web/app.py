@@ -92,6 +92,32 @@ def create_app() -> Flask:
         static_dir = os.path.join(os.path.dirname(__file__), 'static')
         return send_from_directory(static_dir, 'magazine.html')
 
+    @app.route('/admin/upload-db', methods=['POST'])
+    def upload_db():
+        token = os.environ.get('DB_UPLOAD_TOKEN')
+        if not token:
+            return ("Upload disabled", 403)
+        if request.headers.get('X-Upload-Token') != token:
+            return ("Invalid token", 403)
+        if 'file' not in request.files:
+            return ("No file", 400)
+        f = request.files['file']
+        db_path = settings.DB_PATH
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        engine.dispose()
+        if os.path.exists(db_path):
+            backup = f"{db_path}.backup"
+            if os.path.exists(backup):
+                os.remove(backup)
+            os.rename(db_path, backup)
+        for suffix in ('-wal', '-shm'):
+            sidecar = f"{db_path}{suffix}"
+            if os.path.exists(sidecar):
+                os.remove(sidecar)
+        f.save(db_path)
+        logger.info("DB uploaded to %s (%s bytes)", db_path, os.path.getsize(db_path))
+        return ("OK — restart the service to use the new DB", 200)
+
     from running_coach_ai.web.api.dashboard import bp as dashboard_bp
     app.register_blueprint(dashboard_bp)
 
