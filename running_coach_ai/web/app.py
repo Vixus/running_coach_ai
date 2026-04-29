@@ -33,7 +33,32 @@ def _seed_admin(app: Flask) -> None:
         logger.debug("Admin seed skipped — no athlete row for %s yet", admin_id)
 
 
+def _bootstrap_admin() -> None:
+    """Create or update the admin athlete from BOOTSTRAP_WEB_* env vars."""
+    username = os.environ.get("BOOTSTRAP_WEB_USERNAME")
+    password = os.environ.get("BOOTSTRAP_WEB_PASSWORD")
+    if not username or not password:
+        return
+    slack_id = settings.ADMIN_SLACK_USER_ID
+    if not slack_id:
+        logger.warning("BOOTSTRAP_WEB_USERNAME set but ADMIN_SLACK_USER_ID is missing — skipping bootstrap")
+        return
+    from werkzeug.security import generate_password_hash
+    with get_session() as db:
+        athlete = db.query(Athlete).filter(Athlete.slack_user_id == slack_id).first()
+        if not athlete:
+            athlete = Athlete(slack_user_id=slack_id, allowed=True, is_admin=True)
+            db.add(athlete)
+        athlete.web_username = username
+        athlete.web_password_hash = generate_password_hash(password)
+        athlete.is_admin = True
+    logger.info("Bootstrap admin set: username=%s slack_id=%s", username, slack_id)
+
+
 def create_app() -> Flask:
+    from running_coach_ai.database.models import Base
+    Base.metadata.create_all(engine)
+
     app = Flask(__name__, static_folder="static", template_folder="templates")
     app.config["SECRET_KEY"] = settings.WEB_SECRET_KEY
 
@@ -112,5 +137,6 @@ def create_app() -> Flask:
         return ("Internal Server Error", 500)
 
     _seed_admin(app)
+    _bootstrap_admin()
 
     return app
