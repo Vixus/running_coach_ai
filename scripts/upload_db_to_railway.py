@@ -44,6 +44,30 @@ def main():
     if response.status_code != 200:
         sys.exit(1)
 
+    # Upload Garmin session files if they exist alongside the DB
+    sessions_dir = os.path.join(os.path.dirname(args.db_path), "garmin_sessions")
+    if os.path.isdir(sessions_dir):
+        print(f"\nUploading Garmin sessions from {sessions_dir}...")
+        for athlete_id in os.listdir(sessions_dir):
+            athlete_dir = os.path.join(sessions_dir, athlete_id)
+            if not os.path.isdir(athlete_dir):
+                continue
+            for filename in ("oauth1_token.json", "oauth2_token.json"):
+                filepath = os.path.join(athlete_dir, filename)
+                if not os.path.exists(filepath):
+                    continue
+                with open(filepath, "rb") as f:
+                    r = requests.post(
+                        f"{args.url.rstrip('/')}/admin/upload-garmin-session/{athlete_id}/{filename}",
+                        headers={"X-Upload-Token": args.token, "Content-Type": "application/octet-stream"},
+                        data=f,
+                        timeout=30,
+                    )
+                status = "OK" if r.status_code == 200 else f"FAILED ({r.status_code})"
+                print(f"  {athlete_id}/{filename}: {status}")
+    else:
+        print("\nNo garmin_sessions directory found alongside DB — skipping.")
+
 
 if __name__ == "__main__":
     main()

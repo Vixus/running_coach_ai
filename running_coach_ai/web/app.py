@@ -118,6 +118,24 @@ def create_app() -> Flask:
         logger.info("DB uploaded to %s (%s bytes)", db_path, os.path.getsize(db_path))
         return ("OK — restart the service to use the new DB", 200)
 
+    @app.route('/admin/upload-garmin-session/<athlete_id>/<filename>', methods=['POST'])
+    def upload_garmin_session(athlete_id, filename):
+        token = os.environ.get('DB_UPLOAD_TOKEN')
+        if not token:
+            return ("Upload disabled", 403)
+        if request.headers.get('X-Upload-Token') != token:
+            return ("Invalid token", 403)
+        if filename not in ('oauth1_token.json', 'oauth2_token.json'):
+            return ("Invalid filename", 400)
+        dest_dir = os.path.join(settings.GARMIN_SESSION_DIR, athlete_id)
+        os.makedirs(dest_dir, exist_ok=True)
+        dest = os.path.join(dest_dir, filename)
+        request.get_data()
+        with open(dest, 'wb') as fh:
+            fh.write(request.data)
+        logger.info("Garmin session uploaded: %s", dest)
+        return ("OK", 200)
+
     from running_coach_ai.web.api.dashboard import bp as dashboard_bp
     app.register_blueprint(dashboard_bp)
 
