@@ -11,6 +11,8 @@ and trigger a redeploy so the app picks up the new DB.
 """
 
 import argparse
+import gzip
+import io
 import os
 import sys
 
@@ -29,15 +31,20 @@ def main():
         sys.exit(1)
 
     size_mb = os.path.getsize(args.db_path) / (1024 * 1024)
-    print(f"Uploading {args.db_path} ({size_mb:.1f} MB) to {args.url}...")
+    print(f"Compressing {args.db_path} ({size_mb:.1f} MB)...")
+    buf = io.BytesIO()
+    with open(args.db_path, "rb") as f_in, gzip.GzipFile(fileobj=buf, mode="wb") as gz:
+        gz.write(f_in.read())
+    buf.seek(0)
+    compressed_mb = buf.getbuffer().nbytes / (1024 * 1024)
+    print(f"Compressed to {compressed_mb:.1f} MB — uploading to {args.url}...")
 
-    with open(args.db_path, "rb") as f:
-        response = requests.post(
-            f"{args.url.rstrip('/')}/admin/upload-db",
-            headers={"X-Upload-Token": args.token},
-            files={"file": ("coach.db", f, "application/octet-stream")},
-            timeout=300,
-        )
+    response = requests.post(
+        f"{args.url.rstrip('/')}/admin/upload-db",
+        headers={"X-Upload-Token": args.token, "Content-Encoding": "gzip"},
+        files={"file": ("coach.db.gz", buf, "application/octet-stream")},
+        timeout=300,
+    )
 
     print(f"Status: {response.status_code}")
     print(f"Response: {response.text}")

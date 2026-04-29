@@ -57,7 +57,17 @@ def _bootstrap_admin() -> None:
 
 def create_app() -> Flask:
     from running_coach_ai.database.models import Base
-    Base.metadata.create_all(engine)
+    try:
+        Base.metadata.create_all(engine)
+    except Exception:
+        db_path = settings.DB_PATH
+        logger.warning("DB at %s is corrupt — deleting and recreating", db_path)
+        engine.dispose()
+        for suffix in ('', '-wal', '-shm', '.backup'):
+            p = f"{db_path}{suffix}"
+            if os.path.exists(p):
+                os.remove(p)
+        Base.metadata.create_all(engine)
 
     app = Flask(__name__, static_folder="static", template_folder="templates")
     app.config["SECRET_KEY"] = settings.WEB_SECRET_KEY
@@ -114,7 +124,12 @@ def create_app() -> Flask:
             sidecar = f"{db_path}{suffix}"
             if os.path.exists(sidecar):
                 os.remove(sidecar)
-        f.save(db_path)
+        import gzip as _gzip
+        raw = f.read()
+        if raw[:2] == b'\x1f\x8b':
+            raw = _gzip.decompress(raw)
+        with open(db_path, 'wb') as out:
+            out.write(raw)
         logger.info("DB uploaded to %s (%s bytes)", db_path, os.path.getsize(db_path))
         return ("OK — restart the service to use the new DB", 200)
 
