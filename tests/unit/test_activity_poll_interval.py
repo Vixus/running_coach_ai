@@ -1,21 +1,23 @@
-"""T054: Tests for the activity poll interval and active-hours guard."""
+"""Tests for the activity poll cron trigger configuration.
+
+Production registers activity_poll as a cron trigger that fires every 30
+minutes during waking hours (06–21). This validates that scheduling shape.
+"""
 
 from unittest.mock import MagicMock, patch
 
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 
 
 class TestPollIntervalConfiguration:
-    """Verify the scheduler registers the activity_poll job at ≤10 minutes."""
+    """Verify activity_poll is a CronTrigger firing every 30 min during 06–21."""
 
-    def test_poll_trigger_uses_10_min_interval(self):
-        """IntervalTrigger for activity_poll must be configured with minutes=10."""
+    def test_poll_trigger_uses_30_min_cron_in_active_hours(self):
         from running_coach_ai.scheduler.jobs import register_jobs
 
         mock_scheduler = MagicMock()
         mock_slack_app = MagicMock()
 
-        # Patch all inline imports inside register_jobs
         with patch("running_coach_ai.database.session.get_session") as mock_get_session:
             mock_db = MagicMock()
             mock_db.__enter__ = MagicMock(return_value=mock_db)
@@ -25,23 +27,21 @@ class TestPollIntervalConfiguration:
 
             register_jobs(mock_scheduler, mock_slack_app)
 
-        # Find the add_job call for the activity_poll job
         add_job_calls = mock_scheduler.add_job.call_args_list
         poll_calls = [c for c in add_job_calls if c.kwargs.get("id") == "activity_poll"]
         assert len(poll_calls) == 1, "Expected exactly one activity_poll job"
 
-        poll_call = poll_calls[0]
-        # Trigger is the second positional arg: add_job(func, trigger, ...)
-        trigger_arg = poll_call.args[1]
-        assert isinstance(trigger_arg, IntervalTrigger), (
-            f"Expected IntervalTrigger, got {type(trigger_arg)}"
+        trigger_arg = poll_calls[0].args[1]
+        assert isinstance(trigger_arg, CronTrigger), (
+            f"Expected CronTrigger, got {type(trigger_arg)}"
         )
-        interval_seconds = trigger_arg.interval.total_seconds()
-        assert interval_seconds <= 600, (
-            f"Poll interval is {interval_seconds}s — must be ≤10 min (600s)"
+        # Inspect the trigger fields — hour='6-21', minute='*/30'
+        fields = {f.name: str(f) for f in trigger_arg.fields}
+        assert "*/30" in fields.get("minute", ""), (
+            f"Expected minute=*/30, got {fields.get('minute')}"
         )
-        assert interval_seconds == 600, (
-            f"Poll interval should be exactly 10 min (600s), got {interval_seconds}s"
+        assert fields.get("hour") in ("6-21", "06-21"), (
+            f"Expected hour=6-21, got {fields.get('hour')}"
         )
 
     def test_poll_job_id_is_activity_poll(self):

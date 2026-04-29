@@ -1864,6 +1864,16 @@ let COACH_OPTIONS = [
 let CURRENT_COACH_KEY = 'classic';
 let coachMenuBuilt = false;
 
+const COACH_COLORS = {classic:'var(--stone)', maya:'var(--sage)', jordan:'var(--terra)'};
+function coachColor(key){ return COACH_COLORS[key] || 'var(--stone)'; }
+function applyCoachColor(key){
+  const c = coachColor(key);
+  ['m-coach-av','cph-av','fab-av','coach-picker-av'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.background = c;
+  });
+}
+
 async function loadCoachOptions(){
   try {
     const r = await fetch('/api/coach', {credentials:'same-origin'});
@@ -1886,13 +1896,14 @@ function renderCoachPicker(){
   const menu = document.getElementById('coach-picker-menu');
   menu.innerHTML = COACH_OPTIONS.map(o => `
     <div class="coach-picker-item${o.key===CURRENT_COACH_KEY?' active':''}" onclick="pickCoach('${o.key}')">
-      <div class="coach-picker-item-av">${(o.name||'C').replace('Coach ','').charAt(0).toUpperCase()}</div>
+      <div class="coach-picker-item-av" style="background:${coachColor(o.key)};">${(o.name||'C').replace('Coach ','').charAt(0).toUpperCase()}</div>
       <div>
         <div class="coach-picker-item-name">${o.name||o.key}</div>
         <div class="coach-picker-item-desc">${o.description||''}</div>
       </div>
     </div>
   `).join('');
+  applyCoachColor(CURRENT_COACH_KEY);
   coachMenuBuilt = true;
 }
 
@@ -2000,6 +2011,7 @@ async function hydrate(){
   }
   if (m.coach) {
     if (m.coach.key) CURRENT_COACH_KEY = m.coach.key;
+    applyCoachColor(CURRENT_COACH_KEY);
     if (m.coach.name) document.getElementById('m-coach-av').textContent = m.coach.name.charAt(0).toUpperCase();
     if (m.coach.display) document.getElementById('m-coach-name').textContent = m.coach.display;
     if (m.coach.tagline) document.getElementById('m-coach-tag-line').textContent = m.coach.tagline;

@@ -432,7 +432,13 @@ class TestMorningCheckinMessageContent:
         db = MagicMock()
         db.query.return_value.filter.return_value.first.return_value = None
 
-        run_morning_checkin(athlete, db, MagicMock())
+        # Pin time to a daytime hour so the 06:00 local floor doesn't return early
+        from datetime import datetime as _dt, timezone as _tz
+        fake_local = _dt(TODAY.year, TODAY.month, TODAY.day, 8, 0, tzinfo=_tz.utc)
+        with patch(f"{_ADAPTER}.datetime") as mock_dt:
+            mock_dt.now.return_value = fake_local
+            mock_dt.side_effect = lambda *args, **kwargs: _dt(*args, **kwargs)
+            run_morning_checkin(athlete, db, MagicMock())
 
         assert mock_claude.called, "Claude must be called during morning check-in"
         prompt = mock_claude.call_args[0][1][0]["content"]
@@ -461,13 +467,16 @@ class TestMorningCheckinMessageContent:
 
         snap = MagicMock()
         snap.date = TODAY
-        snap.sleep_score = None
+        snap.sleep_score = None  # the field under test
         snap.hrv_score = 32
         snap.hrv_status = "BALANCED"
         snap.body_battery_start = 89
         snap.resting_hr = 52
         snap.stress_avg = 21
-        snap.training_readiness = None
+        # training_readiness is set so the morning-data gate passes — we're
+        # specifically testing that a missing sleep_score still surfaces as
+        # "None" in the prompt, not a stale value.
+        snap.training_readiness = 68
         mock_parse.return_value = snap
 
         mock_scoped.return_value.filter.return_value.first.return_value = None
@@ -486,8 +495,16 @@ class TestMorningCheckinMessageContent:
         db = MagicMock()
         db.query.return_value.filter.return_value.first.return_value = None
 
-        run_morning_checkin(athlete, db, MagicMock())
+        # Past noon so the morning-data gate is bypassed (production proceeds
+        # with whatever partial snapshot we have).
+        from datetime import datetime as _dt, timezone as _tz
+        fake_local = _dt(TODAY.year, TODAY.month, TODAY.day, 13, 0, tzinfo=_tz.utc)
+        with patch(f"{_ADAPTER}.datetime") as mock_dt:
+            mock_dt.now.return_value = fake_local
+            mock_dt.side_effect = lambda *args, **kwargs: _dt(*args, **kwargs)
+            run_morning_checkin(athlete, db, MagicMock())
 
+        assert mock_claude.called, "Past noon, partial snapshot — Claude must still be called"
         prompt = mock_claude.call_args[0][1][0]["content"]
         assert "Sleep score: None" in prompt, (
             "Prompt must show 'None' for missing sleep score so Claude doesn't hallucinate a value"

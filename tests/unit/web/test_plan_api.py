@@ -31,6 +31,7 @@ def _make_planned_workout(date_offset=0, workout_type="easy", distance_km=12.9, 
     w.workout_name = "Easy Run"
     w.target_distance_km = distance_km
     w.target_pace_min_per_km = pace
+    w.target_duration_seconds = None
     w.description = "Easy aerobic run"
     w.status = "planned"
     w.garmin_workout_id = "123"

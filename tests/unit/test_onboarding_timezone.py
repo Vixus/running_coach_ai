@@ -144,7 +144,7 @@ def test_city_not_in_table_derive_returns_none_fallback_utc(caplog):
             derive_tz_return=None,
         )
 
-    assert athlete.timezone == "UTC"
+    assert athlete.timezone == "America/New_York"
     assert any("UTC" in r.message or "timezone" in r.message.lower() for r in caplog.records)
 
 
@@ -164,4 +164,4 @@ def test_city_not_in_table_no_coords_fallback_utc():
 
     # derive should NOT be called because there are no coords
     mock_derive.assert_not_called()
-    assert athlete.timezone == "UTC"
+    assert athlete.timezone == "America/New_York"

@@ -143,8 +143,9 @@ class TestOpenGarminCredsModalAction:
         msg_text = client.chat_postMessage.call_args.kwargs.get("text", "")
         assert msg_text  # some DM was sent
 
-    def test_onboarding_complete_is_silent_noop(self):
-        """T003-4: Already onboarded athlete → no DM, no modal."""
+    def test_onboarding_complete_opens_modal_without_dm(self):
+        """Already-onboarded athlete clicking 'Enter Garmin Credentials' must
+        still get the modal (e.g. to update creds), but receive no DM."""
         athlete = _make_athlete(
             onboarding_complete=True,
             pending_data=PENDING_DATA,
@@ -152,7 +153,7 @@ class TestOpenGarminCredsModalAction:
         )
         _, client = self._call(athlete=athlete)
 
-        client.views_open.assert_not_called()
+        client.views_open.assert_called_once()
         client.chat_postMessage.assert_not_called()
 
 
@@ -177,6 +178,9 @@ class TestGarminCredsModalView:
             patch(f"{_OB}._complete_onboarding") as mock_complete,
             patch(f"{_OB}._send_garmin_credential_button") as mock_button,
             patch(f"{_BOT}.encrypt_password", return_value=b"encrypted"),
+            # Production now validates Garmin auth before completing onboarding —
+            # mock the client factory so validation succeeds without a real session file.
+            patch("running_coach_ai.garmin.client.get_garmin_client", return_value=MagicMock()),
         ):
             mock_get_session.return_value.__enter__.return_value = db
             _handle_garmin_creds_modal_view(ack=ack, body=body, view=view, client=client)
@@ -189,8 +193,9 @@ class TestGarminCredsModalView:
         ack, _, _, _ = self._call(athlete=athlete)
         ack.assert_called_once()
 
-    def test_already_onboarded_silently_discards(self):
-        """T004-2: onboarding_complete=True → no DM, _complete_onboarding NOT called."""
+    def test_already_onboarded_updates_credentials_and_dms_confirmation(self):
+        """onboarding_complete=True → credentials are updated on the athlete,
+        confirmation DM sent, _complete_onboarding NOT called (no plan regen)."""
         athlete = _make_athlete(
             onboarding_complete=True,
             pending_data=PENDING_DATA,
@@ -199,7 +204,10 @@ class TestGarminCredsModalView:
         _, client, mock_complete, _ = self._call(athlete=athlete)
 
         mock_complete.assert_not_called()
-        client.chat_postMessage.assert_not_called()
+        client.chat_postMessage.assert_called_once()
+        msg = client.chat_postMessage.call_args.kwargs.get("text", "")
+        assert "updated" in msg.lower() or "credentials" in msg.lower()
+        assert athlete.garmin_email == "alice@garmin.com"
 
     def test_expired_pending_sends_expiry_dm(self):
         """T004-3: Null or expired pending data → expiry DM; _complete_onboarding NOT called."""
@@ -231,6 +239,7 @@ class TestGarminCredsModalView:
             patch(f"{_OB}._complete_onboarding") as mock_complete,
             patch(f"{_OB}._send_garmin_credential_button"),
             patch(f"{_BOT}.encrypt_password", return_value=b"encrypted"),
+            patch("running_coach_ai.garmin.client.get_garmin_client", return_value=MagicMock()),
         ):
             mock_get_session.return_value.__enter__.return_value = db
             _handle_garmin_creds_modal_view(ack=ack, body=body, view=view, client=client)

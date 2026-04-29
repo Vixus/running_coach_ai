@@ -45,6 +45,7 @@ def _planned_workout(
     w.garmin_schedule_id = garmin_schedule_id
     w.target_distance_km = target_distance_km
     w.target_pace_min_per_km = target_pace_min_per_km
+    w.target_duration_seconds = None
     w.target_zones_json = None
     w.workout_name = None
     w.description = None
@@ -119,7 +120,8 @@ class TestExtractAndSyncGarmin:
         with patch(f"{self._WB}.get_garmin_client") as mock_auth, \
              patch(f"{self._WB}.get_garmin_workout_library", return_value=[]), \
              patch(f"{self._WB}.upload_workout", return_value={"workoutId": 9001}) as mock_up, \
-             patch(f"{self._WB}.schedule_workout", return_value={"workoutScheduleId": 8001}) as mock_sched:
+             patch(f"{self._WB}.schedule_workout", return_value={"workoutScheduleId": 8001}) as mock_sched, \
+             patch("running_coach_ai.slack.admin._run_garmin_verify", return_value=(workouts, [], [])):
             mock_auth.return_value = MagicMock()
             cleaned, note = extract_and_sync_garmin(athlete.id, response_text, db)
 
@@ -296,7 +298,8 @@ class TestHandleMessageSyncPrompt:
              patch(f"{self._WB}.upload_workout", side_effect=_mock_upload) as mock_up, \
              patch(f"{self._WB}.schedule_workout", return_value={"workoutScheduleId": 8001}) as mock_sched, \
              patch(f"{self._WB}.remove_workout_schedule"), \
-             patch(f"{self._WB}.delete_workout"):
+             patch(f"{self._WB}.delete_workout"), \
+             patch("running_coach_ai.slack.admin._run_garmin_verify", return_value=(workouts, [], [])):
             mock_auth.return_value = MagicMock()
             result = handle_message(athlete, prompt, db)
 

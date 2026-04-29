@@ -40,6 +40,7 @@ def _planned_workout(
     w.workout_type = workout_type
     w.target_distance_km = target_distance_km
     w.target_pace_min_per_km = target_pace_min_per_km
+    w.target_duration_seconds = None
     w.target_zones_json = None
     w.workout_name = None
     w.garmin_workout_id = garmin_workout_id

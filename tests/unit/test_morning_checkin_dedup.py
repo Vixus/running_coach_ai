@@ -39,7 +39,20 @@ def _make_snapshot():
     s.body_battery_start = 87
     s.resting_hr = 51
     s.stress_avg = 19
+    s.training_readiness = 75  # primary morning-data-complete signal
     return s
+
+
+def _patched_run(athlete, db, slack_client):
+    """Run morning check-in with time pinned to a daytime hour so the
+    06:00 local floor doesn't return early."""
+    from datetime import datetime as _dt, timezone as _tz
+    from running_coach_ai.coach.adapter import run_morning_checkin
+    fake_local = _dt(TODAY.year, TODAY.month, TODAY.day, 8, 0, tzinfo=_tz.utc)
+    with patch(f"{_ADAPTER}.datetime") as mock_dt:
+        mock_dt.now.return_value = fake_local
+        mock_dt.side_effect = lambda *args, **kwargs: _dt(*args, **kwargs)
+        run_morning_checkin(athlete, db, slack_client)
 
 
 def _make_db():
@@ -88,17 +101,15 @@ class TestMorningCheckinDedup:
         db = _make_db()
         slack_client = MagicMock()
 
-        from running_coach_ai.coach.adapter import run_morning_checkin
-
         # --- Tick 1: health data present, sends DM ---
-        run_morning_checkin(athlete, db, slack_client)
+        _patched_run(athlete, db, slack_client)
 
         assert mock_send_dm.call_count == 1, "Expected exactly 1 DM on first tick"
         assert athlete.last_morning_checkin_date == TODAY
 
         # --- Tick 2: dedup guard must fire (no Garmin call, no DM) ---
         garmin_calls_before = mock_garmin_client.call_count
-        run_morning_checkin(athlete, db, slack_client)
+        _patched_run(athlete, db, slack_client)
 
         assert mock_send_dm.call_count == 1, (
             "Expected DM count to remain 1 after second tick; dedup guard failed"
@@ -139,10 +150,10 @@ class TestMorningCheckinDedup:
 
         from running_coach_ai.coach.adapter import run_morning_checkin
 
-        run_morning_checkin(athlete, db, slack_client)  # Tick 1
+        _patched_run(athlete, db, slack_client)  # Tick 1
         commit_count_after_tick1 = db.commit.call_count
 
-        run_morning_checkin(athlete, db, slack_client)  # Tick 2
+        _patched_run(athlete, db, slack_client)  # Tick 2
 
         assert commit_count_after_tick1 >= 1, "commit() must be called after first tick"
         assert db.commit.call_count == commit_count_after_tick1, (
@@ -181,10 +192,10 @@ class TestMorningCheckinDedup:
 
         from running_coach_ai.coach.adapter import run_morning_checkin
 
-        run_morning_checkin(athlete, db, slack_client)  # Tick 1
+        _patched_run(athlete, db, slack_client)  # Tick 1
         claude_calls_after_tick1 = mock_claude.call_count
 
-        run_morning_checkin(athlete, db, slack_client)  # Tick 2
+        _patched_run(athlete, db, slack_client)  # Tick 2
 
         assert mock_claude.call_count == claude_calls_after_tick1, (
             "Claude must not be called on the second (no-op) tick"

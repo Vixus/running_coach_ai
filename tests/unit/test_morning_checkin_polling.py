@@ -33,7 +33,7 @@ def _make_athlete(*, last_checkin_date=None, has_garmin=True, tz="America/New_Yo
 
 
 def _make_snapshot(*, sleep_score=75, hrv_score=42, body_battery_start=87):
-    """Return a snapshot mock with the three key fields set."""
+    """Return a snapshot mock with the three key fields set + training_readiness."""
     s = MagicMock()
     s.date = TODAY
     s.sleep_score = sleep_score
@@ -42,11 +42,14 @@ def _make_snapshot(*, sleep_score=75, hrv_score=42, body_battery_start=87):
     s.body_battery_start = body_battery_start
     s.resting_hr = 51
     s.stress_avg = 19
+    s.training_readiness = 75  # primary signal — Garmin morning data is complete
     return s
 
 
 def _make_empty_snapshot():
-    """Return a snapshot where all three key fields are None."""
+    """Return a snapshot where all key fields (incl. training_readiness) are None.
+    Fails the morning-data gate, so production should not send a DM.
+    """
     s = MagicMock()
     s.date = TODAY
     s.sleep_score = None
@@ -55,6 +58,7 @@ def _make_empty_snapshot():
     s.body_battery_start = None
     s.resting_hr = None
     s.stress_avg = None
+    s.training_readiness = None
     return s
 
 
@@ -101,8 +105,14 @@ class TestHealthDataPresentFirstTick:
         db = _make_db()
         slack_client = MagicMock()
 
-        from running_coach_ai.coach.adapter import run_morning_checkin
-        run_morning_checkin(athlete, db, slack_client)
+        # Mock current time to a daytime hour so the 06:00 local floor doesn't fire
+        fake_local = datetime(TODAY.year, TODAY.month, TODAY.day, 8, 0, tzinfo=timezone.utc)
+        with patch(f"{_ADAPTER}.datetime") as mock_dt:
+            mock_dt.now.return_value = fake_local
+            mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
+            from running_coach_ai.coach.adapter import run_morning_checkin
+            run_morning_checkin(athlete, db, slack_client)
 
         mock_send_dm.assert_called_once()
         assert athlete.last_morning_checkin_date == TODAY

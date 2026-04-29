@@ -35,15 +35,15 @@ def test_accents_have_main_color_value(app_html_source):
 
 
 def test_localstorage_coach_key_referenced(app_html_source):
-    assert '"coach"' in app_html_source or "'coach'" in app_html_source, \
-        "localStorage key 'coach' not referenced in app.html"
+    assert "rcai_coach" in app_html_source, \
+        "localStorage key 'rcai_coach' not referenced in app.html"
 
 
 def test_localstorage_mode_key_referenced(app_html_source):
-    assert '"mode"' in app_html_source or "'mode'" in app_html_source, \
-        "localStorage key 'mode' not referenced in app.html"
+    assert "rcai_mode" in app_html_source, \
+        "localStorage key 'rcai_mode' not referenced in app.html"
 
 
 def test_localstorage_accent_key_referenced(app_html_source):
-    assert '"accent"' in app_html_source or "'accent'" in app_html_source, \
-        "localStorage key 'accent' not referenced in app.html"
+    assert "rcai_accent" in app_html_source, \
+        "localStorage key 'rcai_accent' not referenced in app.html"

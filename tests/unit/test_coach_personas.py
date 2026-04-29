@@ -119,6 +119,7 @@ def test_run_morning_checkin_uses_selected_persona(
     snapshot.resting_hr = 51
     snapshot.stress_avg = 19
     snapshot.hrv_status = "BALANCED"
+    snapshot.training_readiness = 75  # passes the morning-data gate
     mock_parse.return_value = snapshot
     mock_scoped.return_value.filter.return_value.first.return_value = None
 
@@ -133,7 +134,13 @@ def test_run_morning_checkin_uses_selected_persona(
     athlete.last_morning_checkin_date = None
     athlete.coach_key = "maya"
 
-    run_morning_checkin(athlete, MagicMock(), MagicMock())
+    # Pin time to a daytime hour so the 06:00 local floor doesn't return early
+    from datetime import datetime as _dt, timezone as _tz
+    fake_local = _dt(date.today().year, date.today().month, date.today().day, 8, 0, tzinfo=_tz.utc)
+    with patch(f"{_ADAPTER}.datetime") as mock_dt:
+        mock_dt.now.return_value = fake_local
+        mock_dt.side_effect = lambda *args, **kwargs: _dt(*args, **kwargs)
+        run_morning_checkin(athlete, MagicMock(), MagicMock())
 
     mock_claude.assert_called_once()
     assert mock_claude.call_args[0][0] == get_persona("maya").persona_block

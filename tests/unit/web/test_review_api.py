@@ -39,6 +39,23 @@ def _make_review(week_start=None):
     return r
 
 
+def _wire_review_db(athlete, review, total=1):
+    """Mock the two-call chain used by /api/review:
+       db.query(...).filter(...).count() → int
+       db.query(...).filter(...).order_by(...).offset(0).first() → review
+    """
+    db = MagicMock()
+    db.get.return_value = athlete
+    chain = MagicMock()
+    chain.filter.return_value = chain
+    chain.order_by.return_value = chain
+    chain.offset.return_value = chain
+    chain.count.return_value = total
+    chain.first.return_value = review
+    db.query.return_value = chain
+    return db
+
+
 # ---------------------------------------------------------------------------
 # GET /api/review — success
 # ---------------------------------------------------------------------------
@@ -49,9 +66,7 @@ def test_review_returns_correct_shape(mock_gs):
     athlete = _make_athlete()
     review = _make_review()
 
-    db = MagicMock()
-    db.get.return_value = athlete
-    db.query.return_value.filter.return_value.order_by.return_value.first.return_value = review
+    db = _wire_review_db(athlete, review)
 
     ctx = MagicMock()
     ctx.__enter__ = MagicMock(return_value=db)
@@ -84,9 +99,7 @@ def test_review_metrics_keys_present(mock_gs):
     athlete = _make_athlete()
     review = _make_review()
 
-    db = MagicMock()
-    db.get.return_value = athlete
-    db.query.return_value.filter.return_value.order_by.return_value.first.return_value = review
+    db = _wire_review_db(athlete, review)
 
     ctx = MagicMock()
     ctx.__enter__ = MagicMock(return_value=db)
@@ -112,9 +125,7 @@ def test_review_404_when_no_row(mock_gs):
     app = _flask_app()
     athlete = _make_athlete()
 
-    db = MagicMock()
-    db.get.return_value = athlete
-    db.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
+    db = _wire_review_db(athlete, review=None, total=0)
 
     ctx = MagicMock()
     ctx.__enter__ = MagicMock(return_value=db)

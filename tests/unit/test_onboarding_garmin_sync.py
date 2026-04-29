@@ -83,6 +83,7 @@ def _run_complete_onboarding(plan, weeks_in_plan=16):
 
     with patch("running_coach_ai.coach.planner.generate_plan", return_value=plan), \
          patch("running_coach_ai.garmin.workout_builder.sync_week_to_garmin", return_value=(5, 0, [])) as mock_sync, \
+         patch("running_coach_ai.garmin.client.get_garmin_client", return_value=MagicMock()), \
          patch(f"{_OB}._import_historical_activities", return_value=0), \
          patch(f"{_OB}._send_week1_summary"), \
          patch(f"{_OB}.encrypt_password", return_value=b"enc"), \
@@ -173,6 +174,7 @@ class TestOnboardingFullPlanSync:
 
         with patch("running_coach_ai.coach.planner.generate_plan", return_value=plan), \
              patch("running_coach_ai.garmin.workout_builder.sync_week_to_garmin", side_effect=_flaky_sync) as mock_sync, \
+             patch("running_coach_ai.garmin.client.get_garmin_client", return_value=MagicMock()), \
              patch(f"{_OB}._import_historical_activities", return_value=0), \
              patch(f"{_OB}._send_week1_summary"), \
              patch(f"{_OB}.encrypt_password", return_value=b"enc"), \

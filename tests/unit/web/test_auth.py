@@ -19,7 +19,7 @@ def _make_app():
     app = Flask(__name__)
     app.config["SECRET_KEY"] = "test-secret-key"
     app.config["TESTING"] = True
-    app.register_blueprint(bp)
+    app.register_blueprint(bp, url_prefix='/auth')
     return app
 
 
@@ -55,9 +55,11 @@ def test_login_success(mock_get_session):
         resp = client.post("/auth/login", json={"username": "sarah", "password": "hunter2"})
         assert resp.status_code == 200
         data = resp.get_json()
-        assert data["athlete_id"] == 1
-        assert data["name"] == "Sarah"
-        assert data["is_admin"] is False
+        assert data.get("ok") is True
+        # Session should be populated with athlete_id + is_admin
+        with client.session_transaction() as sess:
+            assert sess.get("athlete_id") == 1
+            assert sess.get("is_admin") is False
 
 
 # ---------------------------------------------------------------------------

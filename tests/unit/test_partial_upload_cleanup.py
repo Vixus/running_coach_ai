@@ -35,6 +35,7 @@ def _workout(
     w.workout_type = workout_type
     w.target_distance_km = 8.0
     w.target_pace_min_per_km = 6.0
+    w.target_duration_seconds = None
     w.target_zones_json = None
     w.description = None
     w.workout_name = None
