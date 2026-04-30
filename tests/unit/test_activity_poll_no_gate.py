@@ -21,7 +21,7 @@ class TestActivityPollNoGate:
         mock_db = self._make_mock_db()
 
         with patch("running_coach_ai.database.session.get_session", return_value=mock_db):
-            _run_activity_poll(mock_slack)
+            _run_activity_poll()
 
         # DB query was reached — the poll was not gated out
         mock_db.query.assert_called()
@@ -34,7 +34,7 @@ class TestActivityPollNoGate:
         mock_db = self._make_mock_db()
 
         with patch("running_coach_ai.database.session.get_session", return_value=mock_db):
-            _run_activity_poll(mock_slack)
+            _run_activity_poll()
 
         mock_db.query.assert_called()
 
@@ -61,8 +61,8 @@ class TestActivityPollNoGate:
             mock_garmin = MagicMock()
             mock_get_garmin.return_value = mock_garmin
             _run_activity_poll = jobs._run_activity_poll
-            _run_activity_poll(mock_slack, mock_scheduler)
+            _run_activity_poll(mock_scheduler)
 
         mock_ingest.assert_called_once_with(
-            athlete, "act1", mock_garmin, mock_db, mock_slack, mock_scheduler
+            athlete, "act1", mock_garmin, mock_db, mock_scheduler
         )

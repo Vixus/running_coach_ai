@@ -1,10 +1,6 @@
 """Garmin admin operations — athlete-id-based, return structured dicts.
 
-These mirror the Slack `!admin resync-garmin` / `clean-garmin` / `verify-garmin`
-commands but are surface-agnostic. The Slack adapter formats its own text;
-the web admin UI consumes the structured results directly.
-
-Phase 6 deletes the duplicated text-formatting versions in slack/admin.py.
+Used by the web admin UI; surface-agnostic.
 """
 
 import logging
@@ -15,6 +11,63 @@ from sqlalchemy.orm import Session
 from running_coach_ai.database.models import Athlete, PlannedWorkout
 
 logger = logging.getLogger(__name__)
+
+
+def _run_garmin_verify(athlete: Athlete, db: Session):
+    """Compare every upcoming planned workout against the live Garmin
+    library and calendar. Returns three lists of PlannedWorkout objects:
+
+      matched      — in library AND on calendar for the correct date
+      library_only — in library but NOT on calendar
+      missing      — not in the library at all
+
+    Raises on auth or API failure; callers should handle exceptions.
+    """
+    from running_coach_ai.garmin.client import (
+        get_garmin_client, get_garmin_workout_library,
+    )
+    from running_coach_ai.garmin.workout_builder import APP_MARKER_RE
+
+    today = date.today()
+
+    upcoming = (
+        db.query(PlannedWorkout)
+        .filter(
+            PlannedWorkout.athlete_id == athlete.id,
+            PlannedWorkout.scheduled_date >= today,
+            PlannedWorkout.status.in_(["planned", "modified"]),
+            PlannedWorkout.workout_type != "rest",
+        )
+        .order_by(PlannedWorkout.scheduled_date)
+        .all()
+    )
+
+    if not upcoming:
+        return [], [], []
+
+    garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted)
+
+    # Scan library for [rca:{athlete_id}:{date}] markers
+    library_by_date: dict[str, list[int]] = {}
+    for entry in get_garmin_workout_library(garmin):
+        m = APP_MARKER_RE.search(entry.get("description") or "")
+        if m and int(m.group(1)) == athlete.id:
+            library_by_date.setdefault(m.group(2), []).append(int(entry["workoutId"]))
+
+    # The Garmin calendar date-range API is unreliable (returns 404 for empty
+    # ranges); DB garmin_schedule_id is the ground truth for "is on calendar."
+    matched, library_only, missing = [], [], []
+    for w in upcoming:
+        date_iso = w.scheduled_date.isoformat()
+        lib_ids = library_by_date.get(date_iso, [])
+        if not lib_ids:
+            missing.append(w)
+        elif w.garmin_schedule_id:
+            matched.append(w)
+        else:
+            library_only.append(w)
+
+    return matched, library_only, missing
 
 
 def verify_garmin_for_athlete(athlete: Athlete, db: Session) -> dict:
@@ -33,8 +86,6 @@ def verify_garmin_for_athlete(athlete: Athlete, db: Session) -> dict:
         return {"ok": False, "error": "No Garmin credentials stored.",
                 "matched": [], "library_only": [], "missing": []}
 
-    # Reuse the pure helper from slack/admin.py — it takes (athlete, db) only.
-    from running_coach_ai.slack.admin import _run_garmin_verify
     try:
         matched, library_only, missing = _run_garmin_verify(athlete, db)
     except Exception as e:

@@ -98,7 +98,7 @@ _FEEDBACK = "running_coach_ai.coach.feedback"
 @patch(f"{_ADAPTER}.extract_and_apply_plan", return_value="morning text")
 @patch(f"{_ADAPTER}.call_claude", return_value="morning text")
 @patch(f"{_ADAPTER}.scoped_query")
-@patch("running_coach_ai.slack.bot.send_dm")
+@patch("running_coach_ai.coach.notify.notify")
 @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
 @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
 @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -140,7 +140,7 @@ def test_run_morning_checkin_uses_selected_persona(
     with patch(f"{_ADAPTER}.datetime") as mock_dt:
         mock_dt.now.return_value = fake_local
         mock_dt.side_effect = lambda *args, **kwargs: _dt(*args, **kwargs)
-        run_morning_checkin(athlete, MagicMock(), MagicMock())
+        run_morning_checkin(athlete, MagicMock())
 
     mock_claude.assert_called_once()
     assert mock_claude.call_args[0][0] == get_persona("maya").persona_block
@@ -185,8 +185,8 @@ def test_adapt_next_week_uses_selected_persona(mock_scoped, mock_claude, mock_ex
 
 
 @patch(f"{_FEEDBACK}.call_claude", return_value="feedback text")
-@patch("running_coach_ai.slack.conversation.extract_and_save_memories", return_value="feedback text")
-@patch("running_coach_ai.slack.bot.send_dm")
+@patch("running_coach_ai.coach.conversation.extract_and_save_memories", return_value="feedback text")
+@patch("running_coach_ai.coach.notify.notify")
 def test_generate_post_run_feedback_uses_selected_persona(mock_send_dm, mock_memories, mock_claude):
     """Case 11: generate_post_run_feedback passes athlete's persona_block to call_claude."""
     from running_coach_ai.coach.feedback import generate_post_run_feedback

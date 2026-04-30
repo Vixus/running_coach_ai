@@ -52,7 +52,7 @@ def _patched_run(athlete, db, slack_client):
     with patch(f"{_ADAPTER}.datetime") as mock_dt:
         mock_dt.now.return_value = fake_local
         mock_dt.side_effect = lambda *args, **kwargs: _dt(*args, **kwargs)
-        run_morning_checkin(athlete, db, slack_client)
+        run_morning_checkin(athlete, db)
 
 
 def _make_db():
@@ -72,7 +72,7 @@ class TestMorningCheckinDedup:
     @patch(f"{_ADAPTER}.extract_and_apply_plan", return_value="Morning message")
     @patch(f"{_ADAPTER}.call_claude", return_value="Morning message")
     @patch(f"{_ADAPTER}.scoped_query")
-    @patch("running_coach_ai.slack.bot.send_dm")
+    @patch("running_coach_ai.coach.notify.notify")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -121,7 +121,7 @@ class TestMorningCheckinDedup:
     @patch(f"{_ADAPTER}.extract_and_apply_plan", return_value="Morning message")
     @patch(f"{_ADAPTER}.call_claude", return_value="Morning message")
     @patch(f"{_ADAPTER}.scoped_query")
-    @patch("running_coach_ai.slack.bot.send_dm")
+    @patch("running_coach_ai.coach.notify.notify")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -163,7 +163,7 @@ class TestMorningCheckinDedup:
     @patch(f"{_ADAPTER}.extract_and_apply_plan", return_value="Morning message")
     @patch(f"{_ADAPTER}.call_claude", return_value="Morning message")
     @patch(f"{_ADAPTER}.scoped_query")
-    @patch("running_coach_ai.slack.bot.send_dm")
+    @patch("running_coach_ai.coach.notify.notify")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")

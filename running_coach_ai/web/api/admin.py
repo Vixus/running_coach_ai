@@ -111,7 +111,7 @@ def admin_reset_onboarding(athlete_id: int):
 def admin_morning_checkin(athlete_id: int):
     body = request.get_json(silent=True) or {}
     force = bool(body.get("force"))
-    result = admin_ops.trigger_morning_checkin(athlete_id, force=force, slack_client=None)
+    result = admin_ops.trigger_morning_checkin(athlete_id, force=force)
     return jsonify(result), (200 if result["ok"] else 400)
 
 

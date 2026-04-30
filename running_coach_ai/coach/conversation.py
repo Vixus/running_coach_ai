@@ -1326,7 +1326,7 @@ def extract_and_sync_garmin(
             # in the plan, inflating the count and doing redundant Garmin API work.
             # Instead run verify-only to confirm everything landed correctly.
             try:
-                from running_coach_ai.slack.admin import _run_garmin_verify
+                from running_coach_ai.garmin.admin import _run_garmin_verify
                 matched, library_only, missing = _run_garmin_verify(athlete, db_session)
                 total = len(matched) + len(library_only) + len(missing)
                 if not library_only and not missing:
@@ -1373,7 +1373,7 @@ def extract_and_sync_garmin(
 
         # Verify the sync actually landed on Garmin (one library + calendar fetch).
         try:
-            from running_coach_ai.slack.admin import _run_garmin_verify
+            from running_coach_ai.garmin.admin import _run_garmin_verify
             matched, library_only, missing = _run_garmin_verify(athlete, db_session)
             total = len(matched) + len(library_only) + len(missing)
             if not library_only and not missing:

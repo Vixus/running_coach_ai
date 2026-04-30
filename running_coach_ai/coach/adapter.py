@@ -10,7 +10,7 @@ from running_coach_ai.coach.persona import call_claude, format_miles, format_pac
 from running_coach_ai.coach.personas import get_persona
 from running_coach_ai.database.models import Athlete, HealthSnapshot, PlannedWorkout
 from running_coach_ai.database.session import scoped_query
-from running_coach_ai.slack.conversation import extract_and_apply_plan
+from running_coach_ai.coach.conversation import extract_and_apply_plan
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ def _garmin_morning_data_complete(snapshot) -> bool:
     return all(getattr(snapshot, f) is not None for f in _HEALTH_KEY_FIELDS)
 
 
-def run_morning_checkin(athlete: Athlete, db_session: Session, slack_client=None) -> None:
+def run_morning_checkin(athlete: Athlete, db_session: Session) -> None:
     """Run the morning check-in for a single athlete.
 
     Fetches health data, weather, evaluates today's session, adapts if
@@ -228,12 +228,9 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, slack_client=None
             body=response,
             action_path="/app#chat",
         )
-        if slack_client is not None:
-            from running_coach_ai.slack.bot import send_dm
-            send_dm(slack_client, athlete, response, db_session)
         athlete.last_morning_checkin_date = today
         db_session.commit()
-        logger.info("Morning check-in delivered to athlete %d (slack=%s)", athlete.id, slack_client is not None)
+        logger.info("Morning check-in delivered to athlete %d", athlete.id)
     except Exception as e:
         logger.error("Failed to deliver morning check-in to athlete %d: %s", athlete.id, e)
 
@@ -246,7 +243,7 @@ def adapt_next_week(athlete: Athlete, week_summary: dict, db_session: Session) -
     Applies changes via <plan> mutations.
     """
     from running_coach_ai.coach.persona import call_claude
-    from running_coach_ai.slack.conversation import extract_and_apply_plan
+    from running_coach_ai.coach.conversation import extract_and_apply_plan
 
     completion_pct = week_summary.get("completion_pct", 100)
     next_week_start = date.fromisoformat(week_summary["week_start"]) + timedelta(weeks=1)

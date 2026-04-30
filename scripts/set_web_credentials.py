@@ -1,4 +1,8 @@
-"""CLI helper to set web dashboard credentials for an athlete."""
+"""CLI helper to set web dashboard credentials for an athlete.
+
+Lookup is by --athlete-id (integer PK) or --email. Use this when you can't
+reach the admin UI (e.g. forgot password and no admin account exists).
+"""
 
 import argparse
 import sys
@@ -14,30 +18,46 @@ from running_coach_ai.database.session import get_session
 
 def main():
     parser = argparse.ArgumentParser(description="Set web dashboard credentials for an athlete")
-    parser.add_argument("--slack-id", required=True, help="Athlete's Slack user ID (e.g. U12345678)")
-    parser.add_argument("--username", required=True, help="Web dashboard username")
-    parser.add_argument("--password", required=True, help="Web dashboard password")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--athlete-id", type=int, help="Athlete primary key")
+    group.add_argument("--email", help="Athlete email")
+    parser.add_argument("--password", required=True, help="New password")
+    parser.add_argument("--username", help="Optional web_username (defaults to email)")
     parser.add_argument("--admin", action="store_true", help="Grant admin privileges")
     args = parser.parse_args()
 
     with get_session() as db:
-        athlete = db.query(Athlete).filter(Athlete.slack_user_id == args.slack_id).first()
+        if args.athlete_id is not None:
+            athlete = db.get(Athlete, args.athlete_id)
+        else:
+            email = args.email.strip().lower()
+            athlete = (
+                db.query(Athlete)
+                .filter((Athlete.email == email) | (Athlete.web_username == email))
+                .first()
+            )
         if not athlete:
-            print(f"Error: No athlete found with Slack ID {args.slack_id}", file=sys.stderr)
+            print("Error: athlete not found", file=sys.stderr)
             sys.exit(1)
 
-        athlete.web_username = args.username
+        if args.username:
+            athlete.web_username = args.username
+        elif args.email and not athlete.web_username:
+            athlete.web_username = args.email.strip().lower()
         athlete.web_password_hash = generate_password_hash(args.password)
         if args.admin:
             athlete.is_admin = True
 
-        # Store values before session closes
+        athlete_id = athlete.id
         athlete_name = athlete.name
         is_admin = athlete.is_admin
+        web_username = athlete.web_username
+        email = athlete.email
 
-    print(f"Credentials set for athlete: {athlete_name or args.slack_id}")
-    print(f"  Username : {args.username}")
-    print(f"  Admin    : {args.admin or is_admin}")
+    print(f"Credentials set for athlete #{athlete_id}: {athlete_name or '(unnamed)'}")
+    print(f"  Email       : {email}")
+    print(f"  Username    : {web_username}")
+    print(f"  Admin       : {is_admin}")
 
 
 if __name__ == "__main__":

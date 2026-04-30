@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 _garmin_auth_error_notified: dict[int, date] = {}
 
 
-def _notify_garmin_auth_error(athlete, slack_client) -> None:
+def _notify_garmin_auth_error(athlete) -> None:
     """Notify the athlete that their Garmin credentials are invalid.
 
-    Rate-limited to one notification per athlete per calendar day. When
-    `slack_client` is None (web-only mode), writes a Notification row only.
+    Rate-limited to one notification per athlete per calendar day. Writes
+    a "Garmin reconnect needed" row to the in-app inbox.
     """
     today = date.today()
     if _garmin_auth_error_notified.get(athlete.id) == today:
@@ -30,7 +30,6 @@ def _notify_garmin_auth_error(athlete, slack_client) -> None:
         "have changed. Open the app and re-enter them so I can keep your training on track."
     )
 
-    # In-app notification (always)
     try:
         from running_coach_ai.coach.notify import notify
         from running_coach_ai.database.session import get_session
@@ -43,19 +42,6 @@ def _notify_garmin_auth_error(athlete, slack_client) -> None:
                 db.commit()
     except Exception as e:
         logger.error("Failed to write Garmin auth notification for athlete %d: %s", athlete.id, e)
-
-    # Slack DM (transitional — Phase 6 removes)
-    if slack_client is None:
-        return
-    channel = athlete.slack_dm_channel_id
-    if not channel:
-        return
-    try:
-        from running_coach_ai.slack.onboarding import _send_garmin_credential_button
-        slack_client.chat_postMessage(channel=channel, text=body)
-        _send_garmin_credential_button(channel, slack_client)
-    except Exception as e:
-        logger.error("Failed to send Garmin auth error DM to athlete %d: %s", athlete.id, e)
 
 
 def _next_checkin_start(tz_name: str) -> datetime:
@@ -81,7 +67,7 @@ def _next_checkin_start(tz_name: str) -> datetime:
 # Job functions
 # ---------------------------------------------------------------------------
 
-def _run_morning_checkin_for_athlete(athlete_id: int, slack_client) -> None:
+def _run_morning_checkin_for_athlete(athlete_id: int) -> None:
     """Morning check-in job for a single athlete."""
     from running_coach_ai.database.models import Athlete
     from running_coach_ai.database.session import get_session
@@ -95,16 +81,16 @@ def _run_morning_checkin_for_athlete(athlete_id: int, slack_client) -> None:
             if not athlete or not athlete.allowed or not athlete.onboarding_complete:
                 return
             try:
-                run_morning_checkin(athlete, db_session, slack_client)
+                run_morning_checkin(athlete, db_session)
             except Exception as inner_e:
                 if is_garmin_auth_error(inner_e):
-                    _notify_garmin_auth_error(athlete, slack_client)
+                    _notify_garmin_auth_error(athlete)
                 raise
     except Exception as e:
         logger.error("Morning check-in failed for athlete %d: %s", athlete_id, e)
 
 
-def _run_activity_poll(slack_client, scheduler=None) -> None:
+def _run_activity_poll(scheduler=None) -> None:
     """Activity polling job — runs every 10 min."""
     from running_coach_ai.database.models import Athlete
     from running_coach_ai.database.session import get_session
@@ -117,7 +103,6 @@ def _run_activity_poll(slack_client, scheduler=None) -> None:
             .filter(
                 Athlete.allowed == True,
                 Athlete.onboarding_complete == True,
-                ~Athlete.slack_user_id.like("__test_%"),
             )
             .all()
         )
@@ -139,20 +124,20 @@ def _run_activity_poll(slack_client, scheduler=None) -> None:
                 new_ids = poll_new_activities(garmin, athlete.id, db_session)
 
                 for activity_id in new_ids:
-                    _ingest_and_feedback(athlete, activity_id, garmin, db_session, slack_client, scheduler)
+                    _ingest_and_feedback(athlete, activity_id, garmin, db_session, scheduler)
 
                 # Retry any fully-ingested runs where feedback wasn't sent yet
                 # (covers startup after crash, reprocessing after algorithm fixes, etc.)
-                _retry_pending_feedback(athlete, garmin, db_session, slack_client)
+                _retry_pending_feedback(athlete, garmin, db_session)
 
             except Exception as e:
                 from running_coach_ai.garmin.client import is_garmin_auth_error
                 if is_garmin_auth_error(e):
-                    _notify_garmin_auth_error(athlete, slack_client)
+                    _notify_garmin_auth_error(athlete)
                 logger.error("Activity poll failed for athlete %d: %s", athlete.id, e)
 
 
-def _retry_pending_feedback(athlete, garmin, db_session, slack_client) -> None:
+def _retry_pending_feedback(athlete, garmin, db_session) -> None:
     """Send feedback for fully-ingested running runs that haven't received it yet.
 
     Covers: restarts after a crash, manual feedback_given resets, and algorithm
@@ -220,14 +205,14 @@ def _retry_pending_feedback(athlete, garmin, db_session, slack_client) -> None:
                 garmin_hr_zones=garmin_hr_zones,
             )
             generate_post_run_feedback(
-                athlete, cw, bio, db_session, slack_client, athlete_max_hr=athlete_max_hr,
+                athlete, cw, bio, db_session, athlete_max_hr=athlete_max_hr,
             )
             logger.info("Pending feedback sent for CW %d (athlete %d)", cw.id, athlete.id)
         except Exception as e:
             logger.error("Pending feedback retry failed for CW %d athlete %d: %s", cw.id, athlete.id, e)
 
 
-def _ingest_and_feedback(athlete, activity_id: str, garmin, db_session, slack_client, scheduler=None) -> None:
+def _ingest_and_feedback(athlete, activity_id: str, garmin, db_session, scheduler=None) -> None:
     """Ingest a new activity and send post-run feedback."""
     from running_coach_ai.garmin.parser import parse_activity_summary
     from running_coach_ai.garmin.telemetry import extract_telemetry, ingest_lap_splits
@@ -322,7 +307,7 @@ def _ingest_and_feedback(athlete, activity_id: str, garmin, db_session, slack_cl
             )
             update_running_profile(athlete.id, db_session)
             generate_post_run_feedback(
-                athlete, completed, biomechanics_result, db_session, slack_client,
+                athlete, completed, biomechanics_result, db_session,
                 athlete_max_hr=athlete_max_hr,
             )
         else:
@@ -353,7 +338,7 @@ def _ingest_and_feedback(athlete, activity_id: str, garmin, db_session, slack_cl
                 )
                 if scheduler is not None:
                     try:
-                        register_athlete_morning_job(scheduler, athlete, slack_client)
+                        register_athlete_morning_job(scheduler, athlete)
                     except Exception as sched_e:
                         logger.error(
                             "Failed to re-register morning job for athlete %d: %s",
@@ -385,7 +370,6 @@ def _run_health_backfill() -> None:
             .filter(
                 Athlete.allowed == True,
                 Athlete.onboarding_complete == True,
-                ~Athlete.slack_user_id.like("__test_%"),
             )
             .all()
         )
@@ -456,7 +440,6 @@ def _run_garmin_reconciliation() -> None:
             .filter(
                 Athlete.allowed == True,
                 Athlete.onboarding_complete == True,
-                ~Athlete.slack_user_id.like("__test_%"),
             )
             .all()
         )
@@ -618,7 +601,7 @@ def _upsert_weekly_review_summary(athlete_id: int, week_start, week_summary: dic
     logger.info("WeeklyReviewSummary upserted for athlete %d week %s", athlete_id, week_start)
 
 
-def _run_weekly_review(slack_client=None) -> None:
+def _run_weekly_review() -> None:
     """Weekly review job — runs Sunday 20:00."""
     from running_coach_ai.database.models import Athlete
     from running_coach_ai.database.session import get_session
@@ -637,7 +620,6 @@ def _run_weekly_review(slack_client=None) -> None:
             .filter(
                 Athlete.allowed == True,
                 Athlete.onboarding_complete == True,
-                ~Athlete.slack_user_id.like("__test_%"),
             )
             .all()
         )
@@ -669,7 +651,6 @@ def _run_weekly_review(slack_client=None) -> None:
                                 athlete.id, target_week, sync_e,
                             )
 
-                # Deliver: in-app notification (always) + transitional Slack DM
                 from running_coach_ai.coach.notify import notify
                 notify(
                     db_session, athlete,
@@ -679,10 +660,7 @@ def _run_weekly_review(slack_client=None) -> None:
                     action_path="/app#review",
                 )
                 db_session.commit()
-                if slack_client is not None:
-                    from running_coach_ai.slack.bot import send_dm
-                    send_dm(slack_client, athlete, review_message, db_session)
-                logger.info("Weekly review delivered to athlete %d (slack=%s)", athlete.id, slack_client is not None)
+                logger.info("Weekly review delivered to athlete %d", athlete.id)
 
             except Exception as e:
                 logger.error("Weekly review failed for athlete %d: %s", athlete.id, e)
@@ -692,16 +670,10 @@ def _run_weekly_review(slack_client=None) -> None:
 # Job registration
 # ---------------------------------------------------------------------------
 
-def register_jobs(scheduler: BlockingScheduler, slack_app=None) -> None:
-    """Register all scheduled jobs. Called from main.py at startup.
-
-    `slack_app=None` runs the scheduler in web-only mode: no Slack DMs go
-    out, but in-app notifications still flow through the inbox.
-    """
+def register_jobs(scheduler: BlockingScheduler) -> None:
+    """Register all scheduled jobs. Called from main.py at startup."""
     from running_coach_ai.database.models import Athlete
     from running_coach_ai.database.session import get_session
-
-    slack_client = slack_app.client if slack_app is not None else None
 
     # Morning check-in — one IntervalTrigger per athlete polling every 30 min from 07:00 local
     with get_session() as db_session:
@@ -710,7 +682,6 @@ def register_jobs(scheduler: BlockingScheduler, slack_app=None) -> None:
             .filter(
                 Athlete.allowed == True,
                 Athlete.onboarding_complete == True,
-                ~Athlete.slack_user_id.like("__test_%"),
             )
             .all()
         )
@@ -719,7 +690,7 @@ def register_jobs(scheduler: BlockingScheduler, slack_app=None) -> None:
             scheduler.add_job(
                 _run_morning_checkin_for_athlete,
                 IntervalTrigger(minutes=30, start_date=_next_checkin_start(tz), timezone=tz),
-                args=[athlete.id, slack_client],
+                args=[athlete.id],
                 id=f"morning_checkin_{athlete.id}",
                 replace_existing=True,
                 misfire_grace_time=300,
@@ -730,7 +701,7 @@ def register_jobs(scheduler: BlockingScheduler, slack_app=None) -> None:
     scheduler.add_job(
         _run_activity_poll,
         CronTrigger(minute="*/30", hour="6-21"),
-        args=[slack_client, scheduler],
+        args=[scheduler],
         id="activity_poll",
         replace_existing=True,
         misfire_grace_time=60,
@@ -740,7 +711,6 @@ def register_jobs(scheduler: BlockingScheduler, slack_app=None) -> None:
     scheduler.add_job(
         _run_weekly_review,
         CronTrigger(day_of_week="sun", hour=20, minute=0),
-        args=[slack_client],
         id="weekly_review",
         replace_existing=True,
         misfire_grace_time=3600,
@@ -769,7 +739,7 @@ def register_jobs(scheduler: BlockingScheduler, slack_app=None) -> None:
     scheduler.add_job(
         _refresh_athlete_morning_jobs,
         IntervalTrigger(minutes=5),
-        args=[scheduler, slack_client],
+        args=[scheduler],
         id="refresh_athlete_morning_jobs",
         replace_existing=True,
         misfire_grace_time=300,
@@ -778,12 +748,10 @@ def register_jobs(scheduler: BlockingScheduler, slack_app=None) -> None:
     logger.info("All scheduler jobs registered")
 
 
-def _refresh_athlete_morning_jobs(scheduler, slack_client) -> None:
+def _refresh_athlete_morning_jobs(scheduler) -> None:
     """Idempotently ensure every onboarded athlete has a morning check-in job.
 
     Picks up athletes onboarded via the web after the scheduler started.
-    Runs every 5 minutes; calling `add_job` with `replace_existing=True` is
-    a no-op when the job already exists with the same args.
     """
     from running_coach_ai.database.models import Athlete
     from running_coach_ai.database.session import get_session
@@ -794,7 +762,6 @@ def _refresh_athlete_morning_jobs(scheduler, slack_client) -> None:
             .filter(
                 Athlete.allowed == True,
                 Athlete.onboarding_complete == True,
-                ~(Athlete.slack_user_id.like("__test_%")),
             )
             .all()
         )
@@ -807,7 +774,7 @@ def _refresh_athlete_morning_jobs(scheduler, slack_client) -> None:
             scheduler.add_job(
                 _run_morning_checkin_for_athlete,
                 IntervalTrigger(minutes=30, start_date=_next_checkin_start(tz), timezone=tz),
-                args=[athlete.id, slack_client],
+                args=[athlete.id],
                 id=job_id,
                 replace_existing=True,
                 misfire_grace_time=300,
@@ -815,7 +782,7 @@ def _refresh_athlete_morning_jobs(scheduler, slack_client) -> None:
             logger.info("Refresh: registered morning check-in for athlete %d (%s)", athlete.id, tz)
 
 
-def register_athlete_morning_job(scheduler: BlockingScheduler, athlete, slack_client) -> None:
+def register_athlete_morning_job(scheduler: BlockingScheduler, athlete) -> None:
     """Register (or re-register) the morning check-in job for a single athlete.
 
     Called after new athlete onboarding completes so the job takes effect
@@ -825,7 +792,7 @@ def register_athlete_morning_job(scheduler: BlockingScheduler, athlete, slack_cl
     scheduler.add_job(
         _run_morning_checkin_for_athlete,
         IntervalTrigger(minutes=30, start_date=_next_checkin_start(tz), timezone=tz),
-        args=[athlete.id, slack_client],
+        args=[athlete.id],
         id=f"morning_checkin_{athlete.id}",
         replace_existing=True,
         misfire_grace_time=300,

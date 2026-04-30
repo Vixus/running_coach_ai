@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 
 from running_coach_ai.database.models import Athlete
-from running_coach_ai.slack.conversation import extract_coach_switch
+from running_coach_ai.coach.conversation import extract_coach_switch
 
 
 def _make_athlete(coach_key="classic"):

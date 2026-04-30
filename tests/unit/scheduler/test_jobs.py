@@ -40,8 +40,8 @@ def test_generate_post_run_feedback_persists_coach_analysis():
     db.query.return_value.filter.return_value.order_by.return_value.all.return_value = []
 
     with patch("running_coach_ai.coach.feedback.call_claude", return_value=mock_analysis), \
-         patch("running_coach_ai.slack.conversation.extract_and_save_memories", return_value=mock_analysis), \
-         patch("running_coach_ai.slack.bot.send_dm"):
+         patch("running_coach_ai.coach.conversation.extract_and_save_memories", return_value=mock_analysis), \
+         patch("running_coach_ai.coach.notify.notify"):
         generate_post_run_feedback(athlete, completed, biomechanics, db, MagicMock())
 
     assert completed.coach_analysis == mock_analysis

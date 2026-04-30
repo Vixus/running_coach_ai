@@ -65,10 +65,10 @@ def _run(athletes, sync_return=(3, 0, [])):
          patch("running_coach_ai.coach.adapter.adapt_next_week"), \
          patch("running_coach_ai.garmin.workout_builder.sync_week_to_garmin",
                return_value=sync_return) as mock_sync, \
-         patch("running_coach_ai.slack.bot.send_dm"):
+         patch("running_coach_ai.coach.notify.notify"):
         mock_ctx.return_value.__enter__ = lambda s: db
         mock_ctx.return_value.__exit__ = MagicMock(return_value=False)
-        _run_weekly_review(slack_client)
+        _run_weekly_review()
 
     return mock_sync
 
@@ -139,10 +139,10 @@ class TestWeeklyReviewSyncsNextTwoWeeks:
              patch("running_coach_ai.coach.adapter.adapt_next_week"), \
              patch("running_coach_ai.garmin.workout_builder.sync_week_to_garmin",
                    side_effect=_flaky) as mock_sync, \
-             patch("running_coach_ai.slack.bot.send_dm"):
+             patch("running_coach_ai.coach.notify.notify"):
             mock_ctx.return_value.__enter__ = lambda s: db
             mock_ctx.return_value.__exit__ = MagicMock(return_value=False)
-            _run_weekly_review(slack_client)  # must not raise
+            _run_weekly_review()  # must not raise
 
         assert mock_sync.call_count == 2
 

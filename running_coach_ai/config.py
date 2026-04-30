@@ -3,34 +3,22 @@
 import logging
 import logging.handlers
 import os
-from typing import List
 
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
-    SLACK_BOT_TOKEN: str = ""
-    SLACK_SIGNING_SECRET: str = ""
-    SLACK_APP_TOKEN: str = ""
     DB_PATH: str = "/data/coach.db"
     GARMIN_SESSION_DIR: str = "/data/garmin_sessions/"
     ENCRYPTION_KEY: str = ""
-    ALLOWED_SLACK_USER_IDS: str = ""
-    ADMIN_SLACK_USER_ID: str = ""
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = ""  # If set, logs are also written to this file path
     GARMIN_TIMEOUT: int = 30  # Timeout in seconds for Garmin API calls
     WEB_SECRET_KEY: str = ""
     WEB_PORT: int = 8080
 
-    @property
-    def allowed_user_ids(self) -> List[str]:
-        if not self.ALLOWED_SLACK_USER_IDS:
-            return []
-        return [uid.strip() for uid in self.ALLOWED_SLACK_USER_IDS.split(",") if uid.strip()]
-
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()

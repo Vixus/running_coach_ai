@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 
 
 TODAY = date.today()
-_CONV = "running_coach_ai.slack.conversation"
+_CONV = "running_coach_ai.coach.conversation"
 _CLIENT = "running_coach_ai.garmin.client"
 _WB = "running_coach_ai.garmin.workout_builder"
 
@@ -64,7 +64,7 @@ def _library_entry(athlete_id: int, days_ahead: int, workout_id: int) -> dict:
 
 def _run(athlete, workouts, library_entries, schedule_existing_return=None, day_sync_ok=True):
     """Run _validate_garmin_sync with mocked Garmin API."""
-    from running_coach_ai.slack.conversation import _validate_garmin_sync
+    from running_coach_ai.coach.conversation import _validate_garmin_sync
 
     db = MagicMock()
     db.commit.return_value = None
@@ -94,7 +94,7 @@ class TestBulkLibraryScan:
         ]
         library = [_library_entry(1, i + 1, 100 + i) for i in range(10)]
 
-        from running_coach_ai.slack.conversation import _validate_garmin_sync
+        from running_coach_ai.coach.conversation import _validate_garmin_sync
         db = MagicMock()
         db.commit.return_value = None
 
@@ -110,7 +110,7 @@ class TestBulkLibraryScan:
     def test_empty_upcoming_does_nothing(self):
         """No upcoming workouts → no Garmin API calls."""
         athlete = _athlete()
-        from running_coach_ai.slack.conversation import _validate_garmin_sync
+        from running_coach_ai.coach.conversation import _validate_garmin_sync
         db = MagicMock()
 
         with patch(_GET_CLIENT) as mock_auth, \
@@ -221,7 +221,7 @@ class TestLibraryOnlyOrphanRepair:
         w = _workout(days_ahead=3, garmin_workout_id="100", garmin_schedule_id=None)
         library = [_library_entry(1, 3, 100)]
 
-        from running_coach_ai.slack.conversation import _validate_garmin_sync
+        from running_coach_ai.coach.conversation import _validate_garmin_sync
         db = MagicMock()
         db.commit.return_value = None
 
@@ -296,7 +296,7 @@ class TestValidateSyncErrorResilience:
 
     def test_garmin_api_error_does_not_raise(self):
         """If Garmin API call fails entirely, _validate_garmin_sync must not raise."""
-        from running_coach_ai.slack.conversation import _validate_garmin_sync
+        from running_coach_ai.coach.conversation import _validate_garmin_sync
 
         athlete = _athlete()
         w = _workout(days_ahead=3, garmin_workout_id="100", garmin_schedule_id="200")
@@ -311,7 +311,7 @@ class TestValidateSyncErrorResilience:
 
     def test_resync_failure_does_not_raise(self):
         """If sync_day_to_garmin raises during repair, _validate_garmin_sync must not raise."""
-        from running_coach_ai.slack.conversation import _validate_garmin_sync
+        from running_coach_ai.coach.conversation import _validate_garmin_sync
 
         athlete = _athlete()
         w = _workout(days_ahead=3, garmin_workout_id="100", garmin_schedule_id="200")

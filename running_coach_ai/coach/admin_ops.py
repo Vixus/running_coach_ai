@@ -1,9 +1,4 @@
-"""Athlete management admin operations — surface-agnostic.
-
-Web admin endpoints in `web/api/admin.py` call these. Slack admin
-commands in `slack/admin.py` keep their own slack_user_id-based
-implementations until Phase 6.
-"""
+"""Athlete management admin operations — surface-agnostic."""
 
 import logging
 from typing import Optional
@@ -75,11 +70,11 @@ def reset_onboarding(athlete_id: int, db: Session) -> Optional[dict]:
     return {"id": a.id, "deleted_messages": deleted}
 
 
-def trigger_morning_checkin(athlete_id: int, *, force: bool = False, slack_client=None) -> dict:
+def trigger_morning_checkin(athlete_id: int, *, force: bool = False) -> dict:
     """Manually fire the morning check-in for an athlete.
 
     `force=True` clears `last_morning_checkin_date` so the dedup gate doesn't
-    skip it. `slack_client` may be None — in-app notification still fires.
+    skip it.
     """
     from running_coach_ai.database.session import get_session
     from running_coach_ai.scheduler.jobs import _run_morning_checkin_for_athlete
@@ -95,7 +90,7 @@ def trigger_morning_checkin(athlete_id: int, *, force: bool = False, slack_clien
             db.commit()
 
     try:
-        _run_morning_checkin_for_athlete(athlete_id, slack_client)
+        _run_morning_checkin_for_athlete(athlete_id)
     except Exception as e:
         logger.error("Admin morning-checkin failed for athlete %d: %s", athlete_id, e)
         return {"ok": False, "error": str(e)}

@@ -5,7 +5,7 @@ from datetime import date
 from unittest.mock import MagicMock, patch
 
 
-from running_coach_ai.slack.conversation import (
+from running_coach_ai.coach.conversation import (
     _delete_garmin_workout,
     _reconcile_cancelled_garmin_workouts,
     extract_and_apply_plan,
@@ -52,8 +52,8 @@ class TestCancelDeletesFromGarmin:
         db = _make_db(workout)
         response = _plan_response("2026-04-10", "cancelled")
 
-        with patch("running_coach_ai.slack.conversation._delete_garmin_workout") as mock_delete, \
-             patch("running_coach_ai.slack.conversation._resync_garmin_workout") as mock_resync:
+        with patch("running_coach_ai.coach.conversation._delete_garmin_workout") as mock_delete, \
+             patch("running_coach_ai.coach.conversation._resync_garmin_workout") as mock_resync:
             extract_and_apply_plan(1, response, db)
 
         mock_delete.assert_called_once()
@@ -65,8 +65,8 @@ class TestCancelDeletesFromGarmin:
         db = _make_db(workout)
         response = _plan_response("2026-04-10", "skipped")
 
-        with patch("running_coach_ai.slack.conversation._delete_garmin_workout") as mock_delete, \
-             patch("running_coach_ai.slack.conversation._resync_garmin_workout") as mock_resync:
+        with patch("running_coach_ai.coach.conversation._delete_garmin_workout") as mock_delete, \
+             patch("running_coach_ai.coach.conversation._resync_garmin_workout") as mock_resync:
             extract_and_apply_plan(1, response, db)
 
         mock_delete.assert_called_once()
@@ -85,7 +85,7 @@ class TestCancelDeletesFromGarmin:
         payload = {"sessions": [{"date": "2026-04-10", "status": "modified", "target_distance_km": 8.0}]}
         response = f"Adjusted your session.\n<plan>{json.dumps(payload)}</plan>"
 
-        with patch("running_coach_ai.slack.conversation._delete_garmin_workout") as mock_delete, \
+        with patch("running_coach_ai.coach.conversation._delete_garmin_workout") as mock_delete, \
              patch("running_coach_ai.garmin.workout_builder.sync_day_to_garmin", return_value=True) as mock_sync:
             extract_and_apply_plan(1, response, db)
 
@@ -105,7 +105,7 @@ class TestGarminIdGating:
         db = _make_db(workout)
         response = _plan_response("2026-04-10", "cancelled")
 
-        with patch("running_coach_ai.slack.conversation._delete_garmin_workout") as mock_delete:
+        with patch("running_coach_ai.coach.conversation._delete_garmin_workout") as mock_delete:
             extract_and_apply_plan(1, response, db)
 
         mock_delete.assert_called_once()
@@ -116,7 +116,7 @@ class TestGarminIdGating:
         db = _make_db(workout)
         response = _plan_response("2026-04-10", "cancelled")
 
-        with patch("running_coach_ai.slack.conversation._delete_garmin_workout") as mock_delete:
+        with patch("running_coach_ai.coach.conversation._delete_garmin_workout") as mock_delete:
             extract_and_apply_plan(1, response, db)
 
         mock_delete.assert_not_called()
@@ -200,7 +200,7 @@ class TestReconciliation:
         db = MagicMock()
         db.query.return_value.filter.return_value.all.return_value = [w1, w2]
 
-        with patch("running_coach_ai.slack.conversation._delete_garmin_workout") as mock_delete:
+        with patch("running_coach_ai.coach.conversation._delete_garmin_workout") as mock_delete:
             _reconcile_cancelled_garmin_workouts(1, db)
 
         assert mock_delete.call_count == 2
@@ -210,7 +210,7 @@ class TestReconciliation:
         db = MagicMock()
         db.query.return_value.filter.return_value.all.return_value = []
 
-        with patch("running_coach_ai.slack.conversation._delete_garmin_workout") as mock_delete:
+        with patch("running_coach_ai.coach.conversation._delete_garmin_workout") as mock_delete:
             _reconcile_cancelled_garmin_workouts(1, db)
 
         mock_delete.assert_not_called()

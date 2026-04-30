@@ -147,12 +147,11 @@ def generate_post_run_feedback(
     completed: CompletedWorkout,
     biomechanics_result: dict,
     db_session: Session,
-    slack_client=None,
     athlete_max_hr: int | None = None,
 ) -> None:
     """Generate and send post-run feedback for a completed workout."""
     from running_coach_ai.database.models import PlannedWorkout
-    from running_coach_ai.slack.conversation import extract_and_save_memories
+    from running_coach_ai.coach.conversation import extract_and_save_memories
 
     from running_coach_ai.database.models import Goal
 
@@ -382,7 +381,6 @@ def generate_post_run_feedback(
     completed.feedback_given = True
     db_session.commit()
 
-    # Write in-app notification (always) and Slack DM (transitional)
     try:
         from running_coach_ai.coach.notify import notify
         notify(
@@ -394,10 +392,7 @@ def generate_post_run_feedback(
             related_id=completed.id,
         )
         db_session.commit()
-        if slack_client is not None:
-            from running_coach_ai.slack.bot import send_dm
-            send_dm(slack_client, athlete, response, db_session)
-        logger.info("Post-run feedback delivered to athlete %d (slack=%s)", athlete.id, slack_client is not None)
+        logger.info("Post-run feedback delivered to athlete %d", athlete.id)
     except Exception as e:
         logger.error("Failed to deliver feedback to athlete %d: %s", athlete.id, e)
 

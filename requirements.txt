@@ -1,8 +1,6 @@
 anthropic>=0.39.0
 garminconnect>=0.2.19
 garth>=0.4.0
-slack-bolt>=1.20.0
-slack-sdk>=3.33.0
 apscheduler>=3.10.0,<4.0.0
 sqlalchemy>=2.0.0
 alembic>=1.14.0

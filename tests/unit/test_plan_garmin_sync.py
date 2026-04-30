@@ -11,7 +11,7 @@ from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
 
-from running_coach_ai.slack.conversation import extract_and_sync_garmin, handle_message
+from running_coach_ai.coach.conversation import extract_and_sync_garmin, handle_message
 
 
 TODAY = date.today()
@@ -121,7 +121,7 @@ class TestExtractAndSyncGarmin:
              patch(f"{self._WB}.get_garmin_workout_library", return_value=[]), \
              patch(f"{self._WB}.upload_workout", return_value={"workoutId": 9001}) as mock_up, \
              patch(f"{self._WB}.schedule_workout", return_value={"workoutScheduleId": 8001}) as mock_sched, \
-             patch("running_coach_ai.slack.admin._run_garmin_verify", return_value=(workouts, [], [])):
+             patch("running_coach_ai.garmin.admin._run_garmin_verify", return_value=(workouts, [], [])):
             mock_auth.return_value = MagicMock()
             cleaned, note = extract_and_sync_garmin(athlete.id, response_text, db)
 
@@ -231,7 +231,7 @@ class TestHandleMessageSyncPrompt:
     """Prove that handle_message with the sync-check prompt fires actual Garmin uploads."""
 
     _WB = "running_coach_ai.garmin.workout_builder"
-    _CONV = "running_coach_ai.slack.conversation"
+    _CONV = "running_coach_ai.coach.conversation"
 
     def _run_handle_message(self, prompt, workouts, plan=None):
         """Run handle_message with mocked Claude (returns <garmin_sync/>) and Garmin API."""
@@ -299,7 +299,7 @@ class TestHandleMessageSyncPrompt:
              patch(f"{self._WB}.schedule_workout", return_value={"workoutScheduleId": 8001}) as mock_sched, \
              patch(f"{self._WB}.remove_workout_schedule"), \
              patch(f"{self._WB}.delete_workout"), \
-             patch("running_coach_ai.slack.admin._run_garmin_verify", return_value=(workouts, [], [])):
+             patch("running_coach_ai.garmin.admin._run_garmin_verify", return_value=(workouts, [], [])):
             mock_auth.return_value = MagicMock()
             result = handle_message(athlete, prompt, db)
 
@@ -382,7 +382,7 @@ class TestPostSyncVerify:
     and produce a note that reflects reality — not just API return codes."""
 
     _WB = "running_coach_ai.garmin.workout_builder"
-    _ADMIN = "running_coach_ai.slack.admin"
+    _ADMIN = "running_coach_ai.garmin.admin"
 
     def _run(self, workouts, verify_return):
         """Run extract_and_sync_garmin with sync mocked to succeed and verify mocked
@@ -471,7 +471,7 @@ class TestPlanAlreadySynced:
     everything — it must run verify-only and report the state."""
 
     _WB = "running_coach_ai.garmin.workout_builder"
-    _ADMIN = "running_coach_ai.slack.admin"
+    _ADMIN = "running_coach_ai.garmin.admin"
 
     def _run(self, workouts, verify_return, plan_already_synced: bool):
         athlete = _make_athlete()
@@ -588,8 +588,8 @@ class TestPlanAlreadySynced:
         claude_response = f"Adding easy Thursday. <plan>{plan_json}</plan> <garmin_sync/>"
 
         _WB = "running_coach_ai.garmin.workout_builder"
-        _ADMIN = "running_coach_ai.slack.admin"
-        _CONV = "running_coach_ai.slack.conversation"
+        _ADMIN = "running_coach_ai.garmin.admin"
+        _CONV = "running_coach_ai.coach.conversation"
 
         with patch(f"{_CONV}.call_claude", return_value=claude_response), \
              patch(f"{_CONV}.build_system_prompt", return_value="system"), \
@@ -601,7 +601,7 @@ class TestPlanAlreadySynced:
              patch(f"{_WB}.delete_workout"), \
              patch(f"{_ADMIN}._run_garmin_verify", return_value=([w], [], [])) as mock_verify:
             mock_auth.return_value = MagicMock()
-            from running_coach_ai.slack.conversation import handle_message
+            from running_coach_ai.coach.conversation import handle_message
             result = handle_message(athlete, "Add Thursday easy runs please", db)
 
         # _run_garmin_verify must have been called — confirms the verify-only path was taken

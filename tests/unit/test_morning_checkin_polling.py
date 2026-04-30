@@ -77,7 +77,7 @@ class TestHealthDataPresentFirstTick:
     @patch(f"{_ADAPTER}.extract_and_apply_plan", return_value="Morning message text")
     @patch(f"{_ADAPTER}.call_claude", return_value="Morning message text")
     @patch(f"{_ADAPTER}.scoped_query")
-    @patch("running_coach_ai.slack.bot.send_dm")
+    @patch("running_coach_ai.coach.notify.notify")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -112,7 +112,7 @@ class TestHealthDataPresentFirstTick:
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
             from running_coach_ai.coach.adapter import run_morning_checkin
-            run_morning_checkin(athlete, db, slack_client)
+            run_morning_checkin(athlete, db)
 
         mock_send_dm.assert_called_once()
         assert athlete.last_morning_checkin_date == TODAY
@@ -124,7 +124,7 @@ class TestHealthDataPresentFirstTick:
 # ---------------------------------------------------------------------------
 
 class TestNoHealthDataBefore10am:
-    @patch("running_coach_ai.slack.bot.send_dm")
+    @patch("running_coach_ai.coach.notify.notify")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -148,12 +148,12 @@ class TestNoHealthDataBefore10am:
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
             from running_coach_ai.coach.adapter import run_morning_checkin
-            run_morning_checkin(athlete, db, slack_client)
+            run_morning_checkin(athlete, db)
 
         mock_send_dm.assert_not_called()
         assert athlete.last_morning_checkin_date != TODAY
 
-    @patch("running_coach_ai.slack.bot.send_dm")
+    @patch("running_coach_ai.coach.notify.notify")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -177,7 +177,7 @@ class TestNoHealthDataBefore10am:
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
             from running_coach_ai.coach.adapter import run_morning_checkin
-            run_morning_checkin(athlete, db, slack_client)
+            run_morning_checkin(athlete, db)
 
         mock_send_dm.assert_not_called()
 
@@ -187,7 +187,7 @@ class TestNoHealthDataBefore10am:
 # ---------------------------------------------------------------------------
 
 class TestNoHealthDataCutoff:
-    @patch("running_coach_ai.slack.bot.send_dm")
+    @patch("running_coach_ai.coach.notify.notify")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -213,7 +213,7 @@ class TestNoHealthDataCutoff:
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
             from running_coach_ai.coach.adapter import run_morning_checkin
-            run_morning_checkin(athlete, db, slack_client)
+            run_morning_checkin(athlete, db)
 
             # Must NOT emit an INFO "skipping" log — that only fires at/after noon
             info_calls = [str(c) for c in mock_logger.info.call_args_list]
@@ -223,7 +223,7 @@ class TestNoHealthDataCutoff:
         mock_send_dm.assert_not_called()
         assert athlete.last_morning_checkin_date != TODAY
 
-    @patch("running_coach_ai.slack.bot.send_dm")
+    @patch("running_coach_ai.coach.notify.notify")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -249,7 +249,7 @@ class TestNoHealthDataCutoff:
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
             from running_coach_ai.coach.adapter import run_morning_checkin
-            run_morning_checkin(athlete, db, slack_client)
+            run_morning_checkin(athlete, db)
 
             info_calls = [str(c) for c in mock_logger.info.call_args_list]
             assert any("skipping" in msg.lower() for msg in info_calls), \
@@ -258,7 +258,7 @@ class TestNoHealthDataCutoff:
         mock_send_dm.assert_not_called()
         assert athlete.last_morning_checkin_date != TODAY
 
-    @patch("running_coach_ai.slack.bot.send_dm")
+    @patch("running_coach_ai.coach.notify.notify")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -282,7 +282,7 @@ class TestNoHealthDataCutoff:
             mock_dt.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
 
             from running_coach_ai.coach.adapter import run_morning_checkin
-            run_morning_checkin(athlete, db, slack_client)
+            run_morning_checkin(athlete, db)
 
         mock_send_dm.assert_not_called()
 
@@ -300,11 +300,11 @@ class TestDedupGuard:
         slack_client = MagicMock()
 
         from running_coach_ai.coach.adapter import run_morning_checkin
-        run_morning_checkin(athlete, db, slack_client)
+        run_morning_checkin(athlete, db)
 
         mock_garmin_client.assert_not_called()
 
-    @patch("running_coach_ai.slack.bot.send_dm")
+    @patch("running_coach_ai.coach.notify.notify")
     @patch("running_coach_ai.garmin.client.get_garmin_client")
     def test_no_dm_when_already_sent_today(self, mock_garmin_client, mock_send_dm):
         athlete = _make_athlete(last_checkin_date=TODAY)
@@ -312,6 +312,6 @@ class TestDedupGuard:
         slack_client = MagicMock()
 
         from running_coach_ai.coach.adapter import run_morning_checkin
-        run_morning_checkin(athlete, db, slack_client)
+        run_morning_checkin(athlete, db)
 
         mock_send_dm.assert_not_called()

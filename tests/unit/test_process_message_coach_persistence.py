@@ -17,7 +17,7 @@ session's commit-on-exit. See conversation.py:1565-1577.
 from unittest.mock import MagicMock, patch
 
 from running_coach_ai.database.models import Athlete
-from running_coach_ai.slack.conversation import process_message
+from running_coach_ai.coach.conversation import process_message
 
 
 def _athlete(coach_key="classic"):
@@ -28,7 +28,7 @@ def _athlete(coach_key="classic"):
 
 
 # ── Case A ───────────────────────────────────────────────────────────────────
-@patch("running_coach_ai.slack.conversation._process_message_inner")
+@patch("running_coach_ai.coach.conversation._process_message_inner")
 def test_no_override_no_mutation_leaves_coach_key_unchanged(mock_inner):
     """Plain message, no override, no <coach_switch> tag → coach_key unchanged."""
     a = _athlete("classic")
@@ -42,7 +42,7 @@ def test_no_override_no_mutation_leaves_coach_key_unchanged(mock_inner):
 
 
 # ── Case B (regression for the bug we just fixed) ────────────────────────────
-@patch("running_coach_ai.slack.conversation._process_message_inner")
+@patch("running_coach_ai.coach.conversation._process_message_inner")
 def test_persistent_coach_switch_in_response_survives_finally(mock_inner):
     """When <coach_switch> in Claude's response writes a new coach_key during
     the turn, the wrapper's finally block must NOT revert it. Regression for
@@ -67,7 +67,7 @@ def test_persistent_coach_switch_in_response_survives_finally(mock_inner):
 
 
 # ── Case C ───────────────────────────────────────────────────────────────────
-@patch("running_coach_ai.slack.conversation._process_message_inner")
+@patch("running_coach_ai.coach.conversation._process_message_inner")
 def test_ephemeral_override_is_applied_during_call_and_restored_after(mock_inner):
     """Passing coach_key override applies during the call, restores after."""
     a = _athlete("classic")
@@ -90,7 +90,7 @@ def test_ephemeral_override_is_applied_during_call_and_restored_after(mock_inner
 
 
 # ── Case D ───────────────────────────────────────────────────────────────────
-@patch("running_coach_ai.slack.conversation._process_message_inner")
+@patch("running_coach_ai.coach.conversation._process_message_inner")
 def test_override_plus_in_call_mutation_override_wins(mock_inner):
     """When both an ephemeral override is passed AND the inner call mutates
     coach_key (e.g. via <coach_switch>), the wrapper restores the pre-override
@@ -116,7 +116,7 @@ def test_override_plus_in_call_mutation_override_wins(mock_inner):
 
 
 # ── Case E ───────────────────────────────────────────────────────────────────
-@patch("running_coach_ai.slack.conversation._process_message_inner")
+@patch("running_coach_ai.coach.conversation._process_message_inner")
 def test_exception_in_inner_still_restores_override(mock_inner):
     """If the inner call raises, the finally block must still restore the
     override so the caller's athlete object isn't left mutated."""

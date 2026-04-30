@@ -100,7 +100,7 @@ class TestPlannedWorkoutUpdatedAt:
 
     def test_updated_at_set_on_mutation(self):
         """Mutating a workout via <plan> tag must update the updated_at field."""
-        from running_coach_ai.slack.conversation import extract_and_apply_plan
+        from running_coach_ai.coach.conversation import extract_and_apply_plan
 
         existing_workout = MagicMock()
         existing_workout.garmin_workout_id = None

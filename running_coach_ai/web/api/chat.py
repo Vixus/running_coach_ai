@@ -10,7 +10,7 @@ from flask import Blueprint, jsonify, request, session
 from running_coach_ai.coach.personas import is_valid_coach_key
 from running_coach_ai.database.models import Athlete, ConversationMessage
 from running_coach_ai.database.session import get_session
-from running_coach_ai.slack.conversation import process_message
+from running_coach_ai.coach.conversation import process_message
 from running_coach_ai.web.auth import login_required
 from running_coach_ai.web.events import web_event
 

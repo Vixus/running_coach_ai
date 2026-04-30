@@ -25,7 +25,7 @@ class TestPollIntervalConfiguration:
             mock_get_session.return_value = mock_db
             mock_db.query.return_value.filter.return_value.all.return_value = []
 
-            register_jobs(mock_scheduler, mock_slack_app)
+            register_jobs(mock_scheduler)
 
         add_job_calls = mock_scheduler.add_job.call_args_list
         poll_calls = [c for c in add_job_calls if c.kwargs.get("id") == "activity_poll"]
@@ -58,7 +58,7 @@ class TestPollIntervalConfiguration:
             mock_get_session.return_value = mock_db
             mock_db.query.return_value.filter.return_value.all.return_value = []
 
-            register_jobs(mock_scheduler, mock_slack_app)
+            register_jobs(mock_scheduler)
 
         add_job_calls = mock_scheduler.add_job.call_args_list
         job_ids = [c.kwargs.get("id") for c in add_job_calls]
@@ -86,7 +86,7 @@ class TestActiveHoursGuard:
                 mock_get_session.return_value = mock_db
                 mock_db.query.return_value.filter.return_value.all.return_value = []
 
-                _run_activity_poll(mock_slack_client)
+                _run_activity_poll()
 
             # The function must reach get_session even at 02:00 (no gate)
             mock_get_session.assert_called_once()
@@ -109,7 +109,7 @@ class TestActiveHoursGuard:
                 mock_get_session.return_value = mock_db
                 mock_db.query.return_value.filter.return_value.all.return_value = []
 
-                _run_activity_poll(mock_slack_client)
+                _run_activity_poll()
 
             # At 09:00 the function must proceed past the guard and call get_session
             mock_get_session.assert_called_once()

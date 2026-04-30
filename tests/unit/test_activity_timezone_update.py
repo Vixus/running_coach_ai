@@ -158,10 +158,10 @@ def test_ingest_and_feedback_travel_updates_timezone_and_reregisters_job():
         patch(f"{_TZ_UTILS}.derive_timezone_from_coords", return_value="Asia/Seoul"),
         patch(f"{_JOBS}.register_athlete_morning_job") as mock_register,
     ):
-        _ingest_and_feedback(athlete, "123", garmin, db_session, slack_client, scheduler)
+        _ingest_and_feedback(athlete, "123", garmin, db_session, scheduler)
 
     assert athlete.timezone == "Asia/Seoul"
-    mock_register.assert_called_once_with(scheduler, athlete, slack_client)
+    mock_register.assert_called_once_with(scheduler, athlete)
     db_session.commit.assert_called()
 
 
@@ -189,7 +189,7 @@ def test_ingest_and_feedback_logs_timezone_transition(caplog):
         patch(f"{_JOBS}.register_athlete_morning_job"),
         caplog.at_level(logging.INFO, logger=_JOBS),
     ):
-        _ingest_and_feedback(athlete, "123", garmin, db_session, slack_client, scheduler)
+        _ingest_and_feedback(athlete, "123", garmin, db_session, scheduler)
 
     assert any("Asia/Seoul" in r.message for r in caplog.records)
     assert any("America/New_York" in r.message for r in caplog.records)
@@ -218,7 +218,7 @@ def test_ingest_and_feedback_same_timezone_no_update():
         patch(f"{_TZ_UTILS}.derive_timezone_from_coords", return_value="America/New_York"),
         patch(f"{_JOBS}.register_athlete_morning_job") as mock_register,
     ):
-        _ingest_and_feedback(athlete, "123", garmin, db_session, slack_client, scheduler)
+        _ingest_and_feedback(athlete, "123", garmin, db_session, scheduler)
 
     mock_register.assert_not_called()
 
@@ -249,7 +249,7 @@ def test_ingest_and_feedback_treadmill_no_timezone_change():
         patch(f"{_TZ_UTILS}.derive_timezone_from_coords") as mock_derive,
         patch(f"{_JOBS}.register_athlete_morning_job") as mock_register,
     ):
-        _ingest_and_feedback(athlete, "123", garmin, db_session, slack_client, scheduler)
+        _ingest_and_feedback(athlete, "123", garmin, db_session, scheduler)
 
     mock_derive.assert_not_called()
     mock_register.assert_not_called()
@@ -281,7 +281,7 @@ def test_ingest_and_feedback_scheduler_failure_keeps_db_update():
         patch(f"{_JOBS}.register_athlete_morning_job", side_effect=RuntimeError("scheduler down")),
     ):
         # Should not raise
-        _ingest_and_feedback(athlete, "123", garmin, db_session, slack_client, scheduler)
+        _ingest_and_feedback(athlete, "123", garmin, db_session, scheduler)
 
     # DB update was committed regardless of scheduler failure
     assert athlete.timezone == "Asia/Seoul"

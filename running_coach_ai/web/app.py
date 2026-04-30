@@ -20,41 +20,34 @@ def _enable_wal_mode(dbapi_conn, connection_record):
     dbapi_conn.execute("PRAGMA journal_mode=WAL")
 
 
-def _seed_admin(app: Flask) -> None:
-    """Idempotently set is_admin=True for the configured admin Slack user."""
-    admin_id = settings.ADMIN_SLACK_USER_ID
-    if not admin_id:
-        return
-    try:
-        with get_session() as db:
-            athlete = db.query(Athlete).filter(Athlete.slack_user_id == admin_id).first()
-            if athlete and not athlete.is_admin:
-                athlete.is_admin = True
-                logger.info("Set is_admin=True for athlete %s", admin_id)
-    except Exception:
-        logger.debug("Admin seed skipped — no athlete row for %s yet", admin_id)
-
-
 def _bootstrap_admin() -> None:
-    """Create or update the admin athlete from BOOTSTRAP_WEB_* env vars."""
-    username = os.environ.get("BOOTSTRAP_WEB_USERNAME")
-    password = os.environ.get("BOOTSTRAP_WEB_PASSWORD")
-    if not username or not password:
-        return
-    slack_id = settings.ADMIN_SLACK_USER_ID
-    if not slack_id:
-        logger.warning("BOOTSTRAP_WEB_USERNAME set but ADMIN_SLACK_USER_ID is missing — skipping bootstrap")
+    """Create or update the admin athlete from BOOTSTRAP_ADMIN_* env vars.
+
+    Set BOOTSTRAP_ADMIN_EMAIL + BOOTSTRAP_ADMIN_PASSWORD on first deploy to
+    create the seed admin account. Re-running with the same email updates
+    the password and re-sets is_admin=True.
+    """
+    email = os.environ.get("BOOTSTRAP_ADMIN_EMAIL")
+    password = os.environ.get("BOOTSTRAP_ADMIN_PASSWORD")
+    if not email or not password:
         return
     from werkzeug.security import generate_password_hash
+    email = email.strip().lower()
     with get_session() as db:
-        athlete = db.query(Athlete).filter(Athlete.slack_user_id == slack_id).first()
+        athlete = (
+            db.query(Athlete)
+            .filter((Athlete.email == email) | (Athlete.web_username == email))
+            .first()
+        )
         if not athlete:
-            athlete = Athlete(slack_user_id=slack_id, allowed=True, is_admin=True)
+            athlete = Athlete(email=email, web_username=email, allowed=True, is_admin=True)
             db.add(athlete)
-        athlete.web_username = username
+        athlete.email = email
+        if not athlete.web_username:
+            athlete.web_username = email
         athlete.web_password_hash = generate_password_hash(password)
         athlete.is_admin = True
-    logger.info("Bootstrap admin set: username=%s slack_id=%s", username, slack_id)
+    logger.info("Bootstrap admin set: email=%s", email)
 
 
 def _apply_migrations() -> None:
@@ -165,7 +158,7 @@ def create_app() -> Flask:
             return ("Forbidden", 403)
         with get_session() as db:
             athletes = db.query(Athlete).all()
-            rows = [{"id": a.id, "slack_user_id": a.slack_user_id, "name": a.name,
+            rows = [{"id": a.id, "email": a.email, "name": a.name,
                      "web_username": a.web_username, "onboarding_complete": a.onboarding_complete}
                     for a in athletes]
         import json
@@ -239,7 +232,6 @@ def create_app() -> Flask:
         app.logger.exception('UNHANDLED EXCEPTION: %s', e)
         return ("Internal Server Error", 500)
 
-    _seed_admin(app)
     _bootstrap_admin()
 
     return app
