@@ -15,36 +15,47 @@ _garmin_auth_error_notified: dict[int, date] = {}
 
 
 def _notify_garmin_auth_error(athlete, slack_client) -> None:
-    """DM the athlete that their Garmin credentials are invalid and show the re-entry button.
+    """Notify the athlete that their Garmin credentials are invalid.
 
-    Rate-limited to one notification per athlete per calendar day so a broken morning
-    check-in (runs every 30 min) doesn't flood the athlete with the same message.
+    Rate-limited to one notification per athlete per calendar day. When
+    `slack_client` is None (web-only mode), writes a Notification row only.
     """
-    from running_coach_ai.slack.onboarding import _send_garmin_credential_button
-
     today = date.today()
     if _garmin_auth_error_notified.get(athlete.id) == today:
         return
-
     _garmin_auth_error_notified[athlete.id] = today
 
+    body = (
+        "I'm having trouble connecting to your Garmin account — your credentials may "
+        "have changed. Open the app and re-enter them so I can keep your training on track."
+    )
+
+    # In-app notification (always)
+    try:
+        from running_coach_ai.coach.notify import notify
+        from running_coach_ai.database.session import get_session
+        with get_session() as db:
+            from running_coach_ai.database.models import Athlete as _A
+            a = db.get(_A, athlete.id)
+            if a is not None:
+                notify(db, a, kind="system", title="Garmin reconnect needed",
+                       body=body, action_path="/app#chat")
+                db.commit()
+    except Exception as e:
+        logger.error("Failed to write Garmin auth notification for athlete %d: %s", athlete.id, e)
+
+    # Slack DM (transitional — Phase 6 removes)
+    if slack_client is None:
+        return
     channel = athlete.slack_dm_channel_id
     if not channel:
-        logger.warning("Cannot notify athlete %d of Garmin auth error: no DM channel cached", athlete.id)
         return
-
     try:
-        slack_client.chat_postMessage(
-            channel=channel,
-            text=(
-                "I'm having trouble connecting to your Garmin account — your credentials may have changed. "
-                "Please re-enter them so I can keep your training on track."
-            ),
-        )
+        from running_coach_ai.slack.onboarding import _send_garmin_credential_button
+        slack_client.chat_postMessage(channel=channel, text=body)
         _send_garmin_credential_button(channel, slack_client)
-        logger.info("Notified athlete %d of Garmin auth failure", athlete.id)
     except Exception as e:
-        logger.error("Failed to send Garmin auth error notification to athlete %d: %s", athlete.id, e)
+        logger.error("Failed to send Garmin auth error DM to athlete %d: %s", athlete.id, e)
 
 
 def _next_checkin_start(tz_name: str) -> datetime:
@@ -681,12 +692,16 @@ def _run_weekly_review(slack_client=None) -> None:
 # Job registration
 # ---------------------------------------------------------------------------
 
-def register_jobs(scheduler: BlockingScheduler, slack_app) -> None:
-    """Register all scheduled jobs. Called from main.py at startup."""
+def register_jobs(scheduler: BlockingScheduler, slack_app=None) -> None:
+    """Register all scheduled jobs. Called from main.py at startup.
+
+    `slack_app=None` runs the scheduler in web-only mode: no Slack DMs go
+    out, but in-app notifications still flow through the inbox.
+    """
     from running_coach_ai.database.models import Athlete
     from running_coach_ai.database.session import get_session
 
-    slack_client = slack_app.client
+    slack_client = slack_app.client if slack_app is not None else None
 
     # Morning check-in — one IntervalTrigger per athlete polling every 30 min from 07:00 local
     with get_session() as db_session:

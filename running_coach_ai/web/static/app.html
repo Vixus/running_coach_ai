@@ -3853,6 +3853,383 @@
       // ── Admin ────────────────────────────────────────────────────────
       function Admin() {
         const { t, ac } = useTh();
+        const [tab, setTab] = useState("athletes");
+        const TABS = [
+          { id: "athletes", label: "Athletes" },
+          { id: "invites", label: "Invites" },
+          { id: "events", label: "Events" },
+        ];
+        return (
+          <div
+            style={{
+              overflowY: "auto",
+              height: "100%",
+              padding: "28px 32px",
+              animation: "fadeUp 0.3s ease",
+              color: t.text,
+            }}
+          >
+            <div style={{ fontSize: 24, fontWeight: 600, marginBottom: 16, letterSpacing: "-0.02em" }}>
+              Admin
+            </div>
+            <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: `1px solid ${t.border}` }}>
+              {TABS.map((x) => (
+                <button
+                  key={x.id}
+                  onClick={() => setTab(x.id)}
+                  style={{
+                    padding: "8px 16px",
+                    background: "none",
+                    border: "none",
+                    borderBottom: `2px solid ${tab === x.id ? ac.main : "transparent"}`,
+                    color: tab === x.id ? t.text : t.textMuted,
+                    cursor: "pointer",
+                    fontSize: 14,
+                    fontWeight: tab === x.id ? 600 : 400,
+                  }}
+                >
+                  {x.label}
+                </button>
+              ))}
+            </div>
+            {tab === "athletes" && <AdminAthletes />}
+            {tab === "invites" && <AdminInvites />}
+            {tab === "events" && <AdminEvents />}
+          </div>
+        );
+      }
+
+      function AdminAthletes() {
+        const { t, ac } = useTh();
+        const [list, setList] = useState([]);
+        const [loading, setLoading] = useState(true);
+        const [busy, setBusy] = useState(null);
+        const [results, setResults] = useState({});
+
+        function reload() {
+          setLoading(true);
+          apiFetch("/api/admin/athletes")
+            .then((r) => r?.json())
+            .then((d) => setList(d?.athletes || []))
+            .finally(() => setLoading(false));
+        }
+        useEffect(reload, []);
+
+        async function call(athleteId, label, path, method = "POST", body) {
+          setBusy(`${athleteId}:${label}`);
+          try {
+            const opts = { method };
+            if (body) {
+              opts.headers = { "Content-Type": "application/json" };
+              opts.body = JSON.stringify(body);
+            }
+            const r = await apiFetch(path, opts);
+            const d = await r?.json().catch(() => null);
+            setResults((m) => ({ ...m, [athleteId]: { label, ok: r.ok, data: d } }));
+            if (r.ok && (label === "Allow" || label === "Disable" || label === "Reset onboarding")) {
+              reload();
+            }
+          } finally {
+            setBusy(null);
+          }
+        }
+
+        if (loading) return <div style={{ color: t.textMuted, padding: 20 }}>Loading…</div>;
+
+        return (
+          <div>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+              <button
+                onClick={reload}
+                style={{
+                  padding: "6px 14px",
+                  background: "none",
+                  border: `1px solid ${t.border}`,
+                  borderRadius: 7,
+                  cursor: "pointer",
+                  fontSize: 13,
+                  color: t.text,
+                }}
+              >
+                ↺ Refresh
+              </button>
+            </div>
+            {list.map((a) => {
+              const status = !a.allowed ? "🚫 disabled" :
+                             !a.onboarding_complete ? "⏳ onboarding" : "✅ active";
+              const isBusy = (op) => busy === `${a.id}:${op}`;
+              const result = results[a.id];
+              return (
+                <div
+                  key={a.id}
+                  style={{
+                    border: `1px solid ${t.border}`,
+                    borderRadius: 8,
+                    padding: "12px 14px",
+                    marginBottom: 8,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>
+                        {a.name || "(unnamed)"}{" "}
+                        <span style={{ fontSize: 11, color: t.textMuted, fontWeight: 400 }}>
+                          #{a.id} · {a.email || a.web_username || a.slack_user_id || "no-id"}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>
+                        {status} · {a.coach_key} · {a.timezone || "no tz"} · {a.has_garmin ? "garmin ✓" : "no garmin"}
+                        {a.is_admin && " · admin"}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {a.allowed ? (
+                        <button
+                          disabled={isBusy("Disable")}
+                          onClick={() => call(a.id, "Disable", `/api/admin/athletes/${a.id}/disable`)}
+                          style={btnStyle(t)}
+                        >
+                          Disable
+                        </button>
+                      ) : (
+                        <button
+                          disabled={isBusy("Allow")}
+                          onClick={() => call(a.id, "Allow", `/api/admin/athletes/${a.id}/allow`)}
+                          style={btnStyle(t, ac)}
+                        >
+                          Allow
+                        </button>
+                      )}
+                      {a.has_garmin && (
+                        <>
+                          <button
+                            disabled={isBusy("Verify")}
+                            onClick={() => call(a.id, "Verify Garmin",
+                              `/api/admin/athletes/${a.id}/verify-garmin`, "GET")}
+                            style={btnStyle(t)}
+                          >
+                            {isBusy("Verify Garmin") ? "…" : "Verify"}
+                          </button>
+                          <button
+                            disabled={isBusy("Resync")}
+                            onClick={() => {
+                              if (!confirm(`Resync Garmin for ${a.name}? This will delete app-marked workouts and re-upload from the DB.`)) return;
+                              call(a.id, "Resync", `/api/admin/athletes/${a.id}/resync-garmin`);
+                            }}
+                            style={btnStyle(t)}
+                          >
+                            {isBusy("Resync") ? "…" : "Resync"}
+                          </button>
+                          <button
+                            disabled={isBusy("Clean")}
+                            onClick={() => {
+                              if (!confirm(`Clean Garmin for ${a.name}? This will WIPE THE ENTIRE GARMIN LIBRARY (including manual workouts) and re-upload upcoming workouts.`)) return;
+                              call(a.id, "Clean", `/api/admin/athletes/${a.id}/clean-garmin`);
+                            }}
+                            style={btnStyle(t)}
+                          >
+                            {isBusy("Clean") ? "…" : "Clean"}
+                          </button>
+                        </>
+                      )}
+                      {a.onboarding_complete && (
+                        <button
+                          disabled={isBusy("Morning")}
+                          onClick={() => call(a.id, "Morning", `/api/admin/athletes/${a.id}/morning-checkin`,
+                            "POST", { force: true })}
+                          style={btnStyle(t)}
+                        >
+                          {isBusy("Morning") ? "…" : "Morning"}
+                        </button>
+                      )}
+                      <button
+                        disabled={isBusy("Reset onboarding")}
+                        onClick={() => {
+                          if (!confirm(`Reset onboarding for ${a.name}? Conversation history will be deleted; goals/plans/runs are kept.`)) return;
+                          call(a.id, "Reset onboarding", `/api/admin/athletes/${a.id}/reset-onboarding`);
+                        }}
+                        style={btnStyle(t)}
+                      >
+                        Reset onboarding
+                      </button>
+                    </div>
+                  </div>
+                  {result && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: 8,
+                        background: t.surface2,
+                        borderRadius: 6,
+                        fontSize: 11,
+                        color: t.textMuted,
+                        fontFamily: "monospace",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      [{result.label}] {result.ok ? "OK" : "FAIL"}: {JSON.stringify(result.data)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
+      }
+
+      function btnStyle(t, ac) {
+        return {
+          padding: "5px 10px",
+          fontSize: 11,
+          background: ac ? ac.main : t.surface,
+          color: ac ? "#fff" : t.text,
+          border: `1px solid ${ac ? ac.main : t.border}`,
+          borderRadius: 6,
+          cursor: "pointer",
+        };
+      }
+
+      function AdminInvites() {
+        const { t, ac } = useTh();
+        const [invites, setInvites] = useState([]);
+        const [loading, setLoading] = useState(true);
+        const [hint, setHint] = useState("");
+        const [creating, setCreating] = useState(false);
+        const [latest, setLatest] = useState(null);
+
+        function reload() {
+          setLoading(true);
+          apiFetch("/api/admin/invites")
+            .then((r) => r?.json())
+            .then((d) => setInvites(d?.invites || []))
+            .finally(() => setLoading(false));
+        }
+        useEffect(reload, []);
+
+        async function create() {
+          setCreating(true);
+          try {
+            const r = await apiFetch("/api/admin/invites", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email_hint: hint || null, ttl_days: 30 }),
+            });
+            const d = await r?.json();
+            if (r.ok) {
+              setLatest(d);
+              setHint("");
+              reload();
+            }
+          } finally {
+            setCreating(false);
+          }
+        }
+
+        return (
+          <div>
+            <div
+              style={{
+                border: `1px solid ${t.border}`,
+                borderRadius: 8,
+                padding: 14,
+                marginBottom: 16,
+              }}
+            >
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>
+                Issue invite
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="text"
+                  placeholder="Email hint (optional)"
+                  value={hint}
+                  onChange={(e) => setHint(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: "7px 10px",
+                    border: `1px solid ${t.border}`,
+                    borderRadius: 6,
+                    background: t.surface,
+                    color: t.text,
+                    fontSize: 13,
+                  }}
+                />
+                <button
+                  onClick={create}
+                  disabled={creating}
+                  style={{ ...btnStyle(t, ac), padding: "7px 14px", fontSize: 13 }}
+                >
+                  {creating ? "…" : "Create invite"}
+                </button>
+              </div>
+              {latest && (
+                <div
+                  style={{
+                    marginTop: 10,
+                    padding: 10,
+                    background: t.surface2,
+                    borderRadius: 6,
+                    fontSize: 12,
+                  }}
+                >
+                  <div style={{ marginBottom: 4 }}>
+                    <strong>Signup URL:</strong>
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "monospace",
+                      wordBreak: "break-all",
+                      color: ac.main,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => navigator.clipboard?.writeText(latest.signup_url)}
+                    title="Click to copy"
+                  >
+                    {latest.signup_url}
+                  </div>
+                  <div style={{ marginTop: 4, color: t.textMuted, fontSize: 11 }}>
+                    Click to copy. Expires {new Date(latest.expires_at).toLocaleDateString()}.
+                  </div>
+                </div>
+              )}
+            </div>
+            {loading ? (
+              <div style={{ color: t.textMuted, padding: 20 }}>Loading…</div>
+            ) : (
+              invites.map((i) => (
+                <div
+                  key={i.id}
+                  style={{
+                    border: `1px solid ${t.border}`,
+                    borderRadius: 8,
+                    padding: "10px 14px",
+                    marginBottom: 8,
+                    fontSize: 12,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <span style={{ fontFamily: "monospace" }}>{i.token.slice(0, 16)}…</span>
+                      {i.email_hint && <span style={{ color: t.textMuted, marginLeft: 8 }}>({i.email_hint})</span>}
+                    </div>
+                    <div style={{ color: t.textMuted, fontSize: 11 }}>
+                      {i.used_by_athlete_id
+                        ? `used by athlete #${i.used_by_athlete_id}`
+                        : i.expires_at && new Date(i.expires_at) < new Date()
+                          ? "expired"
+                          : "available"}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        );
+      }
+
+      function AdminEvents() {
+        const { t, ac } = useTh();
         const [data, setData] = useState(null);
         const [category, setCategory] = useState("all");
         const [severity, setSeverity] = useState("all");
@@ -3885,32 +4262,15 @@
         }, [category, severity]);
 
         return (
-          <div
-            style={{
-              overflowY: "auto",
-              height: "100%",
-              padding: "28px 32px",
-              animation: "fadeUp 0.3s ease",
-              color: t.text,
-            }}
-          >
+          <div>
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 20,
+                justifyContent: "flex-end",
+                marginBottom: 12,
               }}
             >
-              <div
-                style={{
-                  fontSize: 24,
-                  fontWeight: 600,
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                Event Log
-              </div>
               <button
                 onClick={() => load(category, severity, 0)}
                 style={{
