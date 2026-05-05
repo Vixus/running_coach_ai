@@ -103,13 +103,17 @@ def create_app() -> Flask:
     @app.route('/login')
     def login_page():
         if "athlete_id" in session:
-            return redirect('/app')
+            return redirect('/magazine')
         return render_template('login.html')
 
     @app.route('/app')
     def app_page():
         if "athlete_id" not in session:
             return redirect('/login')
+        with get_session() as db:
+            athlete = db.get(Athlete, session["athlete_id"])
+            if not athlete or not athlete.is_admin:
+                return redirect('/magazine')
         static_dir = os.path.join(os.path.dirname(__file__), 'static')
         return send_from_directory(static_dir, 'app.html')
 

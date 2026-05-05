@@ -552,6 +552,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
       </button>
       <div class="coach-picker-menu" id="coach-picker-menu"></div>
     </div>
+    <a href="/app" id="nav-admin-link" class="nav-link" style="display:none;text-decoration:none;">Admin</a>
     <div class="nav-profile" id="nav-profile" title="Profile">—</div>
   </div>
 </nav>
@@ -2315,11 +2316,22 @@ async function hydrate(){
 }
 
 // ── Boot ──────────────────────────────────────────────────────
+async function fetchMe() {
+  try {
+    const r = await fetch('/auth/me', {credentials:'same-origin'});
+    return r.ok ? r.json() : null;
+  } catch { return null; }
+}
+
 window.addEventListener('load', async () => {
   // Render coach picker immediately with hardcoded defaults so it's visible right away
   renderCoachPicker();
-  // Run hydrate + coach-options fetch in parallel
-  const [m] = await Promise.all([hydrate(), loadCoachOptions()]);
+  // Run hydrate + coach-options + auth/me in parallel
+  const [m, , me] = await Promise.all([hydrate(), loadCoachOptions(), fetchMe()]);
+  if (me && me.is_admin) {
+    const el = document.getElementById('nav-admin-link');
+    if (el) el.style.display = '';
+  }
 
   // Hero name char split — uses data attrs from hydrate; fall back to "Athlete" if hydrate failed entirely
   const n = document.getElementById('hero-name');

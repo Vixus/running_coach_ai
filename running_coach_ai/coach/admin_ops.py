@@ -18,7 +18,6 @@ def list_athletes(db: Session) -> list[dict]:
             "id": a.id,
             "email": a.email,
             "web_username": a.web_username,
-            "slack_user_id": a.slack_user_id,
             "name": a.name,
             "allowed": bool(a.allowed),
             "is_admin": bool(a.is_admin),

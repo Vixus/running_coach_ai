@@ -27,8 +27,6 @@ class Athlete(Base):
     __tablename__ = "athletes"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    slack_user_id = Column(Text, unique=True, nullable=True)
-    slack_dm_channel_id = Column(Text, nullable=True)
     email = Column(Text, unique=True, nullable=True)
     name = Column(Text, nullable=True)
     age = Column(Integer, nullable=True)
@@ -256,7 +254,6 @@ class ConversationMessage(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     athlete_id = Column(Integer, ForeignKey("athletes.id"), nullable=False)
-    slack_ts = Column(Text, nullable=True)
     role = Column(Text, nullable=False)
     content = Column(Text, nullable=False)
     source = Column(Text, nullable=True)
