@@ -59,7 +59,12 @@
       "Bash(pytest tests/unit/ -x -q)",
       "Bash(pytest tests/unit/ -q --ignore=tests/unit/test_activity_poll_interval.py -k \"web or magazine or dashboard\")",
       "Bash(node --input-type=module)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git checkout *)",
+      "Bash(netstat -ano)",
+      "Bash(start \"\" \"C:\\\\Users\\\\vixus\\\\Projects\\\\running_coach_ai\\\\running_coach_ai\\\\web\\\\static\\\\story_protos.html\")",
+      "Bash(start *)"
     ]
   }
 }

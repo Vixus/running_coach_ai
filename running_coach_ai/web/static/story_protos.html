@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Athlete Story · Layout Prototypes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{font-family:'Inter',sans-serif;}
+
+.ph-dark {background:linear-gradient(162deg,#0e120a 0%,#1c2010 28%,#0a0e08 68%,#060804 100%);}
+.ph-dark2{background:linear-gradient(155deg,#0a1520 0%,#162030 32%,#1c2a38 52%,#080e18 100%);}
+.ph-dark3{background:linear-gradient(148deg,#1a100c 0%,#2e1c14 38%,#0e0a08 100%);}
+.ph-moor {background:linear-gradient(168deg,#101820 0%,#1e2c3a 40%,#0c1420 100%);}
+.ph-warm {background:linear-gradient(138deg,#c4bcb4 0%,#d4ccc4 52%,#b4aca4 100%);}
+.ph-warm2{background:linear-gradient(158deg,#b8c4cc 0%,#c8d4dc 52%,#a8b8c4 100%);}
+.ph-warm3{background:linear-gradient(142deg,#c0c8b4 0%,#d0d8c4 52%,#b0b8a4 100%);}
+.ph-lt   {background:linear-gradient(132deg,#ccc5bc 0%,#dcd5cc 56%,#bcb5ac 100%);}
+.ph-eve  {background:linear-gradient(165deg,#1a1428 0%,#2a2040 45%,#100c20 100%);}
+
+/* ── Switcher ── */
+#sw{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;
+  background:rgba(6,5,4,.96);backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,.13);border-radius:20px;
+  padding:9px 14px;display:flex;gap:5px;align-items:center;
+  box-shadow:0 16px 48px rgba(0,0,0,.7);white-space:nowrap;
+}
+.sw-lbl{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.28);
+  padding-right:10px;border-right:1px solid rgba(255,255,255,.1);margin-right:3px;}
+.sw-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;
+  background:transparent;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.38);
+  border-radius:9px;padding:6px 14px;cursor:pointer;transition:all .18s;}
+.sw-btn:hover{color:#fff;border-color:rgba(255,255,255,.32);}
+.sw-btn.active{background:#b8ff4f;color:#0a0908;border-color:#b8ff4f;font-weight:700;}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   T1 — VOGUE
+   Image IS the story. Single narrow white column. Immense breathing room.
+   Pull quotes float as art objects. Stats presented as sculpture.
+═══════════════════════════════════════════════════════════════ */
+#t1{background:#fff;color:#1a1410;min-height:100vh;}
+
+#t1 .hero{position:relative;height:100vh;min-height:640px;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:flex-end;}
+#t1 .hero-img{position:absolute;inset:0;}
+#t1 .hero::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(to bottom,rgba(10,8,6,.05) 25%,rgba(10,8,6,.6) 75%,rgba(10,8,6,.92) 100%);}
+#t1 .hero-top{position:absolute;top:0;left:0;right:0;z-index:1;padding:36px 68px;
+  display:flex;justify-content:space-between;align-items:flex-start;}
+#t1 .brand{font-size:10px;letter-spacing:.36em;text-transform:uppercase;color:rgba(255,255,255,.45);}
+#t1 .issue{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.28);text-align:right;}
+#t1 .hero-bottom{position:relative;z-index:1;padding:0 68px 80px;}
+#t1 .athlete-name{font-family:'Inter',sans-serif;font-weight:300;
+  font-size:clamp(96px,17vw,220px);line-height:.8;letter-spacing:.14em;
+  color:#fff;text-transform:uppercase;}
+#t1 .hero-byline{font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+  color:rgba(255,255,255,.35);margin-top:28px;}
+
+#t1 .rule-break{height:4px;background:#1a1410;}
+
+/* Single editorial column */
+#t1 .ed{max-width:680px;margin:0 auto;padding:88px 32px 0;}
+#t1 .ed-eye{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:rgba(26,20,16,.34);
+  margin-bottom:22px;display:flex;align-items:center;gap:14px;}
+#t1 .ed-eye::before{content:'';display:inline-block;width:28px;height:1px;background:rgba(26,20,16,.28);}
+#t1 .ed-hl{font-family:'DM Serif Display',serif;font-style:italic;
+  font-size:clamp(38px,5vw,58px);line-height:1.06;color:#1a1410;margin-bottom:34px;}
+#t1 .ed-dek{font-size:16px;color:rgba(26,20,16,.48);line-height:1.78;margin-bottom:52px;
+  border-bottom:1px solid rgba(26,20,16,.1);padding-bottom:52px;}
+#t1 p{font-family:'DM Serif Display',serif;font-size:20px;line-height:1.92;
+  color:#1a1410;margin-bottom:32px;}
+#t1 .pq-v{border-top:1px solid rgba(26,20,16,.12);border-bottom:1px solid rgba(26,20,16,.12);
+  padding:44px 0;margin:56px 0;font-family:'DM Serif Display',serif;font-style:italic;
+  font-size:clamp(23px,3vw,34px);line-height:1.38;color:#1a1410;text-align:center;}
+#t1 .sec-break{text-align:center;font-size:14px;letter-spacing:.4em;color:rgba(26,20,16,.22);
+  margin:52px 0;display:block;}
+#t1 .chapter{font-size:10px;letter-spacing:.28em;text-transform:uppercase;
+  color:rgba(26,20,16,.3);margin-bottom:24px;display:flex;align-items:center;gap:12px;}
+#t1 .chapter::after{content:'';flex:1;height:1px;background:rgba(26,20,16,.12);}
+
+/* Full-width photo break with stats */
+#t1 .photo-break{display:grid;grid-template-columns:58% 42%;height:520px;margin:72px 0 0;}
+#t1 .pb-img{overflow:hidden;}
+#t1 .pb-txt{display:flex;flex-direction:column;justify-content:flex-end;
+  padding:52px 56px 52px 64px;background:#f5f0e8;}
+#t1 .pb-stat-n{font-family:'Inter',sans-serif;font-weight:300;font-size:80px;
+  line-height:1;color:#1a1410;letter-spacing:-.02em;}
+#t1 .pb-stat-l{font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  color:rgba(26,20,16,.35);margin-top:6px;}
+#t1 .pb-stat+.pb-stat{margin-top:36px;}
+#t1 .pb-cap{font-size:11px;color:rgba(26,20,16,.32);margin-top:44px;line-height:1.65;}
+
+/* Second full-width editorial photo */
+#t1 .ed-photo{margin:72px 0;position:relative;height:420px;overflow:hidden;}
+#t1 .ed-photo-cap{position:absolute;bottom:0;right:0;
+  padding:12px 24px;background:rgba(10,8,6,.55);
+  font-size:11px;color:rgba(255,255,255,.55);letter-spacing:.04em;}
+
+#t1 .shr{max-width:680px;margin:0 auto;padding:56px 32px 88px;
+  border-top:1px solid rgba(26,20,16,.1);margin-top:72px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+#t1 .shr-url{font-size:12px;color:rgba(26,20,16,.26);letter-spacing:.04em;}
+#t1 .shr-btns{display:flex;gap:12px;align-items:center;}
+#t1 .btn-vg-copy{font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  background:none;border:none;cursor:pointer;color:rgba(26,20,16,.4);
+  text-decoration:underline;text-underline-offset:3px;padding:0;}
+#t1 .btn-vg-share{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+  background:#1a1410;color:#fff;border:none;padding:14px 30px;cursor:pointer;}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   T2 — GQ COVER STORY
+   Dark, cinematic, profile journalism. Two-column + Fast Facts sidebar.
+   The athlete is a subject. Amber accents. Dense, authoritative.
+═══════════════════════════════════════════════════════════════ */
+#t2{background:#13110f;color:#e8e0d4;min-height:100vh;}
+
+#t2 .hero{position:relative;height:82vh;min-height:520px;overflow:hidden;}
+#t2 .hero-img{position:absolute;inset:0;}
+#t2 .hero::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(to bottom,rgba(19,17,15,.04) 15%,rgba(19,17,15,.52) 62%,#13110f 100%);}
+#t2 .hero-c{position:absolute;bottom:0;left:0;right:0;z-index:1;padding:0 72px 60px;}
+#t2 .eye-gq{font-size:10px;letter-spacing:.30em;text-transform:uppercase;
+  color:#c8a050;font-weight:700;margin-bottom:18px;}
+#t2 .hl-gq{font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(70px,11.5vw,148px);line-height:.86;letter-spacing:-.005em;}
+#t2 .sub-gq{font-size:14px;color:rgba(232,224,212,.42);margin-top:18px;
+  max-width:520px;line-height:1.65;font-family:'DM Serif Display',serif;font-style:italic;}
+
+/* Body */
+#t2 .body{max-width:1200px;margin:0 auto;padding:0 72px;}
+#t2 .body-grid{display:grid;grid-template-columns:1fr 1fr 290px;gap:52px;padding:76px 0 0;}
+
+#t2 p{font-size:17px;line-height:1.9;color:rgba(232,224,212,.7);margin-bottom:28px;}
+#t2 .col-b{border-left:1px solid rgba(255,255,255,.07);padding-left:52px;}
+#t2 .chapter2{font-size:9px;letter-spacing:.28em;text-transform:uppercase;
+  color:rgba(200,160,80,.6);margin-bottom:20px;margin-top:44px;}
+#t2 .chapter2:first-child{margin-top:0;}
+#t2 .pq-gq{color:#fff;font-family:'DM Serif Display',serif;font-style:italic;
+  font-size:clamp(19px,2vw,26px);line-height:1.42;
+  border-left:3px solid #c8a050;padding:8px 0 8px 26px;margin:38px 0;}
+#t2 .inline-stat{display:flex;align-items:baseline;gap:8px;margin:36px 0;
+  padding:24px 0;border-top:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07);}
+#t2 .is-n{font-family:'Bebas Neue',sans-serif;font-size:60px;color:#c8a050;line-height:1;}
+#t2 .is-l{font-size:13px;color:rgba(232,224,212,.45);}
+
+/* Sidebar */
+#t2 .sidebar{border-left:1px solid rgba(255,255,255,.07);padding-left:44px;}
+#t2 .ff-head{font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:#c8a050;
+  margin-bottom:22px;padding-bottom:14px;border-bottom:1px solid rgba(200,160,80,.25);}
+#t2 .ff-item{margin-bottom:26px;padding-bottom:26px;border-bottom:1px solid rgba(255,255,255,.055);}
+#t2 .ff-item:last-of-type{border-bottom:none;}
+#t2 .ff-n{font-family:'Bebas Neue',sans-serif;font-size:52px;color:#fff;line-height:1;}
+#t2 .ff-l{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(232,224,212,.3);margin-top:5px;}
+#t2 .ff-rule{height:1px;background:rgba(200,160,80,.2);margin:28px 0;}
+#t2 .ff-note-head{font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:rgba(232,224,212,.26);margin-bottom:12px;}
+#t2 .ff-note{font-family:'DM Serif Display',serif;font-style:italic;font-size:15px;
+  line-height:1.68;color:rgba(232,224,212,.5);}
+#t2 .ff-five-head{font-size:9px;letter-spacing:.22em;text-transform:uppercase;
+  color:#c8a050;margin:32px 0 16px;padding-top:28px;border-top:1px solid rgba(255,255,255,.07);}
+#t2 .ff-five-item{display:flex;gap:12px;margin-bottom:16px;align-items:flex-start;}
+#t2 .ff-five-num{font-family:'Bebas Neue',sans-serif;font-size:22px;color:rgba(200,160,80,.5);flex-shrink:0;line-height:1.2;}
+#t2 .ff-five-txt{font-size:12px;line-height:1.6;color:rgba(232,224,212,.45);}
+
+/* Photos */
+#t2 .photos{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:5px;
+  height:320px;margin:64px -72px 64px;}
+#t2 .ph{overflow:hidden;position:relative;}
+#t2 .ph-c{position:absolute;bottom:12px;left:16px;font-size:11px;color:rgba(255,255,255,.38);}
+
+/* Share */
+#t2 .shr{border-top:1px solid rgba(255,255,255,.07);padding:36px 0 72px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+#t2 .shr-url{font-size:12px;color:rgba(232,224,212,.2);}
+#t2 .shr-btns{display:flex;gap:10px;}
+#t2 .btn-gq-copy{font-family:'Inter',sans-serif;font-size:12px;
+  background:rgba(255,255,255,.055);color:rgba(232,224,212,.5);
+  border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:12px 20px;cursor:pointer;}
+#t2 .btn-gq-share{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;
+  background:#c8a050;color:#13110f;border:none;border-radius:8px;padding:12px 24px;cursor:pointer;}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   T3 — RUNNER'S WORLD RACE FEATURE
+   Light, structured, celebratory. Three named sections.
+   Stats as infographic. Coach quote box. Accessible to any runner.
+═══════════════════════════════════════════════════════════════ */
+#t3{background:#fff;color:#1a1410;min-height:100vh;}
+
+#t3 .topbar{background:#e85c28;padding:13px 72px;
+  display:flex;justify-content:space-between;align-items:center;}
+#t3 .tb-brand{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.12em;color:#fff;}
+#t3 .tb-tag{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.6);}
+
+#t3 .hdr{padding:56px 72px 0;max-width:1140px;margin:0 auto;}
+#t3 .eye3{font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  color:#e85c28;font-weight:700;margin-bottom:18px;}
+#t3 .hl3{font-family:'DM Serif Display',serif;font-size:clamp(52px,7.5vw,92px);
+  line-height:.92;color:#1a1410;margin-bottom:22px;}
+#t3 .dek3{font-size:17px;color:rgba(26,20,16,.5);line-height:1.7;max-width:660px;margin-bottom:36px;}
+#t3 .byline{display:flex;align-items:center;gap:16px;padding:20px 0;
+  border-top:2px solid #1a1410;border-bottom:1px solid rgba(26,20,16,.12);margin-bottom:0;}
+#t3 .byl-av{width:38px;height:38px;border-radius:50%;background:#e85c28;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:17px;color:#fff;}
+#t3 .byl-name{font-size:13px;font-weight:600;color:#1a1410;}
+#t3 .byl-meta{font-size:11px;color:rgba(26,20,16,.4);}
+
+#t3 .stats-strip{background:#f5f0e8;padding:36px 72px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:2px solid rgba(26,20,16,.08);}
+#t3 .ss{text-align:center;padding:0 20px;border-right:1px solid rgba(26,20,16,.1);}
+#t3 .ss:last-child{border-right:none;}
+#t3 .ss-n{font-family:'Bebas Neue',sans-serif;font-size:56px;color:#e85c28;line-height:1;}
+#t3 .ss-l{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(26,20,16,.38);margin-top:6px;}
+
+#t3 .main-photo{height:500px;overflow:hidden;position:relative;}
+#t3 .mp-cap{position:absolute;bottom:0;left:0;right:0;
+  background:linear-gradient(to top,rgba(10,8,6,.72),transparent);
+  padding:22px 72px;font-size:12px;color:rgba(255,255,255,.6);}
+
+#t3 .sections{max-width:1140px;margin:0 auto;padding:0 72px;}
+#t3 .section{padding:60px 0;border-bottom:1px solid rgba(26,20,16,.1);}
+#t3 .section:last-of-type{border-bottom:none;}
+#t3 .sec-tab{display:inline-flex;align-items:center;gap:0;margin-bottom:28px;}
+#t3 .sec-num{background:#e85c28;color:#fff;font-family:'Bebas Neue',sans-serif;
+  font-size:14px;letter-spacing:.08em;padding:5px 12px;}
+#t3 .sec-name{background:#1a1410;color:#fff;font-size:9px;letter-spacing:.26em;
+  text-transform:uppercase;font-weight:700;padding:7px 14px;}
+#t3 .sec-hl{font-family:'DM Serif Display',serif;font-size:30px;color:#1a1410;margin-bottom:20px;}
+#t3 p{font-size:17px;line-height:1.9;color:rgba(26,20,16,.78);margin-bottom:22px;}
+#t3 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:52px;align-items:start;}
+#t3 .sec-photo{height:280px;border-radius:2px;overflow:hidden;}
+
+#t3 .pq-rw{font-family:'DM Serif Display',serif;font-style:italic;
+  font-size:clamp(22px,2.8vw,32px);line-height:1.38;color:#1a1410;
+  text-align:center;padding:52px 88px;background:#f5f0e8;
+  margin:0 -72px;position:relative;border-top:3px solid #e85c28;border-bottom:3px solid #e85c28;}
+#t3 .pq-rw cite{display:block;font-style:normal;font-family:'Inter',sans-serif;
+  font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+  color:rgba(26,20,16,.38);margin-top:20px;}
+
+#t3 .coach-box{background:#1a1410;color:#fff;padding:44px 52px;
+  display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start;margin:52px 0 0;}
+#t3 .coach-av{width:52px;height:52px;border-radius:14px;background:#e85c28;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:24px;color:#fff;}
+#t3 .coach-lbl{font-size:9px;letter-spacing:.24em;text-transform:uppercase;
+  color:#e85c28;margin-bottom:10px;}
+#t3 .coach-q{font-family:'DM Serif Display',serif;font-style:italic;font-size:17px;
+  line-height:1.72;color:rgba(255,255,255,.7);margin-bottom:14px;}
+#t3 .coach-attr{font-size:11px;color:rgba(255,255,255,.32);letter-spacing:.06em;}
+
+#t3 .second-photo{display:grid;grid-template-columns:1fr 1fr;gap:5px;height:380px;margin:60px -72px;}
+#t3 .sp-item{overflow:hidden;position:relative;}
+#t3 .sp-cap{position:absolute;bottom:14px;left:16px;font-size:11px;color:rgba(255,255,255,.5);}
+
+#t3 .shr{border-top:2px solid #1a1410;padding:36px 0 72px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+#t3 .shr-url{font-size:12px;color:rgba(26,20,16,.3);}
+#t3 .shr-btns{display:flex;gap:10px;}
+#t3 .btn-rw-copy{font-size:12px;font-family:'Inter',sans-serif;
+  background:transparent;border:2px solid rgba(26,20,16,.25);color:rgba(26,20,16,.55);
+  padding:12px 22px;cursor:pointer;}
+#t3 .btn-rw-share{font-size:12px;font-weight:700;font-family:'Inter',sans-serif;
+  background:#e85c28;color:#fff;border:none;padding:14px 26px;cursor:pointer;}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   T4 — MONOCLE LONG-READ
+   Typography IS the design. No hero image. 3-column newspaper grid.
+   Literary, European, considered. Every line earns its space.
+═══════════════════════════════════════════════════════════════ */
+#t4{background:#fafaf4;color:#18180e;min-height:100vh;}
+
+#t4 .runhdr{border-top:3px solid #18180e;border-bottom:1px solid rgba(24,24,14,.16);
+  display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:11px 72px;}
+#t4 .rh-l{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(24,24,14,.36);}
+#t4 .rh-c{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.14em;color:#18180e;text-align:center;}
+#t4 .rh-r{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(24,24,14,.36);text-align:right;}
+
+#t4 .title{padding:56px 72px;border-bottom:1px solid rgba(24,24,14,.12);}
+#t4 .eye4{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+#t4 .terra-bar{width:30px;height:3px;background:#b8402a;flex-shrink:0;}
+#t4 .ey4{font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:#b8402a;font-weight:700;}
+#t4 .hl4{font-family:'DM Serif Display',serif;font-size:clamp(46px,6vw,76px);
+  line-height:.93;color:#18180e;margin-bottom:18px;max-width:900px;}
+#t4 .dek4{font-size:17px;color:rgba(24,24,14,.48);line-height:1.7;
+  max-width:720px;padding-bottom:32px;border-bottom:1px solid rgba(24,24,14,.1);}
+#t4 .meta4{display:flex;gap:32px;padding-top:22px;flex-wrap:wrap;}
+#t4 .m4{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(24,24,14,.34);}
+#t4 .m4 span{color:#18180e;font-weight:600;}
+
+/* 3-column grid */
+#t4 .grid{display:grid;grid-template-columns:220px 1fr 1fr;gap:0;padding:0 72px;}
+#t4 .sb{padding:52px 44px 52px 0;border-right:1px solid rgba(24,24,14,.1);}
+#t4 .sb-sec{margin-bottom:36px;padding-bottom:36px;border-bottom:1px solid rgba(24,24,14,.07);}
+#t4 .sb-sec:last-of-type{border-bottom:none;}
+#t4 .sb-lbl{font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:#b8402a;margin-bottom:10px;font-weight:700;}
+#t4 .sb-n{font-family:'Bebas Neue',sans-serif;font-size:50px;color:#18180e;line-height:1;}
+#t4 .sb-sub{font-size:11px;color:rgba(24,24,14,.38);line-height:1.6;margin-top:4px;}
+#t4 .sb-note{font-size:13px;color:rgba(24,24,14,.52);line-height:1.68;
+  font-family:'DM Serif Display',serif;font-style:italic;}
+#t4 .sb-photo{margin-top:44px;}
+#t4 .sb-ph-img{height:190px;border-radius:1px;}
+#t4 .sb-ph-cap{font-size:11px;color:rgba(24,24,14,.36);margin-top:9px;line-height:1.6;}
+
+#t4 .col-a{padding:52px 44px;border-right:1px solid rgba(24,24,14,.1);}
+#t4 .col-b{padding:52px 0 52px 44px;}
+
+#t4 .col-a p,#t4 .col-b p{
+  font-size:17.5px;line-height:1.94;color:#18180e;margin-bottom:28px;}
+#t4 .dropcap::first-letter{float:left;font-family:'Bebas Neue',sans-serif;
+  font-size:116px;line-height:.76;color:#b8402a;margin-right:8px;margin-top:14px;}
+
+#t4 .col-num{font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:.24em;
+  color:rgba(24,24,14,.2);margin-bottom:20px;}
+#t4 .col-rule{height:1px;background:rgba(24,24,14,.1);margin:34px 0;}
+#t4 .pq4{font-family:'DM Serif Display',serif;font-style:italic;font-size:21px;
+  line-height:1.5;color:#b8402a;border-top:2px solid #b8402a;padding-top:22px;margin:38px 0;}
+#t4 .aside4{background:rgba(184,64,42,.06);border-left:3px solid #b8402a;
+  padding:20px 20px 20px 22px;margin:36px 0;}
+#t4 .aside4-head{font-size:9px;letter-spacing:.24em;text-transform:uppercase;
+  color:#b8402a;margin-bottom:10px;font-weight:700;}
+#t4 .aside4-txt{font-size:14px;line-height:1.65;color:rgba(24,24,14,.62);}
+
+/* Full-width photo break within grid section */
+#t4 .grid-photo{grid-column:2/-1;height:340px;overflow:hidden;
+  border-left:1px solid rgba(24,24,14,.1);display:none;}
+#t4 .ph-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+  height:220px;margin:0 72px 0;}
+
+#t4 .foot{border-top:1px solid rgba(24,24,14,.1);padding:44px 72px 72px;}
+#t4 .foot-rule{height:3px;background:#18180e;margin-bottom:44px;}
+#t4 .foot-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:40px;}
+#t4 .fp{height:200px;border-radius:1px;overflow:hidden;}
+#t4 .author-line{font-size:12px;color:rgba(24,24,14,.38);margin-bottom:32px;
+  border-top:1px solid rgba(24,24,14,.1);padding-top:24px;}
+#t4 .shr4{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+#t4 .shr4-url{font-size:11px;color:rgba(24,24,14,.28);letter-spacing:.05em;}
+#t4 .shr4-btns{display:flex;gap:10px;}
+#t4 .btn-mn-copy{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:500;
+  background:transparent;border:1px solid rgba(24,24,14,.2);color:rgba(24,24,14,.48);
+  padding:11px 20px;cursor:pointer;}
+#t4 .btn-mn-share{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+  background:#18180e;color:#fafaf4;border:none;padding:11px 24px;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div id="sw">
+  <span class="sw-lbl">Template</span>
+  <button class="sw-btn active" onclick="showT(1)">Vogue</button>
+  <button class="sw-btn" onclick="showT(2)">GQ</button>
+  <button class="sw-btn" onclick="showT(3)">Runner's World</button>
+  <button class="sw-btn" onclick="showT(4)">Monocle</button>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     T1 — VOGUE
+═══════════════════════════════════════ -->
+<div class="template" id="t1">
+  <div class="hero">
+    <div class="hero-img ph-eve"></div>
+    <div class="hero-top">
+      <div class="brand">The Athlete Edit</div>
+      <div class="issue">Race Season &emsp; May 2026</div>
+    </div>
+    <div class="hero-bottom">
+      <div class="athlete-name">Simon</div>
+      <div class="hero-byline">Brooklyn Half Marathon &ensp;·&ensp; 1:54:22 &ensp;·&ensp; Sixteen weeks</div>
+    </div>
+  </div>
+  <div class="rule-break"></div>
+
+  <div class="ed">
+    <div class="ed-eye">Brooklyn Half Marathon &ensp; May 2026</div>
+    <div class="ed-hl">Crossing the Line</div>
+    <div class="ed-dek">There is a version of this story that starts on race morning and moves quickly to the finish line. That is not the story. The story starts sixteen weeks earlier, in a moment of private ambition that Simon didn't tell anyone about — because he wasn't entirely sure he could keep it.</div>
+
+    <div class="chapter">I &ensp; The Deal</div>
+    <p>Sixteen weeks. That was the deal Simon made with himself at the starting line of last year's race — not the race he ran, but the one he stood at the back of, watching others cross. He promised himself he'd come back different. Leaner in his preparation. More honest about what recovery actually costs. He shook hands with himself on it and drove home without stopping for the bagel he'd promised himself as a reward.</p>
+    <p>The coaching relationship started in November. His first conversation with Coach Alex — through the app, a back-and-forth that felt less like intake and more like a negotiation — produced a training plan that made him nervous. The easy runs were slower than he thought they should be. The hard sessions were harder. There was a long run every weekend that kept getting longer. "I was doing all the miles," he says. "But I wasn't doing the right ones. Every run was kind of medium-hard. I never felt recovered enough to push, so I never went easy enough to actually recover."</p>
+    <p>The first month he kept second-guessing it. He'd be doing an easy six miles at what felt like a jog and think: this can't be right. I can go faster than this. But that's the whole point. You have to earn the hard sessions by actually recovering from the last ones. His average HRV through January read 54 milliseconds — stressed, slightly overreached, the body logging its objections in the only language available to it.</p>
+
+    <div class="pq-v">"I was doing all the miles. But I wasn't doing the right ones."</div>
+
+    <div class="chapter">II &ensp; February</div>
+    <p>February is when most training stories get interesting. It is the month that separates the people who had a good idea in January from the people who are actually going to do something with it. For Simon, it was a Tuesday — week six — temperature at four degrees, a forecast that suggested light rain and delivered freezing sleet instead.</p>
+    <p>The plan called for an easy four miles. He ran four miles. He came home soaked, his fingers barely functional, his shoes making sounds they would continue making for the next two days. And he felt — this is the part he finds difficult to explain, even now — like himself. Not like someone who had been disciplined, or someone who had checked a box. Like himself.</p>
+    <p>"Something clicked. Not physically — I wasn't fitter on that run than I'd been the day before. It was more like I understood what I was doing there. Why the boring Tuesday miles matter. They're not about fitness. They're about becoming the kind of person who runs on Tuesday in February in the sleet." He pauses. "And that person finishes races differently."</p>
+    <p>His HRV data agreed, in its own language. By mid-February, after he'd started following the recovery protocols — sleep windows, easy-day discipline, the foods Coach Alex kept suggesting — it climbed to 61. The body was catching up with the decision the mind had already made.</p>
+
+    <div class="sec-break">· · ·</div>
+
+    <div class="chapter">III &ensp; The Long Run</div>
+    <p>The run he keeps returning to — the one he'll still be talking about in five years, he suspects — is the April long run. Week fourteen. Eighteen miles through Prospect Park on a grey Sunday. He went out at six in the morning, before the cyclists, before the dog walkers, before anyone who hadn't made a promise to themselves the previous autumn.</p>
+    <p>Miles one through eleven went according to plan. Miles twelve through fifteen were what he describes as "a negotiation" — not crisis, not collapse, but the familiar hard-edged arithmetic of late long runs where the body starts itemising its objections and the mind has to answer each one. And then, somewhere around mile sixteen, something happened that he hasn't quite explained away.</p>
+    <p>"The thinking stopped," he says. "For maybe twenty minutes, there was no strategy, no pace math, no watching the Garmin. The body just moved. I've never felt that before in a run. I think that's what people mean when they talk about being in shape — not the numbers, but that feeling." Coach Alex's read, when the data came through that afternoon: <em>That's the aerobic base talking. You've built something real. Now we taper, we trust it, and we race.</em></p>
+  </div>
+
+  <div class="photo-break">
+    <div class="pb-img ph-warm"></div>
+    <div class="pb-txt">
+      <div class="pb-stat"><div class="pb-stat-n">312</div><div class="pb-stat-l">Miles trained</div></div>
+      <div class="pb-stat"><div class="pb-stat-n">1:54</div><div class="pb-stat-l">Finish time</div></div>
+      <div class="pb-stat"><div class="pb-stat-n">58ms</div><div class="pb-stat-l">Avg HRV</div></div>
+      <div class="pb-cap">Prospect Park, week 14.<br>The run where the thinking stopped.</div>
+    </div>
+  </div>
+
+  <div class="ed" style="padding-top:80px;">
+    <div class="chapter">IV &ensp; Race Day</div>
+    <p>The taper was its own psychological exercise. Two weeks of reduced volume, the accumulated fitness sitting in his legs while his brain invented reasons to be anxious. Sleep dropped slightly. Every minor tightness in his right hamstring became, for approximately twenty minutes at a time, a stress fracture. "Tapering is horrible," he says, flatly. "You spend four months getting fit and then they take the running away and you just have to sit there being fit."</p>
+    <p>Race morning. Fort Greene Park. 6:47am. Simon stands in wave B — earned, not assigned — and thinks about Tuesday in February. The gun goes off. The first three miles he runs by feel, which means slightly too fast, which he knows and allows himself anyway. Miles four through ten are where the training lives: a steady rhythm, the heart rate where it should be, the legs doing what sixteen weeks of Tuesdays told them to do.</p>
+    <p>He passes the halfway point in 57:08. He does the maths. A 1:54 is possible. It will require the second half to hurt. It hurts. Miles eleven and twelve climb through Brooklyn Heights. He focuses on his cadence, on keeping his shoulders loose. By mile thirteen he is no longer calculating the time — only whether the person he is right now is capable of the final three kilometres. He decides he is.</p>
+    <p>He crosses in 1:54:22. Stops his watch. Stands still for what he later estimates was forty-five seconds, not moving, not thinking, just existing inside the result. Six minutes and forty seconds faster than he had ever run this distance before.</p>
+
+    <div class="pq-v">"I thought finishing would feel like relief. It didn't. It felt like evidence."</div>
+
+    <p>"I thought finishing would feel like relief," he says. "It didn't. It felt like something else. Like evidence. Evidence that the version of myself I was trying to build actually exists." He is already thinking about autumn. A full marathon, possibly. He wants to know how far the thing goes — the base, the fitness, the discipline, or whatever you want to call it. He wants to see what happens if he keeps going.</p>
+    <p>Tuesday in February started something. He intends to find out where it ends.</p>
+  </div>
+
+  <div class="ed-photo ph-dark">
+    <div class="ed-photo-cap">Crossing the finish line · Brooklyn Half Marathon · May 3, 2026</div>
+  </div>
+
+  <div class="shr">
+    <div class="shr-url">yourcoach.app/story/k7x2mQ9pNr4t</div>
+    <div class="shr-btns">
+      <button class="btn-vg-copy">Copy link</button>
+      <button class="btn-vg-share">Share</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     T2 — GQ
+═══════════════════════════════════════ -->
+<div class="template" id="t2" style="display:none">
+  <div class="hero">
+    <div class="hero-img ph-dark2"></div>
+    <div class="hero-c">
+      <div class="eye-gq">Man of the Race &ensp;·&ensp; Brooklyn Half Marathon 2026</div>
+      <div class="hl-gq">Crossing<br>the Line</div>
+      <div class="sub-gq">Sixteen weeks of pre-dawn alarms, February sleet, and one decision to stop watching from the back of the pack. Simon Chen on what it actually took.</div>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="body-grid">
+      <!-- Col A -->
+      <div class="col-a">
+        <div class="chapter2">I — The Plan</div>
+        <p>Sixteen weeks. That was the deal Simon made with himself at the starting line of last year's race — not the race he ran, but the one he stood at the back of, watching others cross. He promised himself he'd come back different. Leaner in his preparation. More honest about what recovery actually costs.</p>
+        <p>The coaching relationship began in November. His first conversation with Coach Alex produced a plan that made him nervous — easy runs slower than he thought they should be, hard sessions harder, a long run every weekend that kept getting longer. "I was doing all the miles," he says, "but every run was kind of medium-hard. I never recovered enough to push properly."</p>
+        <p>By mid-January his average HRV was sitting at 54 milliseconds. The body was logging its objections in the only language available to it. The plan demanded he answer them differently — not by pushing through, which had been his default, but by doing less, more deliberately. Three of the five weekly sessions were genuinely easy: slow enough to hold a conversation, slow enough that it felt like not training at all. 'It goes against every instinct,' he says. 'Every runner's instinct is to add more. The plan kept asking me to take things away.'</p>
+        <p>He kept second-guessing it through January. He'd be jogging through Prospect Park at what felt like an embarrassingly slow pace, passing people who weren't even wearing Garmins, thinking: this can't be right. But that's the architecture of an aerobic base. You stress the system, you let it repair, and the repair is where the fitness lives. He had to learn to trust the quiet work.</p>
+
+        <div class="chapter2">II — February</div>
+        <p>February is where most training stories get serious. For Simon it was a Tuesday in week six — four degrees, freezing sleet, a plan that called for an easy four miles. He ran the four miles. He came home soaked and felt, inexplicably, like himself. Not virtuous. Not checked-a-box. Just himself, in the right place, doing the right thing.</p>
+        <div class="pq-gq">"Something clicked. Not physically. It was more like I finally understood what I was doing out there — why the boring Tuesday miles matter."</div>
+        <p>The data agreed in its own way. By mid-February his HRV had climbed to 61 milliseconds. The recovery protocols were working — better sleep, genuine easy-day discipline, attention to food timing. So was something less measurable: he was becoming aerobically efficient, his body learning to extract more output from the same input. What had felt like effort in October felt like control by March. The athlete was no longer just completing sessions. He understood what each one was for.</p>
+      </div>
+
+      <!-- Col B -->
+      <div class="col-b">
+        <div class="chapter2">III — The Long Run</div>
+        <p>The run he keeps returning to is week fourteen: eighteen miles through Prospect Park at 6am on a grey Sunday. He went out before the cyclists, before the dog walkers, in the company of other people who had also made promises to themselves the previous autumn. Miles one through eleven went to plan. Miles twelve through fifteen were what he calls "a negotiation" — not crisis, not collapse, but the hard-edged arithmetic of late long runs where the body starts itemising its objections and the mind has to answer each one.</p>
+        <p>Then, around mile sixteen, something happened that he hasn't quite explained away. "The thinking stopped. For maybe twenty minutes, no strategy, no pace math, no Garmin. The body just moved. I've never felt that before." He ran the final two miles at his target race pace — not because he'd planned to, but because it was the pace available to him. Coach Alex's response when the data came in: <em>That's the aerobic base. You've built something real. Now we taper, trust it, and race.</em></p>
+        <div class="inline-stat">
+          <div class="is-n">312</div>
+          <div class="is-l">miles of training — the foundation under every stride of race day</div>
+        </div>
+
+        <div class="chapter2">IV — Race Day</div>
+        <p>The taper was its own psychological exercise: two weeks of reduced volume, the accumulated fitness sitting in his legs while his brain invented reasons to be anxious. Sleep quality dropped. His right hamstring issued a series of minor complaints that he interpreted, in rotating order, as a stress fracture, a tendon issue, and impending catastrophe. "Tapering is horrible," he says. "You spend four months getting fit and then they take the running away. You just have to sit there being fit."</p>
+        <p>Race morning. Fort Greene Park. 6:47am. Wave B — earned, not assigned. He stands there and thinks about Tuesday in February. The gun goes off. The first three miles are slightly too fast, which he knows and allows himself anyway. Miles four through ten are where the training lives: steady rhythm, heart rate where it should be, legs doing what sixteen weeks of Tuesday miles told them to do.</p>
+        <p>Halfway split: 57:08. The maths says 1:54 is possible. The second half will require something from him. It does. Miles eleven and twelve climb through Brooklyn Heights. He focuses on cadence, on keeping his shoulders loose, on the proprioceptive cues from his long runs. By mile thirteen he isn't calculating time — only whether the person he is right now is capable of the final three kilometres. He decides he is.</p>
+        <p>He crosses in 1:54:22. Six minutes and forty seconds faster than he has ever run this distance. He stands still for forty-five seconds, not moving, not thinking. Not relief — something better than relief. Evidence. Evidence that the version of himself he was trying to build in November actually exists, and runs, and finishes races.</p>
+        <div class="pq-gq">"I thought finishing would feel like relief. It felt like evidence instead. Evidence that the person I was trying to become actually exists."</div>
+        <p>What he learned, over sixteen weeks of Tuesday miles and Sunday long runs and recovery protocols and data he didn't fully understand but trusted anyway, was something he couldn't have named in November. You could call it patience. You could call it faith in a system. You could call it becoming the person who does the work even when — especially when — the results aren't visible yet. He is already planning the autumn. A full marathon. He wants to know how far the thing goes. Tuesday in February started something. He intends to find out where it ends.</p>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="ff-head">Fast Facts</div>
+        <div class="ff-item"><div class="ff-n">312</div><div class="ff-l">Miles trained</div></div>
+        <div class="ff-item"><div class="ff-n">1:54:22</div><div class="ff-l">Finish time</div></div>
+        <div class="ff-item"><div class="ff-n">16wks</div><div class="ff-l">Training block</div></div>
+        <div class="ff-item"><div class="ff-n">58ms</div><div class="ff-l">Avg HRV</div></div>
+        <div class="ff-rule"></div>
+        <div class="ff-note-head">Coach Alex</div>
+        <div class="ff-note">"He came in wanting to run fast. He left knowing how to race. There's a difference — and it took sixteen weeks of Tuesdays to feel it in his legs."</div>
+        <div class="ff-five-head">What the data revealed</div>
+        <div class="ff-five-item"><div class="ff-five-num">01</div><div class="ff-five-txt">HRV climbed 13% between January and February as recovery protocols took hold</div></div>
+        <div class="ff-five-item"><div class="ff-five-num">02</div><div class="ff-five-txt">Long run pace improved by 28 sec/mi without perceived effort increasing</div></div>
+        <div class="ff-five-item"><div class="ff-five-num">03</div><div class="ff-five-txt">Race-day heart rate sat 4 bpm below projected max — the base held</div></div>
+        <div class="ff-five-item"><div class="ff-five-num">04</div><div class="ff-five-txt">Second half of the race was 41 seconds faster than the first</div></div>
+        <div class="ff-five-item"><div class="ff-five-num">05</div><div class="ff-five-txt">Post-race HRV recovered to baseline within 36 hours — body was ready</div></div>
+      </div>
+    </div>
+
+    <div class="photos">
+      <div class="ph ph-dark3"><div class="ph-c">Fort Greene · Race morning</div></div>
+      <div class="ph ph-dark2"><div class="ph-c">Week 12 intervals</div></div>
+      <div class="ph ph-moor"><div class="ph-c">The finish</div></div>
+    </div>
+    <div class="shr">
+      <div class="shr-url">yourcoach.app/story/k7x2mQ9pNr4t</div>
+      <div class="shr-btns">
+        <button class="btn-gq-copy">Copy link</button>
+        <button class="btn-gq-share">Share story</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     T3 — RUNNER'S WORLD
+═══════════════════════════════════════ -->
+<div class="template" id="t3" style="display:none">
+  <div class="topbar">
+    <div class="tb-brand">Race Feature</div>
+    <div class="tb-tag">Brooklyn Half Marathon · May 2026</div>
+  </div>
+  <div class="hdr">
+    <div style="height:48px;"></div>
+    <div class="eye3">Personal Best &ensp;·&ensp; Brooklyn Half Marathon</div>
+    <div class="hl3">Crossing<br>the Line</div>
+    <div class="dek3">How sixteen weeks of early mornings, February sleet, and one perfect long run turned Simon Chen from a middle-of-the-pack runner into someone who knows exactly what they're capable of.</div>
+    <div class="byline">
+      <div class="byl-av">S</div>
+      <div><div class="byl-name">Simon Chen</div><div class="byl-meta">Brooklyn, NY &ensp;·&ensp; Coached by Alex &ensp;·&ensp; 16-week training block</div></div>
+    </div>
+  </div>
+
+  <div class="stats-strip">
+    <div class="ss"><div class="ss-n">312</div><div class="ss-l">Miles trained</div></div>
+    <div class="ss"><div class="ss-n">1:54:22</div><div class="ss-l">Finish time</div></div>
+    <div class="ss"><div class="ss-n">16</div><div class="ss-l">Weeks trained</div></div>
+    <div class="ss"><div class="ss-n">−6:40</div><div class="ss-l">Personal best</div></div>
+  </div>
+
+  <div class="main-photo ph-warm2">
+    <div class="mp-cap">Simon crossing the finish line at the Brooklyn Half Marathon, May 3, 2026 · Photo taken at mile 13.1</div>
+  </div>
+
+  <div class="sections">
+    <div class="section">
+      <div class="sec-tab"><div class="sec-num">01</div><div class="sec-name">The Build</div></div>
+      <div class="two-col">
+        <div>
+          <div class="sec-hl">Making the decision at the back of the pack</div>
+          <p>There is a version of this story that starts on race morning and gets to the finish line in three paragraphs. That is not this story. This story starts at the back of a starting corral, twelve months ago, watching the field go without him. Simon Chen stood there and made a decision — not a vague aspiration, but an actual deal with himself — that he would come back different.</p>
+          <p>He started working with Coach Alex in November. The plan arrived and immediately made him uncomfortable. Easy runs slower than he thought they should be. Hard sessions harder. A weekly long run that kept getting longer. "I was doing all the miles," he says, "but every run was medium-hard. I never recovered enough to actually push. I was just grinding."</p>
+          <p>The first month he kept second-guessing it. He'd be jogging through Prospect Park at a pace that felt embarrassingly slow, passing people who weren't even wearing Garmins, thinking: this can't be right. But that's the architecture of a proper aerobic base. You have to earn the hard sessions by recovering from the previous ones. His January HRV averaged 54 milliseconds — the body logging stress it hadn't quite metabolised yet.</p>
+        </div>
+        <div class="sec-photo ph-warm3"></div>
+      </div>
+    </div>
+
+    <div class="pq-rw">
+      "They're not about fitness. They're about becoming the kind of person who runs on Tuesday in February in the sleet. And that person finishes races differently."
+      <cite>— Simon, on the easy miles nobody sees</cite>
+    </div>
+
+    <div class="section">
+      <div class="sec-tab"><div class="sec-num">02</div><div class="sec-name">The Turn</div></div>
+      <div class="sec-hl">Week six, four miles, freezing sleet</div>
+      <p>February is the month that separates the people who had a good idea in January from the people who are going to do something with it. Simon's turning point came on a Tuesday — week six of the block, temperature at four degrees, a forecast that promised light rain and delivered freezing sleet. The plan called for an easy four miles.</p>
+      <p>He ran the four miles. He came home soaked, his fingers barely functional, his shoes making sounds they would continue making for the next two days. And he felt — this is the part he still struggles to explain — like himself. Not disciplined. Not virtuous. Just himself, in the right place, doing the right thing.</p>
+      <p>"Something clicked. Not physically — I wasn't fitter that day. It was more like I understood what I was doing there. Why boring Tuesday miles matter." The HRV data charted its own response: by mid-February, following recovery protocols his coach had introduced — consistent sleep windows, genuine easy-day discipline, attention to food timing — his average had climbed to 61. The body was catching up with the decision the mind had made six weeks earlier at the back of someone else's starting corral.</p>
+      <p>March was about consolidation. The long runs extended. His tempo work sharpened. There were sessions that hurt in ways he hadn't expected, and easy days that he'd have pushed through last year but now guarded as carefully as the hard ones. He was learning, in real time, that the easy miles aren't the compromise — they're the foundation. Without them the hard sessions are just damage.</p>
+      <div class="two-col" style="margin-top:32px;">
+        <div>
+          <p>The long run in April — week fourteen, eighteen miles through Prospect Park at 6am on a grey Sunday — was the session that answered everything. Miles one through eleven went to plan. Miles twelve through fifteen were a negotiation. Then, around mile sixteen, something happened that he hasn't quite explained away. The thinking stopped. No strategy, no pace maths, no Garmin-watching. For twenty minutes, the body simply moved.</p>
+          <p>"I think that's what being in shape actually means," he says. "Not the numbers. That feeling. You can't manufacture it. You have to earn it one Tuesday at a time." Coach Alex, when the data arrived that afternoon: <em>That's the aerobic base talking. You've built something real. Now we taper, we trust it, and we race.</em></p>
+        </div>
+        <div class="sec-photo ph-lt"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-tab"><div class="sec-num">03</div><div class="sec-name">Race Day</div></div>
+      <div class="sec-hl">Fort Greene Park, 6:47am</div>
+      <p>The taper was two weeks of reduced mileage that his brain interpreted as two weeks of anxiety. Sleep dropped. Every minor ache became an imaginary injury. "Tapering is horrible. You spend four months getting fit and then they take the running away. You just have to sit there being fit, which is somehow the hardest part."</p>
+      <p>Race morning. Fort Greene Park. 6:47am. Simon stands in wave B — earned, not assigned — and thinks about the Tuesday in February. The gun goes off. The first three miles are slightly too fast, which he knows and allows himself anyway. Miles four through ten are where the training lives: a steady rhythm, heart rate where it should be, legs doing what sixteen weeks of discipline told them to do.</p>
+      <p>Halfway split: 57:08. The maths says 1:54 is possible. The second half will hurt. It hurts. Miles eleven and twelve climb through Brooklyn Heights. He focuses on cadence, shoulders, the cues from his long runs. By mile thirteen he isn't calculating time — only whether the person he is right now is capable of the final three kilometres. He decides he is.</p>
+      <p>He crosses in 1:54:22. Six minutes and forty seconds faster than he has ever run this distance. He stops his watch. Stands still for about forty-five seconds, not moving, not thinking. Not relief — something better. Evidence. Evidence that the version of himself he was trying to build actually exists.</p>
+
+      <div class="coach-box">
+        <div class="coach-av">A</div>
+        <div>
+          <div class="coach-lbl">Coach Alex &ensp;·&ensp; Post-race assessment</div>
+          <div class="coach-q">"He came in wanting to run fast. He left knowing how to race. There is a significant difference between the two, and it took sixteen weeks of Tuesdays to feel it properly in your legs. The HRV data, the pacing discipline, the negative split on race day — none of that was luck. That was the work."</div>
+          <div class="coach-attr">Coach Alex &ensp;·&ensp; Classic coaching method</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="sec-tab"><div class="sec-num">04</div><div class="sec-name">What's Next</div></div>
+      <p>Simon crossed the line and stood still for about forty-five seconds. Not moving. Not thinking. Just existing inside what had happened. Six minutes and forty seconds faster than he had ever run this distance. A negative split — the second half faster than the first, which is how you're supposed to race and almost never do, because it requires a discipline in the first half that the body resists and the mind has to override.</p>
+      <p>He is already thinking about autumn. A full marathon, probably. Not because the half felt easy — it didn't — but because he now knows what the training looks like from the inside. He knows what it feels like when it's working. He knows that Tuesday in February in the sleet, when no one would know if you didn't go, is the race. The race on the road in May is just evidence of what you did on the road in February.</p>
+      <p>Coach Alex, in his post-race assessment: <em>He came in wanting to run fast. He left knowing how to race. There is a significant difference between the two, and it took sixteen weeks of Tuesdays to feel it in his legs. The HRV data, the pacing discipline, the negative split — none of that was luck. That was the work.</em></p>
+      <p>Simon wants to know how far the thing goes. The base, the fitness, the discipline, or whatever you want to call the quality that kept a person running through Prospect Park at 6am on Sundays and through freezing sleet on Tuesdays and through every moment when the easier option was not going. He intends to find out where it ends.</p>
+    </div>
+
+    <div class="second-photo">
+      <div class="sp-item ph-warm"><div class="sp-cap">Pre-race · Fort Greene Park</div></div>
+      <div class="sp-item ph-warm3"><div class="sp-cap">The finish line</div></div>
+    </div>
+
+    <div class="shr">
+      <div class="shr-url">yourcoach.app/story/k7x2mQ9pNr4t</div>
+      <div class="shr-btns">
+        <button class="btn-rw-copy">Copy link</button>
+        <button class="btn-rw-share">Share your story</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     T4 — MONOCLE
+═══════════════════════════════════════ -->
+<div class="template" id="t4" style="display:none">
+  <div class="runhdr">
+    <div class="rh-l">Issue 14 &ensp;·&ensp; Race Profiles</div>
+    <div class="rh-c">The Dispatch</div>
+    <div class="rh-r">May 2026</div>
+  </div>
+
+  <div class="title">
+    <div class="eye4"><div class="terra-bar"></div><div class="ey4">Brooklyn Half Marathon · Race Profile · Personal Best</div></div>
+    <div class="hl4">Crossing the Line</div>
+    <div class="dek4">Sixteen weeks of early mornings, one February Tuesday in the sleet, and a long run through Prospect Park that answered every question Simon Chen had been asking himself since the previous autumn. On what it took, and what it proved.</div>
+    <div class="meta4">
+      <div class="m4">Athlete <span>Simon Chen</span></div>
+      <div class="m4">Coach <span>Alex (Classic)</span></div>
+      <div class="m4">Race <span>Brooklyn Half Marathon</span></div>
+      <div class="m4">Date <span>3 May 2026</span></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="sb">
+      <div class="sb-sec">
+        <div class="sb-lbl">Training block</div>
+        <div class="sb-n">312</div>
+        <div class="sb-sub">miles over 16 weeks</div>
+      </div>
+      <div class="sb-sec">
+        <div class="sb-lbl">Race result</div>
+        <div class="sb-n">1:54</div>
+        <div class="sb-sub">finish time — 6 min 40 sec personal best</div>
+      </div>
+      <div class="sb-sec">
+        <div class="sb-lbl">Health</div>
+        <div class="sb-n">58ms</div>
+        <div class="sb-sub">average HRV across the block; peaked at 64ms in week 15</div>
+      </div>
+      <div class="sb-sec">
+        <div class="sb-lbl">Race execution</div>
+        <div class="sb-n">−0:41</div>
+        <div class="sb-sub">negative split — second half faster than the first</div>
+      </div>
+      <div class="sb-sec">
+        <div class="sb-lbl">Coach's note</div>
+        <div class="sb-note">"He came in wanting to run fast. He left knowing how to race. There is a significant difference between the two."</div>
+      </div>
+      <div class="sb-photo">
+        <div class="sb-ph-img ph-lt"></div>
+        <div class="sb-ph-cap">Prospect Park, week 14. The session where the race stopped feeling like a question.</div>
+      </div>
+    </div>
+
+    <div class="col-a">
+      <div class="col-num">I.</div>
+      <p class="dropcap">Sixteen weeks. That was the deal Simon Chen made with himself at the starting line of last year's race — not the race he ran, but the one he stood at the back of, watching others cross. He drove home afterward with an idea that was not quite a plan, shook hands with himself on it somewhere on the BQE, and began the work in November.</p>
+      <p>His first conversation with Coach Alex produced a training schedule that made him nervous. Easy runs slower than he thought they should be. Hard sessions harder. A long run every weekend that kept getting longer. "I was doing all the miles," he says, "but every run was kind of medium-hard. I never recovered enough to push, so I never went easy enough to actually recover. I was grinding in the middle without knowing that's what I was doing."</p>
+      <p>The first month he kept second-guessing it. He'd be doing an easy six miles at what felt like a jog, passing people who weren't wearing Garmins, thinking: this can't be right. But the architecture of a proper aerobic base requires exactly this discipline. You earn the hard sessions by recovering fully from the previous ones. His average HRV through January read 54 milliseconds — stressed, slightly overreached, the body filing its complaints in the only language it has.</p>
+      <div class="col-rule"></div>
+      <div class="col-num">II.</div>
+      <p>February is where training stories become character studies. It is the month that separates intent from commitment, the people who had a good idea in January from the people who are going to do something with it. Simon's inflection point came on a Tuesday — week six, temperature at four degrees, a forecast that suggested light rain and delivered freezing sleet.</p>
+      <p>The plan called for an easy four miles. He ran the four miles. He came home soaked, his fingers barely functional. And he felt, as he puts it — and this is the part he finds difficult to articulate even now — like himself. Not virtuous, not disciplined, not checked-in-a-box. Simply, precisely himself, in the right place, doing the right thing.</p>
+      <div class="pq4">"Something clicked. Not physically — I wasn't fitter that day than I'd been the previous one. It was more like I understood what I was doing there."</div>
+      <p>The HRV data charted its own response. By mid-February, following recovery protocols his coach had introduced — consistent sleep windows, genuine easy-day discipline, attention to food timing — his average had climbed to 61 milliseconds. The body was catching up with the decision the mind had made six weeks earlier at the back of someone else's starting corral.</p>
+    </div>
+
+    <div class="col-b">
+      <div class="col-num">III.</div>
+      <p>The session he keeps returning to — the one he suspects he will still be describing five years from now — is the April long run. Week fourteen. Eighteen miles through Prospect Park at 6am on a grey Sunday, before the cyclists and dog walkers, in the company of other people who had also made promises to themselves the previous autumn.</p>
+      <p>Miles one through eleven went according to plan. Miles twelve through fifteen were what he describes as a negotiation — not crisis, not collapse, but the hard-edged arithmetic of late long runs where the body begins itemising its objections and the mind must answer each one. Then, somewhere around mile sixteen, the thinking stopped. No strategy, no pace arithmetic, no Garmin. For approximately twenty minutes the body simply moved.</p>
+      <div class="aside4">
+        <div class="aside4-head">From the training log</div>
+        <div class="aside4-txt">Week 14 long run: 18.2 miles, avg pace 9:12/mi, avg HR 148 bpm. HRV the following morning: 64ms — highest of the entire block. The body's version of agreement.</div>
+      </div>
+      <p>"I think that's what being in shape means," he says. "Not the numbers. That feeling." Coach Alex, when the data arrived that afternoon: <em>That's the aerobic base talking. You've built something real. Now we taper, we trust it, and we race.</em> The taper that followed was, by Simon's account, the hardest two weeks of the block. Reduced volume. Accumulated fitness sitting in his legs. His brain inventing reasons to be anxious about a result that the data had already predicted. Sleep quality dropped slightly. His right hamstring issued complaints that he read, in sequence, as a stress fracture, an overuse injury, and confirmation that he had made some fundamental error in the preceding sixteen weeks. He had not. The body was simply recalibrating.</p>
+      <div class="col-rule"></div>
+      <div class="col-num">IV.</div>
+      <p>Race morning. Fort Greene Park. 6:47am. Wave B — earned, not assigned. The gun goes off. The first three miles are slightly too fast, which he knows and permits himself anyway. Miles four through ten are where the training lives: a steady rhythm, heart rate where it should be, legs executing what sixteen weeks of Tuesdays told them to do. He is not racing yet. He is running the plan.</p>
+      <p>The first half passes in 57:08; the arithmetic says 1:54 is achievable; the second half will require something from him. It does. Miles eleven and twelve climb through Brooklyn Heights. He focuses on cadence, on keeping his shoulders loose, on the proprioceptive cues from weeks of long runs. By mile thirteen he is not calculating the finish time. He is only asking whether the person he is right now is capable of the final three kilometres. He decides that he is.</p>
+      <p>He crosses in 1:54:22. Six minutes and forty seconds faster than he has ever run this distance. He stops his watch. Stands still for what he later estimates was approximately forty-five seconds, not moving, not thinking — just existing inside the result. Not relief. Evidence. Evidence that the version of himself he was trying to build in November actually exists, and runs, and finishes races. A negative split: the second half faster than the first, which is how races are supposed to go, and which requires a discipline in the early miles that is only possible if you have built the base to hold the pace when the base is all you have left.</p>
+      <p>He is planning a full marathon for the autumn. He wants to know how far the thing goes — the base, the discipline, the quality that kept him running on a Tuesday in February when no one would have known if he hadn't. What he is describing, when pressed, is not fitness. It is something more durable. The knowledge that the hard thing is also the right thing, and that doing it when no one is watching is the only way to be ready when everyone is. Tuesday in February started something. He intends to find out where it ends.</p>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="foot-rule"></div>
+    <div class="foot-photos">
+      <div class="fp ph-warm"></div>
+      <div class="fp ph-warm3"></div>
+      <div class="fp ph-lt"></div>
+    </div>
+    <div class="author-line">Simon Chen trains in Brooklyn, NY under Coach Alex. This story was generated from his training data and post-race reflections by RunCoach AI.</div>
+    <div class="shr4">
+      <div class="shr4-url">yourcoach.app/story/k7x2mQ9pNr4t</div>
+      <div class="shr4-btns">
+        <button class="btn-mn-copy">Copy link</button>
+        <button class="btn-mn-share">Share story</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+function showT(n){
+  document.querySelectorAll('.template').forEach(t=>t.style.display='none');
+  document.getElementById('t'+n).style.display='block';
+  document.querySelectorAll('.sw-btn').forEach((b,i)=>b.classList.toggle('active',i===n-1));
+  window.scrollTo({top:0,behavior:'instant'});
+}
+document.querySelectorAll('[class*="btn-"][class*="copy"]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const o=btn.textContent;btn.textContent='Copied!';
+    setTimeout(()=>btn.textContent=o,1800);
+  });
+});
+</script>
+</body>
+</html>
