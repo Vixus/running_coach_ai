@@ -93,6 +93,7 @@ def run_morning_checkin(athlete: Athlete, db_session: Session) -> None:
     # Fetch Garmin health data — try live fetch, fall back to yesterday's stored snapshot
     health_text = "No Garmin data available."
     snapshot = None
+    garmin_fetch_failed = False
     if athlete.garmin_email and athlete.garmin_password_encrypted:
         try:
             from running_coach_ai.garmin.client import get_garmin_client, get_health_snapshot
@@ -103,12 +104,23 @@ def run_morning_checkin(athlete: Athlete, db_session: Session) -> None:
             logger.info("Fetched live Garmin health data for athlete %d", athlete.id)
         except Exception as e:
             logger.error("Live health data fetch failed for athlete %d: %s", athlete.id, e)
+            garmin_fetch_failed = True
+
+    # If live fetch failed (auth/network error), load today's stored snapshot immediately so
+    # the health gate below doesn't block the check-in indefinitely.
+    if garmin_fetch_failed and snapshot is None:
+        snapshot = (
+            scoped_query(db_session, HealthSnapshot, athlete.id)
+            .filter(HealthSnapshot.date == today)
+            .first()
+        )
+        if snapshot:
+            logger.info("Live fetch failed; using stored snapshot from %s for athlete %d", today, athlete.id)
 
     # Health-data gate (FR-031, FR-032): wait for Garmin to finish processing all overnight metrics.
-    # Uses training_readiness as the primary signal (Garmin's own morning-complete indicator),
-    # falling back to requiring all three proxy fields on devices that don't support it.
-    # Only applies to athletes WITH Garmin — no-Garmin athletes always get a workout/weather check-in.
-    if not _garmin_morning_data_complete(snapshot) and athlete.garmin_email:
+    # Skip gate if Garmin was unreachable — the fetch failure already logged an error; proceeding
+    # with whatever stored data exists is better than silently skipping the day's check-in.
+    if not garmin_fetch_failed and not _garmin_morning_data_complete(snapshot) and athlete.garmin_email:
         if now_local.hour < 12:
             logger.debug(
                 "No health data yet for athlete %d at %s local — will retry on next tick",

@@ -153,23 +153,34 @@ class TestNoHealthDataBefore10am:
         mock_send_dm.assert_not_called()
         assert athlete.last_morning_checkin_date != TODAY
 
+    @patch(f"{_ADAPTER}.extract_and_apply_plan", return_value="Morning message text")
+    @patch(f"{_ADAPTER}.call_claude", return_value="Morning message text")
+    @patch(f"{_ADAPTER}.scoped_query")
     @patch("running_coach_ai.coach.notify.notify")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
-    def test_silent_return_when_snapshot_is_none_before_10am(
+    @patch("running_coach_ai.weather.client.summarise_forecast", return_value=[])
+    @patch("running_coach_ai.weather.client.get_forecast", return_value={})
+    def test_proceeds_when_garmin_fetch_fails(
         self,
+        mock_forecast,
+        mock_summarise,
         mock_garmin_client,
         mock_health_raw,
         mock_parse,
-        mock_send_dm,
+        mock_notify,
+        mock_scoped,
+        mock_claude,
+        mock_extract,
     ):
-        """If Garmin fetch raises an exception, snapshot stays None → gate fires."""
+        """When the Garmin parse raises an exception the health gate is bypassed
+        and the check-in is delivered anyway (rather than silently skipping)."""
         mock_parse.side_effect = Exception("Garmin API error")
+        mock_scoped.return_value.filter.return_value.first.return_value = None
 
         athlete = _make_athlete()
         db = _make_db()
-        slack_client = MagicMock()
 
         fake_local = datetime(TODAY.year, TODAY.month, TODAY.day, 7, 0, tzinfo=timezone.utc)
         with patch(f"{_ADAPTER}.datetime") as mock_dt:
@@ -179,7 +190,7 @@ class TestNoHealthDataBefore10am:
             from running_coach_ai.coach.adapter import run_morning_checkin
             run_morning_checkin(athlete, db)
 
-        mock_send_dm.assert_not_called()
+        mock_notify.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
