@@ -657,6 +657,7 @@ def magazine():
             dur_str = f"{pw.target_duration_seconds // 60} min" if pw.target_duration_seconds else ""
             sub = " · ".join(filter(None, [type_lbl, mi_str or dur_str]))
             race_upcoming.append({
+                "id": pw.id,
                 "day": f"{pw.scheduled_date.strftime('%A')}, {pw.scheduled_date.strftime('%b')} {pw.scheduled_date.day}",
                 "headline": mi_str or type_lbl,
                 "sub": sub,

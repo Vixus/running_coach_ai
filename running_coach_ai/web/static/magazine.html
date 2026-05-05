@@ -150,6 +150,41 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
 .tsm-toggle-btn.active{background:rgba(255,255,255,.09);color:#fff;}
 .tsm-toggle-btn:disabled{opacity:.25;cursor:default;}
 
+#garmin-overlay{position:fixed;inset:0;z-index:900;background:rgba(10,9,8,.82);backdrop-filter:blur(14px);display:none;justify-content:center;align-items:center;padding:24px;}
+#garmin-overlay.show{display:flex;animation:fadeUp .25s ease;}
+#garmin-modal{background:#1a1814;border:1px solid rgba(255,255,255,.12);border-radius:20px;width:100%;max-width:420px;padding:36px;animation:modalIn .3s cubic-bezier(.16,1,.3,1);}
+.gm-eye{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:8px;}
+.gm-title{font-family:'Bebas Neue',sans-serif;font-size:38px;color:#fff;margin-bottom:6px;}
+.gm-sub{font-size:13px;color:rgba(255,255,255,.45);line-height:1.55;margin-bottom:24px;}
+.gm-lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:6px;}
+.gm-inp{width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;color:#fff;font-size:14px;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s;margin-bottom:14px;}
+.gm-inp:focus{border-color:rgba(184,255,79,.5);}
+.gm-msgs{margin-bottom:16px;display:none;}
+.gm-msg{font-size:13px;color:rgba(184,255,79,.85);padding:10px 14px;background:rgba(184,255,79,.07);border-radius:8px;margin-bottom:8px;line-height:1.5;}
+.gm-btns{display:flex;gap:10px;}
+.gm-btn-primary{flex:1;background:var(--lime,#b8ff4f);color:#0a0908;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;border:none;border-radius:10px;padding:12px;cursor:pointer;transition:opacity .15s;}
+.gm-btn-primary:hover{opacity:.88;}
+.gm-btn-primary:disabled{opacity:.4;cursor:default;}
+.gm-btn-skip{background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);font-family:'Inter',sans-serif;font-size:13px;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 18px;cursor:pointer;transition:all .15s;}
+.gm-btn-skip:hover{color:rgba(255,255,255,.85);}
+
+#wpreview-overlay{position:fixed;inset:0;z-index:900;background:rgba(10,9,8,.82);backdrop-filter:blur(14px);display:none;justify-content:center;align-items:center;padding:24px;}
+#wpreview-overlay.show{display:flex;animation:fadeUp .25s ease;}
+#wpreview-modal{background:#1a1814;border:1px solid rgba(255,255,255,.12);border-radius:20px;width:100%;max-width:520px;padding:36px;animation:modalIn .3s cubic-bezier(.16,1,.3,1);max-height:85vh;overflow-y:auto;}
+.wpm-close{float:right;background:rgba(255,255,255,.07);border:none;color:rgba(255,255,255,.5);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.wpm-close:hover{background:rgba(255,255,255,.14);color:#fff;}
+.wpm-eye{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:6px;}
+.wpm-title{font-family:'Bebas Neue',sans-serif;font-size:38px;color:#fff;margin-bottom:3px;}
+.wpm-meta{font-size:13px;color:rgba(255,255,255,.4);margin-bottom:22px;}
+.wpm-loading{text-align:center;padding:32px 0;color:rgba(255,255,255,.3);font-size:13px;}
+.wpm-spinner{display:inline-block;width:22px;height:22px;border:2px solid rgba(184,255,79,.25);border-top-color:var(--lime,#b8ff4f);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:10px;}
+.wpm-tips{font-size:14px;color:rgba(255,255,255,.8);line-height:1.7;white-space:pre-wrap;}
+.wpm-tips .tip-bullet{display:block;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+.wpm-tips .tip-bullet:last-child{border-bottom:none;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.rc-card{cursor:pointer;transition:border-color .2s,transform .15s;}
+.rc-card:hover{border-color:rgba(184,255,79,.5);transform:translateY(-2px);}
+
 #morning{min-height:90vh;display:grid;grid-template-columns:1fr 1fr;}
 .m-left{background:var(--ink);padding:88px 64px;display:flex;flex-direction:column;justify-content:center;}
 .m-right{background:var(--paper);padding:88px 64px;display:flex;flex-direction:column;justify-content:center;}
@@ -825,6 +860,37 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
     <div class="tsm-svg-wrap">
       <svg id="tsm-svg" width="100%" height="180" viewBox="0 0 620 180" style="display:block;overflow:visible;"></svg>
       <div class="ts-tip" id="ts-tip"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Garmin credentials modal (shown during onboarding) -->
+<div id="garmin-overlay" onclick="if(event.target===this)closeGarminModal()">
+  <div id="garmin-modal">
+    <div class="gm-eye">Setup · Step 2 of 2</div>
+    <div class="gm-title">Connect Garmin</div>
+    <div class="gm-sub">Your coach uses Garmin health data (HRV, sleep, body battery) to personalise each session. You can skip this and add it later.</div>
+    <div class="gm-msgs" id="gm-msgs"></div>
+    <label class="gm-lbl">Garmin email</label>
+    <input class="gm-inp" id="gm-email" type="email" placeholder="you@example.com" autocomplete="email"/>
+    <label class="gm-lbl">Garmin password</label>
+    <input class="gm-inp" id="gm-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitGarminCreds()"/>
+    <div class="gm-btns">
+      <button class="gm-btn-primary" id="gm-submit" onclick="submitGarminCreds()">Connect</button>
+      <button class="gm-btn-skip" onclick="skipGarmin()">Skip for now</button>
+    </div>
+  </div>
+</div>
+
+<!-- Workout preview modal -->
+<div id="wpreview-overlay" onclick="if(event.target===this)closeWorkoutPreview()">
+  <div id="wpreview-modal">
+    <button class="wpm-close" onclick="closeWorkoutPreview()">✕</button>
+    <div class="wpm-eye" id="wpm-eye">Pre-Workout Tips</div>
+    <div class="wpm-title" id="wpm-title">Today's Session</div>
+    <div class="wpm-meta" id="wpm-meta"></div>
+    <div class="wpm-tips" id="wpm-tips">
+      <div class="wpm-loading"><div class="wpm-spinner"></div><br>Your coach is preparing tips…</div>
     </div>
   </div>
 </div>
@@ -1697,6 +1763,12 @@ async function cpSend(text){
     cpRemTyping();
     if (r.ok && data.response) {
       cpAdd('coach', data.response);
+      if (data.onboarding?.pending_garmin) {
+        openGarminModal();
+      } else if (data.onboarding?.is_complete) {
+        closeGarminModal();
+        hydrate();
+      }
     } else {
       cpAdd('coach', data.error || 'Coach is unavailable — try again in a moment.');
     }
@@ -2278,7 +2350,7 @@ async function hydrate(){
     document.getElementById('rc-race').textContent = m.race.name + (m.race.date_pretty ? ` · ${m.race.date_pretty}` : '');
     const cards = document.getElementById('rc-cards');
     if (m.race.upcoming && m.race.upcoming.length) {
-      cards.innerHTML = m.race.upcoming.map(u=>`<div class="rc-card"><div class="rc-cd">${u.day}</div><div class="rc-cv">${u.headline}</div><div class="rc-cs">${u.sub}</div></div>`).join('');
+      cards.innerHTML = m.race.upcoming.map(u=>`<div class="rc-card" ${u.id ? `onclick="openWorkoutPreview(${u.id})"` : ''}><div class="rc-cd">${u.day}</div><div class="rc-cv">${u.headline}</div><div class="rc-cs">${u.sub}</div></div>`).join('');
     } else {
       cards.innerHTML = `<div class="rc-card" style="border-color:rgba(184,255,79,.18);"><div class="rc-cd" style="color:rgba(184,255,79,.45);">No upcoming workouts</div><div class="rc-cv" style="color:var(--lime);">Plan ahead</div><div class="rc-cs">Add workouts to see them here</div></div>`;
     }
@@ -2315,6 +2387,99 @@ async function hydrate(){
   return m;
 }
 
+// ── Garmin credentials modal ──────────────────────────────────
+function openGarminModal(){
+  document.getElementById('garmin-overlay').classList.add('show');
+  setTimeout(()=>document.getElementById('gm-email').focus(),120);
+}
+function closeGarminModal(){
+  document.getElementById('garmin-overlay').classList.remove('show');
+  document.getElementById('gm-msgs').style.display='none';
+  document.getElementById('gm-msgs').innerHTML='';
+}
+async function submitGarminCreds(){
+  const email = document.getElementById('gm-email').value.trim();
+  const pass  = document.getElementById('gm-pass').value;
+  if (!email || !pass) return;
+  const btn = document.getElementById('gm-submit');
+  btn.disabled=true; btn.textContent='Connecting…';
+  try {
+    const r = await fetch('/api/onboarding/garmin-creds',{
+      method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pass}),
+    });
+    const d = await r.json();
+    const msgsEl = document.getElementById('gm-msgs');
+    if (r.ok && d.messages) {
+      msgsEl.innerHTML = d.messages.map(msg=>`<div class="gm-msg">${msg}</div>`).join('');
+      msgsEl.style.display='block';
+      if (d.onboarding?.is_complete) {
+        setTimeout(()=>{ closeGarminModal(); hydrate(); },1800);
+      }
+    } else {
+      msgsEl.innerHTML=`<div class="gm-msg" style="color:rgba(255,100,80,.85);background:rgba(255,80,60,.07);">${d.error||'Something went wrong — check credentials and try again.'}</div>`;
+      msgsEl.style.display='block';
+    }
+  } catch {
+    const msgsEl=document.getElementById('gm-msgs');
+    msgsEl.innerHTML='<div class="gm-msg" style="color:rgba(255,100,80,.85);background:rgba(255,80,60,.07);">Connection error — try again.</div>';
+    msgsEl.style.display='block';
+  }
+  btn.disabled=false; btn.textContent='Connect';
+}
+async function skipGarmin(){
+  try {
+    await fetch('/api/onboarding/skip-garmin',{method:'POST',credentials:'same-origin'});
+  } catch {}
+  closeGarminModal();
+  hydrate();
+}
+
+// ── Workout preview modal ─────────────────────────────────────
+function closeWorkoutPreview(){
+  document.getElementById('wpreview-overlay').classList.remove('show');
+}
+async function openWorkoutPreview(id){
+  if (!id) return;
+  const overlay = document.getElementById('wpreview-overlay');
+  const tipsEl  = document.getElementById('wpm-tips');
+  const titleEl = document.getElementById('wpm-title');
+  const metaEl  = document.getElementById('wpm-meta');
+  const eyeEl   = document.getElementById('wpm-eye');
+  titleEl.textContent = 'Loading…';
+  metaEl.textContent  = '';
+  eyeEl.textContent   = 'Pre-Workout Tips';
+  tipsEl.innerHTML    = '<div class="wpm-loading"><div class="wpm-spinner"></div><br>Your coach is preparing tips…</div>';
+  overlay.classList.add('show');
+  try {
+    const r = await fetch('/api/plan/workout-preview',{
+      method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({planned_workout_id: id}),
+    });
+    const d = await r.json();
+    if (r.ok && d.workout) {
+      titleEl.textContent = d.workout.name || d.workout.type.replace(/_/g,' ');
+      const parts = [d.workout.date];
+      if (d.workout.volume) parts.push(d.workout.volume);
+      if (d.workout.pace)   parts.push(`@ ${d.workout.pace}/mi`);
+      metaEl.textContent = parts.join(' · ');
+      if (d.tips) {
+        const bullets = d.tips.split('\n').filter(l=>l.trim()).map(l=>`<span class="tip-bullet">${l.replace(/^[•\-]\s*/,'• ')}</span>`).join('');
+        tipsEl.innerHTML = `<div class="wpm-tips">${bullets}</div>`;
+      } else {
+        tipsEl.textContent = 'No tips available.';
+      }
+    } else {
+      tipsEl.textContent = d.error || 'Could not load tips — try again.';
+    }
+  } catch {
+    tipsEl.textContent = 'Connection error — try again.';
+  }
+}
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeWorkoutPreview(); closeGarminModal(); } });
+
 // ── Boot ──────────────────────────────────────────────────────
 async function fetchMe() {
   try {
@@ -2331,6 +2496,10 @@ window.addEventListener('load', async () => {
   if (me && me.is_admin) {
     const el = document.getElementById('nav-admin-link');
     if (el) el.style.display = '';
+  }
+  if (me && !me.onboarding_complete) {
+    const fab = document.getElementById('chat-fab');
+    if (fab && !document.getElementById('chat-panel').classList.contains('open')) fab.click();
   }
 
   // Hero name char split — uses data attrs from hydrate; fall back to "Athlete" if hydrate failed entirely

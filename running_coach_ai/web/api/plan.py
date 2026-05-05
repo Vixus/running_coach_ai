@@ -6,15 +6,18 @@ from datetime import date, timedelta
 
 from flask import Blueprint, jsonify, request, session
 
-from running_coach_ai.coach.persona import format_pace_mi, km_to_mi
-from running_coach_ai.database.models import Athlete, CompletedWorkout, PlannedWorkout
-from running_coach_ai.database.session import get_session
+from running_coach_ai.coach.persona import format_miles, format_pace_mi, km_to_mi
+from running_coach_ai.database.models import Athlete, CompletedWorkout, HealthSnapshot, PlannedWorkout
+from running_coach_ai.database.session import get_session, scoped_query
 from running_coach_ai.web.auth import login_required
 from running_coach_ai.web.events import web_event
 
 logger = logging.getLogger(__name__)
 
 bp = Blueprint("plan", __name__)
+
+# In-memory cache: (workout_id, date_iso) → tips string
+_preview_cache: dict = {}
 
 
 def _cell(workout, today: date) -> dict:
@@ -241,3 +244,110 @@ def sync_week_to_garmin(athlete, db_session) -> int:
         total += uploaded
 
     return total
+
+
+@bp.route("/api/plan/workout-preview", methods=["POST"])
+@login_required
+def workout_preview():
+    athlete_id = session["athlete_id"]
+    body = request.get_json(silent=True) or {}
+    workout_id = body.get("planned_workout_id")
+    if not workout_id:
+        return jsonify({"error": "planned_workout_id required"}), 400
+
+    today = date.today()
+    cache_key = (workout_id, today.isoformat())
+    if cache_key in _preview_cache:
+        return jsonify(_preview_cache[cache_key])
+
+    with get_session() as db:
+        athlete = db.get(Athlete, athlete_id)
+        if not athlete:
+            return jsonify({"error": "Athlete not found"}), 404
+
+        workout = (
+            scoped_query(db, PlannedWorkout, athlete_id)
+            .filter(PlannedWorkout.id == workout_id)
+            .first()
+        )
+        if not workout:
+            return jsonify({"error": "Workout not found"}), 404
+
+        # Build workout summary string
+        type_lbl = workout.workout_type.replace("_", " ").title()
+        vol = format_miles(workout.target_distance_km) if workout.target_distance_km else (
+            f"{workout.target_duration_seconds // 60} min" if workout.target_duration_seconds else ""
+        )
+        pace = format_pace_mi(workout.target_pace_min_per_km) if workout.target_pace_min_per_km else None
+        workout_summary = f"{type_lbl} — {vol}" + (f" @ {pace}/mi" if pace else "")
+        if workout.description:
+            workout_summary += f"\nNotes: {workout.description}"
+
+        # Today's health snapshot
+        snapshot = (
+            scoped_query(db, HealthSnapshot, athlete_id)
+            .filter(HealthSnapshot.date == today)
+            .first()
+        )
+        health_ctx = "No health data available today."
+        if snapshot:
+            parts = []
+            if snapshot.training_readiness is not None:
+                parts.append(f"Training readiness: {snapshot.training_readiness}")
+            if snapshot.hrv_score is not None:
+                parts.append(f"HRV: {snapshot.hrv_score} ms ({snapshot.hrv_status or 'N/A'})")
+            if snapshot.sleep_score is not None:
+                parts.append(f"Sleep score: {snapshot.sleep_score}")
+            if snapshot.body_battery_start is not None:
+                parts.append(f"Body battery: {snapshot.body_battery_start}")
+            if parts:
+                health_ctx = ", ".join(parts)
+
+        # Recent completed workouts (last 5)
+        from running_coach_ai.database.models import CompletedWorkout as CW
+        recent = (
+            scoped_query(db, CW, athlete_id)
+            .order_by(CW.date.desc())
+            .limit(5)
+            .all()
+        )
+        recent_str = "\n".join(
+            f"- {r.date}: {(r.activity_type or 'run').replace('_',' ').title()} "
+            f"{round(km_to_mi(r.distance_km), 1)} mi" if r.distance_km else f"- {r.date}: {r.activity_type or 'run'}"
+            for r in recent
+        ) or "No recent workouts on record."
+
+        from running_coach_ai.coach.persona import call_claude
+        from running_coach_ai.coach.personas import get_persona
+        persona_block = get_persona(athlete.coach_key).persona_block
+
+        prompt = (
+            f"You are giving a brief pre-workout tip for {athlete.name}.\n\n"
+            f"TODAY'S WORKOUT:\n{workout_summary}\n\n"
+            f"TODAY'S HEALTH:\n{health_ctx}\n\n"
+            f"RECENT TRAINING:\n{recent_str}\n\n"
+            "Give 3–5 concise, specific bullet-point tips for executing this session well. "
+            "Consider the health data and recent training load. "
+            "Be direct and practical — no fluff. "
+            "Format each tip as a bullet starting with • (no markdown headers)."
+        )
+
+        try:
+            tips = call_claude(persona_block, [{"role": "user", "content": prompt}])
+        except Exception as e:
+            logger.error("Workout preview Claude call failed for athlete %d: %s", athlete_id, e)
+            return jsonify({"error": "Coach unavailable — try again"}), 500
+
+        result = {
+            "tips": tips,
+            "workout": {
+                "name": workout.workout_name or type_lbl,
+                "type": workout.workout_type,
+                "date": workout.scheduled_date.isoformat(),
+                "volume": vol,
+                "pace": pace,
+                "description": workout.description,
+            },
+        }
+        _preview_cache[cache_key] = result
+        return jsonify(result)
