@@ -51,7 +51,7 @@ def test_persistent_coach_switch_in_response_survives_finally(mock_inner):
     a = _athlete("classic")
     db = MagicMock()
 
-    def inner(athlete, text, db_session, source="slack"):
+    def inner(athlete, text, db_session, source="web"):
         # Simulates extract_coach_switch's mutation during message processing.
         athlete.coach_key = "maya"
         return "Switched! Hi from Coach Maya."
@@ -74,7 +74,7 @@ def test_ephemeral_override_is_applied_during_call_and_restored_after(mock_inner
     db = MagicMock()
     captured = {}
 
-    def inner(athlete, text, db_session, source="slack"):
+    def inner(athlete, text, db_session, source="web"):
         captured["coach_key_during_call"] = athlete.coach_key
         return "Reply with overridden persona."
 
@@ -102,7 +102,7 @@ def test_override_plus_in_call_mutation_override_wins(mock_inner):
     a = _athlete("classic")
     db = MagicMock()
 
-    def inner(athlete, text, db_session, source="slack"):
+    def inner(athlete, text, db_session, source="web"):
         athlete.coach_key = "maya"  # simulated <coach_switch>
         return "ok"
 

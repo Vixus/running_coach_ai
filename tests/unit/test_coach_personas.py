@@ -77,17 +77,6 @@ def test_legacy_keys_resolve_to_canonical_personas(legacy, canonical):
 
 
 # ---------------------------------------------------------------------------
-# Case 8: backward-compat re-export from coach/persona.py
-# ---------------------------------------------------------------------------
-
-def test_backward_compat_coach_persona_import():
-    """COACH_PERSONA imported from persona.py must still be a non-empty string (T004 re-export)."""
-    from running_coach_ai.coach.persona import COACH_PERSONA  # noqa: PLC0415
-    assert isinstance(COACH_PERSONA, str)
-    assert len(COACH_PERSONA) > 100
-
-
-# ---------------------------------------------------------------------------
 # Cases 9-11: call-site injection — correct persona_block passed to call_claude
 # ---------------------------------------------------------------------------
 

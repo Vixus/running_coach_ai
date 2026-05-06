@@ -184,9 +184,6 @@ def create_app() -> Flask:
         logger.info("Garmin session uploaded: %s", dest)
         return ("OK", 200)
 
-    from running_coach_ai.web.api.dashboard import bp as dashboard_bp
-    app.register_blueprint(dashboard_bp)
-
     from running_coach_ai.web.api.activities import bp as activities_bp
     app.register_blueprint(activities_bp)
 
@@ -195,9 +192,6 @@ def create_app() -> Flask:
 
     from running_coach_ai.web.api.chat import bp as chat_bp
     app.register_blueprint(chat_bp)
-
-    from running_coach_ai.web.api.review import bp as review_bp
-    app.register_blueprint(review_bp)
 
     from running_coach_ai.web.api.admin import bp as admin_bp
     app.register_blueprint(admin_bp)

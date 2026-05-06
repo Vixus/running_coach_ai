@@ -20,7 +20,6 @@ def app_and_db():
     db = Session()
 
     athlete = Athlete(
-        slack_user_id="U999",
         name="Jordan",
         web_username="jordan",
         web_password_hash=generate_password_hash("secret"),

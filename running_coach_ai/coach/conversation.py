@@ -897,7 +897,7 @@ def build_system_prompt(
         sections.append("\n".join(mem_lines))
 
     # --- Section 8: Detailed run telemetry for data-driven Q&A ---
-    # Computed and injected by handle_message() for the most recent run (always)
+    # Computed and injected by _handle_message_core() for the most recent run (always)
     # and any additionally referenced run detected in the user's message.
     if spotlight_analyses:
         for analysis in spotlight_analyses:
@@ -1552,15 +1552,15 @@ def process_message(
     athlete: Athlete,
     user_text: str,
     db_session: Session,
-    source: str = "slack",
+    source: str = "web",
     coach_key: str | None = None,
 ) -> str:
-    """Pure function: process one coaching message turn and return the cleaned response.
+    """Process one coaching message turn and return the cleaned response.
 
     Loads history, builds system prompt (using coach_key override if provided),
     calls Claude, applies XML side effects (<plan>, <remember>, <garmin_sync/>),
     persists ConversationMessage rows with the given source, and returns the
-    cleaned response text. Does NOT send any Slack DM.
+    cleaned response text.
     """
     # Temporarily override athlete.coach_key for system prompt assembly if requested.
     # Only restore in finally if we actually applied an override — otherwise we'd
@@ -1583,7 +1583,7 @@ def _process_message_inner(
     athlete: Athlete,
     text: str,
     db_session: Session,
-    source: str = "slack",
+    source: str = "web",
 ) -> str:
     """Internal implementation of process_message after coach_key is set."""
     # Load conversation history (last 30 messages)
@@ -1599,29 +1599,14 @@ def _process_message_inner(
     return _handle_message_core(athlete, text, history, db_session, source=source)
 
 
-def handle_message(athlete: Athlete, text: str, db_session: Session) -> str:
-    """Handle a coaching conversation message (Slack entry point).
-
-    Thin wrapper around process_message() that always uses source="slack".
-    1. Load conversation history
-    2. Build system prompt
-    3. Call Claude
-    4. Extract and apply <plan> mutations
-    5. Extract and save <remember> memories
-    6. Persist messages
-    7. Return cleaned reply
-    """
-    return process_message(athlete, text, db_session, source="slack")
-
-
 def _handle_message_core(
     athlete: Athlete,
     text: str,
     history: list,
     db_session: Session,
-    source: str = "slack",
+    source: str = "web",
 ) -> str:
-    """Core message processing logic shared by handle_message and process_message."""
+    """Core message processing logic called by process_message."""
     # Build messages for Claude
     messages = [{"role": msg.role, "content": msg.content} for msg in history]
     messages.append({"role": "user", "content": text})

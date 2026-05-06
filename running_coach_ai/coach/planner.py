@@ -8,9 +8,10 @@ from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 
 from running_coach_ai.coach.persona import (
-    COACH_PERSONA, call_claude,
+    call_claude,
     format_miles, format_pace_mi, mi_to_km, km_to_mi, round_to_5,
 )
+from running_coach_ai.coach.personas import get_persona
 from running_coach_ai.database.models import (
     Athlete,
     Goal,
@@ -396,7 +397,7 @@ def generate_plan(athlete: Athlete, goal: Goal, db_session: Session) -> Training
         start_date=today.isoformat(),
     )
 
-    response_text = call_claude(COACH_PERSONA,
+    response_text = call_claude(get_persona(athlete.coach_key).persona_block,
                                 [{"role": "user", "content": prompt}],
                                 max_tokens=4096)
     cleaned = _extract_json(response_text)

@@ -5,7 +5,7 @@ import logging
 import secrets
 from datetime import datetime
 
-from flask import Blueprint, jsonify, redirect, render_template, request, send_from_directory, session, url_for
+from flask import Blueprint, jsonify, request, session
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from running_coach_ai.database.models import Athlete, InviteToken
@@ -167,22 +167,3 @@ def me():
         })
 
 
-@bp.route("/")
-def index():
-    if "athlete_id" in session:
-        return redirect("/app")
-    return redirect("/login")
-
-
-@bp.route("/app")
-def app_page():
-    if "athlete_id" not in session:
-        return redirect("/login")
-    import os
-    static_dir = os.path.join(os.path.dirname(__file__), "static")
-    return send_from_directory(static_dir, "app.html")
-
-
-@bp.route("/test")
-def test():
-    return jsonify({"ok": True})

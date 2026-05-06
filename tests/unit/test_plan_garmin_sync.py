@@ -11,7 +11,7 @@ from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
 
-from running_coach_ai.coach.conversation import extract_and_sync_garmin, handle_message
+from running_coach_ai.coach.conversation import extract_and_sync_garmin, process_message
 
 
 TODAY = date.today()
@@ -55,7 +55,6 @@ def _planned_workout(
 def _make_athlete(athlete_id: int = 1):
     a = MagicMock()
     a.id = athlete_id
-    a.slack_user_id = "U123"
     a.name = "Test Athlete"
     a.garmin_email = "athlete@example.com"
     a.garmin_password_encrypted = b"encrypted"
@@ -301,7 +300,7 @@ class TestHandleMessageSyncPrompt:
              patch(f"{self._WB}.delete_workout"), \
              patch("running_coach_ai.garmin.admin._run_garmin_verify", return_value=(workouts, [], [])):
             mock_auth.return_value = MagicMock()
-            result = handle_message(athlete, prompt, db)
+            result = process_message(athlete, prompt, db)
 
         return result, mock_up, mock_sched, uploaded_ids
 
@@ -601,8 +600,8 @@ class TestPlanAlreadySynced:
              patch(f"{_WB}.delete_workout"), \
              patch(f"{_ADMIN}._run_garmin_verify", return_value=([w], [], [])) as mock_verify:
             mock_auth.return_value = MagicMock()
-            from running_coach_ai.coach.conversation import handle_message
-            result = handle_message(athlete, "Add Thursday easy runs please", db)
+            from running_coach_ai.coach.conversation import process_message
+            result = process_message(athlete, "Add Thursday easy runs please", db)
 
         # _run_garmin_verify must have been called — confirms the verify-only path was taken
         mock_verify.assert_called_once()

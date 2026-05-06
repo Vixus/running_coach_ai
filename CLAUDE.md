@@ -80,7 +80,7 @@ All shared state flows through SQLite. Each scheduler job and HTTP request creat
 
 ### Identity & auth
 
-Athletes are identified by `Athlete.id` (integer PK). The login path accepts either `email` or the legacy `web_username`; both are unique. New signups are gated by `InviteToken` rows issued from the admin tab. `slack_user_id` and `slack_dm_channel_id` columns persist as nullable historical record (deprecated, scheduled for removal once stable).
+Athletes are identified by `Athlete.id` (integer PK). The login path accepts either `email` or the legacy `web_username`; both are unique. New signups are gated by `InviteToken` rows issued from the admin tab.
 
 First-deploy admin seeding: set `BOOTSTRAP_ADMIN_EMAIL` + `BOOTSTRAP_ADMIN_PASSWORD` env vars. `create_app()` creates the athlete row on startup (or updates the password if the email already exists) and sets `is_admin=True`.
 
@@ -92,7 +92,7 @@ Surface-agnostic. The web `/api/chat/message` endpoint dispatches to `coach.onbo
 
 `build_system_prompt()` assembles 8 context sections on every turn: persona, current date, athlete profile, training phase + this week, health data (today + 7-day HRV trend), recent completed workouts, upcoming Garmin calendar (next 4 weeks with sync status), weather, and coach memories.
 
-**`process_message(athlete, user_text, db_session, source="slack", coach_key=None) -> str`** is the central coaching function. It temporarily overrides `athlete.coach_key` in a `try/finally` block (ephemeral — does not persist to DB), then calls Claude and returns the response text. The default `source="slack"` value is a historical artefact; the web endpoint passes `source="web"`.
+**`process_message(athlete, user_text, db_session, source="web", coach_key=None) -> str`** is the central coaching function. It temporarily overrides `athlete.coach_key` in a `try/finally` block (ephemeral — does not persist to DB), then calls Claude and returns the response text.
 
 Claude's response is post-processed for five XML side-effect tags before the text is sent to the athlete:
 
@@ -118,7 +118,7 @@ Legacy key aliases (`sofia` → `maya`, `miles` → `jordan`) are handled by `LE
 
 **`prescription_style`** (`"time"` | `"distance"` | `None`) on `Athlete` controls how Claude structures workouts in `<plan>` JSON: `time` → use `target_duration_seconds`, omit `target_distance_km` for easy/long_run/tempo/strides; `distance` → use `target_distance_km` in whole miles, omit `target_duration_seconds`. Intervals always use `target_zones_json` regardless.
 
-Note: `coach/persona.py` contains a legacy `COACH_PERSONA` constant and `call_claude()` used by the planner and adapter. The per-persona `persona_block` strings from `personas.py` are used by `conversation.py` and `adapter.py` via `get_persona()`.
+Note: `coach/persona.py` is now a narrow utility module — `call_claude()` (the Anthropic API wrapper) plus unit-conversion helpers (`format_miles`, `format_pace_mi`, `km_to_mi`, `mi_to_km`, `round_to_5`). All persona text lives in `coach/personas.py`; callers use `get_persona(athlete.coach_key).persona_block`.
 
 ### Notification inbox (`coach/notify.py`)
 
@@ -133,12 +133,10 @@ Flask 3.x app factory (`create_app()`) with blueprints deferred inside the facto
 | Blueprint | Routes |
 |---|---|
 | `web/auth.py` | `POST /auth/login`, `POST /auth/logout`, `POST /auth/signup`, `GET /auth/me` |
-| `web/api/dashboard.py` | `GET /api/dashboard` — health snapshot, active goal, upcoming workouts |
 | `web/api/activities.py` | `GET /api/activities`, `POST /api/activities/<id>/feedback` |
-| `web/api/plan.py` | `GET /api/plan/upcoming`, `POST /api/plan/sync` |
+| `web/api/plan.py` | `GET /api/plan`, `POST /api/plan/sync`, `POST /api/plan/workout-preview` |
 | `web/api/chat.py` | `GET /api/chat/history`, `POST /api/chat/message` |
 | `web/api/onboarding.py` | `POST /api/onboarding/garmin-creds`, `POST /api/onboarding/skip-garmin` |
-| `web/api/review.py` | `GET /api/review` — weekly review summaries |
 | `web/api/notifications.py` | `GET /api/notifications`, unread-count, mark-read, read-all |
 | `web/api/admin.py` | Admin-only: athletes CRUD, Garmin resync/clean/verify, invites, events |
 | `web/api/magazine.py` | `GET /api/magazine`, `GET/POST /api/coach` |
