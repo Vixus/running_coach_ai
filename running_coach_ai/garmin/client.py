@@ -148,8 +148,10 @@ def get_garmin_client(athlete_id: int, email: str, encrypted_password: bytes) ->
     token_path = _token_dir(athlete_id)
     os.makedirs(token_path, exist_ok=True)
 
-    garmin = Garmin()
-    # Configure timeout for Garmin API calls
+    # Always initialise with credentials — some garminconnect versions only
+    # attach the .garth client when email/password are provided at construction.
+    password = decrypt_password(encrypted_password)
+    garmin = Garmin(email, password)
     garmin.garth.configure(timeout=settings.GARMIN_TIMEOUT)
     try:
         garmin.garth.load(token_path)
@@ -166,17 +168,12 @@ def get_garmin_client(athlete_id: int, email: str, encrypted_password: bytes) ->
         return garmin
     except Exception as e:
         logger.warning("Cached session invalid for athlete %s (%s), re-authenticating", athlete_id, e)
-        # Check if token files exist
         if os.path.exists(token_path):
             files = os.listdir(token_path)
             logger.info("Token directory %s contains files: %s", token_path, files)
         else:
             logger.warning("Token directory %s does not exist", token_path)
 
-    password = decrypt_password(encrypted_password)
-    garmin = Garmin(email, password)
-    # Configure timeout for new Garmin client
-    garmin.garth.configure(timeout=settings.GARMIN_TIMEOUT)
     try:
         _login_with_rate_limit_retry(garmin, athlete_id)
         garmin.garth.dump(token_path)
