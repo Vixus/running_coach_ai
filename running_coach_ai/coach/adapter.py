@@ -238,7 +238,7 @@ def run_morning_checkin(athlete: Athlete, db_session: Session) -> None:
             kind="morning_checkin",
             title="Morning check-in",
             body=response,
-            action_path="/app#chat",
+            action_path="/#morning",
         )
         athlete.last_morning_checkin_date = today
         db_session.commit()

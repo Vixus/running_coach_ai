@@ -388,7 +388,7 @@ def generate_post_run_feedback(
             kind="post_run_feedback",
             title="Post-run feedback",
             body=response,
-            action_path=f"/app#activities/{completed.id}",
+            action_path="/#activities",
             related_id=completed.id,
         )
         db_session.commit()

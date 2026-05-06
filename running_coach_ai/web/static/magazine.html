@@ -407,6 +407,39 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
 .cp-time{font-size:9px;color:rgba(255,255,255,.18);margin-bottom:1px;}
 .cp-typing-row{display:flex;gap:3px;padding:8px 11px;background:rgba(255,255,255,.07);border-radius:13px 13px 13px 3px;width:fit-content;}
 .cp-typing-dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.4);animation:pulse 1.2s infinite;}
+
+/* Notifications bell + panel */
+#notif-bell{position:relative;color:var(--mid);}
+#notif-bell:hover{color:var(--ink);}
+#topnav.dark #notif-bell{color:rgba(255,255,255,.55);}
+#topnav.dark #notif-bell:hover{color:#fff;}
+.notif-badge{position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--terra);color:#fff;font-size:9px;font-weight:700;line-height:16px;text-align:center;letter-spacing:0;font-family:'Inter',sans-serif;border:2px solid var(--paper);box-sizing:content-box;pointer-events:none;}
+#topnav.dark .notif-badge{border-color:#141210;}
+#notif-panel{position:fixed;top:60px;right:22px;width:360px;max-height:520px;z-index:498;background:rgba(16,14,10,.97);border:1px solid rgba(255,255,255,.1);border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.55);backdrop-filter:blur(20px);display:flex;flex-direction:column;transform:translateY(-12px) scale(.97);opacity:0;pointer-events:none;transition:transform .3s cubic-bezier(.16,1,.3,1),opacity .25s ease;}
+#notif-panel.open{transform:none;opacity:1;pointer-events:all;}
+.np-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 12px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+.np-title{font-size:13px;font-weight:600;color:#fff;letter-spacing:.02em;}
+.np-allread{font-size:10px;color:rgba(255,255,255,.45);background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:.04em;text-transform:uppercase;padding:4px 8px;border-radius:6px;transition:color .2s,background .2s;}
+.np-allread:hover{color:#fff;background:rgba(255,255,255,.06);}
+.np-allread:disabled{opacity:.35;cursor:default;}
+.np-list{flex:1;overflow-y:auto;padding:6px 0;}
+.np-list::-webkit-scrollbar{width:2px;}
+.np-empty{padding:24px 16px;text-align:center;color:rgba(255,255,255,.32);font-size:11px;}
+.np-item{display:flex;gap:10px;padding:11px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);transition:background .15s;align-items:flex-start;}
+.np-item:last-child{border-bottom:none;}
+.np-item:hover{background:rgba(255,255,255,.04);}
+.np-item.unread{background:rgba(184,255,79,.04);}
+.np-item.unread:hover{background:rgba(184,255,79,.07);}
+.np-icon{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;color:rgba(255,255,255,.65);}
+.np-item.unread .np-icon{background:rgba(184,255,79,.12);color:var(--lime);}
+.np-body{flex:1;min-width:0;}
+.np-row{display:flex;align-items:baseline;gap:8px;justify-content:space-between;}
+.np-itemtitle{font-size:12px;font-weight:600;color:rgba(255,255,255,.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.np-time{font-size:9px;color:rgba(255,255,255,.32);flex-shrink:0;letter-spacing:.04em;text-transform:uppercase;}
+.np-excerpt{font-size:11px;color:rgba(255,255,255,.55);line-height:1.45;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+@media (max-width:600px){
+  #notif-panel{right:12px;left:12px;width:auto;max-height:70vh;}
+}
 .cp-typing-dot:nth-child(2){animation-delay:.2s;}
 .cp-typing-dot:nth-child(3){animation-delay:.4s;}
 .cp-chips{padding:7px 12px;display:flex;gap:5px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.05);flex-shrink:0;}
@@ -649,9 +682,23 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
       <div class="coach-picker-menu" id="coach-picker-menu"></div>
     </div>
     <button id="nav-admin-btn" class="nav-link" style="display:none;background:none;border:none;cursor:pointer;padding:0;" onclick="openAdminPanel()">Admin</button>
+    <button id="notif-bell" class="nav-mode-btn" title="Notifications" onclick="toggleNotifPanel(event)" aria-label="Notifications">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      <span id="notif-badge" class="notif-badge" style="display:none;">0</span>
+    </button>
     <div class="nav-profile" id="nav-profile" title="Profile">—</div>
   </div>
 </nav>
+
+<div id="notif-panel" role="dialog" aria-label="Notifications">
+  <div class="np-head">
+    <div class="np-title">Notifications</div>
+    <button class="np-allread" id="np-allread" onclick="markAllNotifRead()">Mark all read</button>
+  </div>
+  <div class="np-list" id="np-list">
+    <div class="np-empty">No notifications yet.</div>
+  </div>
+</div>
 
 <div id="snav">
   <div class="snd ondark active" data-s="hero"></div>
@@ -1835,6 +1882,161 @@ function cpAdd(role,text){
   m.scrollTop=m.scrollHeight;
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+// ---------- Notifications: bell, panel, polling ----------
+const NOTIF_KIND_ICON = {
+  morning_checkin: '☀',
+  post_run_feedback: '🏃',
+  weekly_review: '📊',
+  system: '⚠',
+};
+let notifPollTimer = null;
+let notifLatestSeen = null;
+
+function timeAgo(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  const s = Math.max(1, Math.floor((Date.now() - d.getTime())/1000));
+  if(s < 60) return s+'s';
+  const m = Math.floor(s/60);
+  if(m < 60) return m+'m';
+  const h = Math.floor(m/60);
+  if(h < 24) return h+'h';
+  const days = Math.floor(h/24);
+  if(days < 7) return days+'d';
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+async function fetchNotifUnread(){
+  try{
+    const r = await fetch('/api/notifications/unread-count', {credentials:'same-origin'});
+    if(!r.ok) return null;
+    return r.json();
+  } catch { return null; }
+}
+
+async function fetchNotifList(){
+  try{
+    const r = await fetch('/api/notifications?limit=20', {credentials:'same-origin'});
+    if(!r.ok) return null;
+    return r.json();
+  } catch { return null; }
+}
+
+function renderNotifBadge(count){
+  const b = document.getElementById('notif-badge');
+  if(!b) return;
+  if(count > 0){
+    b.textContent = count > 9 ? '9+' : String(count);
+    b.style.display = '';
+  } else {
+    b.style.display = 'none';
+  }
+}
+
+function renderNotifList(items){
+  const list = document.getElementById('np-list');
+  if(!list) return;
+  if(!items || items.length === 0){
+    list.innerHTML = '<div class="np-empty">No notifications yet.</div>';
+    return;
+  }
+  list.innerHTML = items.map(n => {
+    const unread = !n.read_at ? 'unread' : '';
+    const icon = NOTIF_KIND_ICON[n.kind] || '•';
+    const excerpt = (n.body || '').slice(0, 200);
+    return `<div class="np-item ${unread}" data-id="${n.id}" data-action="${escapeHtml(n.action_path||'')}" onclick="onNotifClick(${n.id}, this)">
+      <div class="np-icon">${icon}</div>
+      <div class="np-body">
+        <div class="np-row">
+          <div class="np-itemtitle">${escapeHtml(n.title||'Notification')}</div>
+          <div class="np-time">${timeAgo(n.created_at)}</div>
+        </div>
+        <div class="np-excerpt">${escapeHtml(excerpt)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function refreshNotifPanel(){
+  const data = await fetchNotifList();
+  if(data) renderNotifList(data.notifications || []);
+}
+
+async function pollNotifUnread(){
+  const data = await fetchNotifUnread();
+  if(!data) return;
+  renderNotifBadge(data.count || 0);
+  // If a panel is open and a new notification has arrived, refresh the list.
+  const panelOpen = document.getElementById('notif-panel')?.classList.contains('open');
+  if(panelOpen && data.latest_at && data.latest_at !== notifLatestSeen){
+    notifLatestSeen = data.latest_at;
+    refreshNotifPanel();
+  } else if(data.latest_at){
+    notifLatestSeen = data.latest_at;
+  }
+}
+
+async function toggleNotifPanel(ev){
+  if(ev) ev.stopPropagation();
+  const panel = document.getElementById('notif-panel');
+  const opening = !panel.classList.contains('open');
+  panel.classList.toggle('open', opening);
+  if(opening){
+    await refreshNotifPanel();
+  }
+}
+
+async function onNotifClick(id, el){
+  const action = el.getAttribute('data-action') || '';
+  // Mark unread → read locally first for snappy feel.
+  if(el.classList.contains('unread')){
+    el.classList.remove('unread');
+    const badge = document.getElementById('notif-badge');
+    const cur = parseInt(badge.textContent.replace('+',''), 10) || 0;
+    renderNotifBadge(Math.max(0, cur - 1));
+    fetch(`/api/notifications/${id}/read`, {method:'POST', credentials:'same-origin'}).catch(()=>{});
+  }
+  // Close panel and navigate.
+  document.getElementById('notif-panel').classList.remove('open');
+  // Special-case: any path containing #chat opens the chat panel instead of scrolling.
+  if(action.includes('#chat')){
+    const fab = document.getElementById('chat-fab');
+    if(fab && !document.getElementById('chat-panel').classList.contains('open')) fab.click();
+    return;
+  }
+  if(action){
+    // action like "/#morning" — extract the hash and scroll the section into view.
+    const hashIdx = action.indexOf('#');
+    const id2 = hashIdx >= 0 ? action.slice(hashIdx + 1) : '';
+    if(id2){
+      const target = document.getElementById(id2);
+      if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+  }
+}
+
+async function markAllNotifRead(){
+  const r = await fetch('/api/notifications/read-all', {method:'POST', credentials:'same-origin'});
+  if(!r.ok) return;
+  renderNotifBadge(0);
+  document.querySelectorAll('#np-list .np-item.unread').forEach(el => el.classList.remove('unread'));
+}
+
+// Close notif panel on outside click.
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('notif-panel');
+  const bell = document.getElementById('notif-bell');
+  if(!panel || !panel.classList.contains('open')) return;
+  if(panel.contains(e.target) || (bell && bell.contains(e.target))) return;
+  panel.classList.remove('open');
+});
+
+function startNotifPolling(){
+  if(notifPollTimer) return;
+  pollNotifUnread();
+  notifPollTimer = setInterval(pollNotifUnread, 30000);
+}
 function cpTyping(){
   const m=document.getElementById('cp-msgs');
   const d=document.createElement('div');
@@ -2657,6 +2859,9 @@ window.addEventListener('load', async () => {
   if (me && me.is_admin) {
     const el = document.getElementById('nav-admin-btn');
     if (el) el.style.display = '';
+  }
+  if (me && me.authenticated) {
+    startNotifPolling();
   }
   if (me && !me.onboarding_complete) {
     const fab = document.getElementById('chat-fab');

@@ -38,7 +38,7 @@ def _notify_garmin_auth_error(athlete) -> None:
             a = db.get(_A, athlete.id)
             if a is not None:
                 notify(db, a, kind="system", title="Garmin reconnect needed",
-                       body=body, action_path="/app#chat")
+                       body=body, action_path="/#morning")
                 db.commit()
     except Exception as e:
         logger.error("Failed to write Garmin auth notification for athlete %d: %s", athlete.id, e)
@@ -657,7 +657,7 @@ def _run_weekly_review() -> None:
                     kind="weekly_review",
                     title="Weekly review",
                     body=review_message,
-                    action_path="/app#review",
+                    action_path="/#story",
                 )
                 db_session.commit()
                 logger.info("Weekly review delivered to athlete %d", athlete.id)
