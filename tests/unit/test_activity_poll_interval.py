@@ -76,7 +76,7 @@ class TestActiveHoursGuard:
         mock_slack_client = MagicMock()
 
         frozen = _dt_mod.datetime(2024, 1, 15, 2, 0, 0)
-        with patch("running_coach_ai.scheduler.jobs.datetime") as mock_dt_cls:
+        with patch("running_coach_ai.scheduler.activity_poll.datetime") as mock_dt_cls:
             mock_dt_cls.now.return_value = frozen
 
             with patch("running_coach_ai.database.session.get_session") as mock_get_session:
@@ -99,7 +99,7 @@ class TestActiveHoursGuard:
         mock_slack_client = MagicMock()
 
         frozen = _dt_mod.datetime(2024, 1, 15, 9, 0, 0)
-        with patch("running_coach_ai.scheduler.jobs.datetime") as mock_dt_cls:
+        with patch("running_coach_ai.scheduler.activity_poll.datetime") as mock_dt_cls:
             mock_dt_cls.now.return_value = frozen
 
             with patch("running_coach_ai.database.session.get_session") as mock_get_session:

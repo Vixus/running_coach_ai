@@ -12,7 +12,7 @@ Covers:
 
 from unittest.mock import MagicMock, patch
 
-_JOBS = "running_coach_ai.scheduler.jobs"
+_JOBS = "running_coach_ai.scheduler.activity_poll"
 _PARSER = "running_coach_ai.garmin.parser"
 _TELEMETRY = "running_coach_ai.garmin.telemetry"
 _BIOMECH = "running_coach_ai.coach.biomechanics"

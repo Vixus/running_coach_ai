@@ -40,7 +40,7 @@ class TestActivityPollNoGate:
 
     def test_scheduler_passed_through_to_ingest(self):
         """Scheduler argument is forwarded to _ingest_and_feedback."""
-        from running_coach_ai.scheduler import jobs
+        from running_coach_ai.scheduler import activity_poll as jobs
 
         mock_slack = MagicMock()
         mock_scheduler = MagicMock()
