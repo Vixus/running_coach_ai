@@ -108,12 +108,13 @@ def _token_dir(athlete_id: int) -> str:
     return os.path.join(settings.GARMIN_SESSION_DIR, str(athlete_id))
 
 
-def _login_with_rate_limit_retry(garmin: Garmin, athlete_id: int, max_attempts: int = 5) -> None:
-    """Call garmin.login() with backoff specifically for 429 rate-limit responses.
+def _login_with_rate_limit_retry(garmin: Garmin, athlete_id: int, max_attempts: int = 2) -> None:
+    """Call garmin.login() with a single short retry for transient failures.
 
-    Garmin's SSO endpoint returns 429 when too many login attempts occur in a
-    short window (e.g., multiple athletes re-authing simultaneously after token
-    expiry). Waits progressively longer between attempts.
+    429 rate-limit responses from Garmin SSO are typically IP-based and last
+    hours — retrying immediately doesn't help. We do one short retry (30s) for
+    transient errors, then fail fast so the scheduler can retry naturally on
+    the next 30-minute job tick.
     All other exceptions are re-raised immediately.
     """
     for attempt in range(max_attempts):
@@ -122,16 +123,19 @@ def _login_with_rate_limit_retry(garmin: Garmin, athlete_id: int, max_attempts: 
             return
         except Exception as e:
             is_rate_limited = "429" in str(e) or "too many requests" in str(e).lower()
-            if is_rate_limited and attempt < max_attempts - 1:
-                # Exponential backoff with jitter: 2min ±30s, 4min ±60s, 8min ±120s, 16min ±240s
-                base_wait = 120 * (2 ** attempt)
-                jitter = base_wait // 4  # 25% jitter
-                import random
-                wait = base_wait + random.randint(-jitter, jitter)
+            if is_rate_limited:
+                # IP-based rate limits last hours — fail fast, let scheduler retry later
                 logger.warning(
-                    "Garmin SSO rate limited (429) for athlete %s (attempt %d/%d). "
-                    "Waiting %ds before retry...",
-                    athlete_id, attempt + 1, max_attempts, wait,
+                    "Garmin SSO rate limited (429) for athlete %s — "
+                    "Railway IP may be blocked. Skipping re-auth until next scheduler tick.",
+                    athlete_id,
+                )
+                raise
+            if attempt < max_attempts - 1:
+                wait = 30
+                logger.warning(
+                    "Garmin login failed for athlete %s (attempt %d/%d): %s. Retrying in %ds...",
+                    athlete_id, attempt + 1, max_attempts, e, wait,
                 )
                 time.sleep(wait)
             else:
@@ -166,6 +170,17 @@ def get_garmin_client(athlete_id: int, email: str, encrypted_password: bytes) ->
             logger.info("Garmin session loaded from cache for athlete %s", athlete_id)
             return garmin
         except Exception as e:
+            err_str = str(e)
+            # A 429 on the validation call means the API is rate-limiting us, NOT
+            # that the tokens are invalid. Don't trigger SSO re-auth — just re-raise
+            # so the calling job skips Garmin for this tick and retries later.
+            if "429" in err_str or "too many requests" in err_str.lower():
+                logger.warning(
+                    "Garmin API rate limited (429) for athlete %s during session validation — "
+                    "tokens may still be valid; skipping re-auth.",
+                    athlete_id,
+                )
+                raise
             logger.warning("Cached session invalid for athlete %s (%s), re-authenticating", athlete_id, e)
             if os.path.exists(token_path):
                 logger.info("Token directory %s contains: %s", token_path, os.listdir(token_path))
