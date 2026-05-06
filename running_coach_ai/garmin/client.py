@@ -148,40 +148,48 @@ def get_garmin_client(athlete_id: int, email: str, encrypted_password: bytes) ->
     token_path = _token_dir(athlete_id)
     os.makedirs(token_path, exist_ok=True)
 
-    # Always initialise with credentials — some garminconnect versions only
-    # attach the .garth client when email/password are provided at construction.
     password = decrypt_password(encrypted_password)
     garmin = Garmin(email, password)
-    garmin.garth.configure(timeout=settings.GARMIN_TIMEOUT)
-    try:
-        garmin.garth.load(token_path)
-        # Verify the loaded tokens are usable with a lightweight call.
-        # Do NOT call garmin.login() here — that triggers a full SSO re-auth.
-        # garth holds OAuth2 tokens and refreshes them automatically on API calls.
-        garmin.get_full_name()
-        # Populate display_name from the cached garth profile — required by
-        # get_rhr_day() and get_steps_data() which embed it in the URL path.
-        # login() sets this automatically; cache loads do not.
-        if garmin.garth.profile:
-            garmin.display_name = garmin.garth.profile.get("displayName")
-        logger.info("Garmin session loaded from cache for athlete %s", athlete_id)
-        return garmin
-    except Exception as e:
-        logger.warning("Cached session invalid for athlete %s (%s), re-authenticating", athlete_id, e)
-        if os.path.exists(token_path):
-            files = os.listdir(token_path)
-            logger.info("Token directory %s contains files: %s", token_path, files)
-        else:
-            logger.warning("Token directory %s does not exist", token_path)
 
-    try:
-        _login_with_rate_limit_retry(garmin, athlete_id)
-        garmin.garth.dump(token_path)
-        logger.info("Garmin re-authenticated and session cached for athlete %s", athlete_id)
-        return garmin
-    except Exception as e:
-        logger.error("Garmin authentication failed for athlete %s: %s", athlete_id, e)
-        raise
+    if hasattr(garmin, 'garth'):
+        # Modern garminconnect: uses garth for OAuth token caching.
+        garmin.garth.configure(timeout=settings.GARMIN_TIMEOUT)
+        try:
+            garmin.garth.load(token_path)
+            # Verify the loaded tokens are usable with a lightweight call.
+            # Do NOT call garmin.login() — that triggers a full SSO re-auth.
+            garmin.get_full_name()
+            # Populate display_name — required by get_rhr_day() / get_steps_data()
+            # which embed it in the URL path. login() sets it; cache loads do not.
+            if garmin.garth.profile:
+                garmin.display_name = garmin.garth.profile.get("displayName")
+            logger.info("Garmin session loaded from cache for athlete %s", athlete_id)
+            return garmin
+        except Exception as e:
+            logger.warning("Cached session invalid for athlete %s (%s), re-authenticating", athlete_id, e)
+            if os.path.exists(token_path):
+                logger.info("Token directory %s contains: %s", token_path, os.listdir(token_path))
+            else:
+                logger.warning("Token directory %s does not exist", token_path)
+
+        try:
+            _login_with_rate_limit_retry(garmin, athlete_id)
+            garmin.garth.dump(token_path)
+            logger.info("Garmin re-authenticated and session cached for athlete %s", athlete_id)
+            return garmin
+        except Exception as e:
+            logger.error("Garmin authentication failed for athlete %s: %s", athlete_id, e)
+            raise
+    else:
+        # Old garminconnect without garth — no token caching, direct SSO login.
+        logger.warning("garminconnect without garth detected for athlete %s — upgrade recommended", athlete_id)
+        try:
+            _login_with_rate_limit_retry(garmin, athlete_id)
+            logger.info("Garmin authenticated (no garth) for athlete %s", athlete_id)
+            return garmin
+        except Exception as e:
+            logger.error("Garmin authentication failed for athlete %s: %s", athlete_id, e)
+            raise
 
 
 # ---------------------------------------------------------------------------
