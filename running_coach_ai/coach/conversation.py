@@ -15,13 +15,13 @@ from sqlalchemy.orm import Session
 
 from running_coach_ai.coach.persona import call_claude
 from running_coach_ai.coach.prompt import (
-    _detect_referenced_workout,
-    _format_run_analysis_for_context,
-    _resolve_athlete_max_hr,
+    detect_referenced_workout,
+    format_run_analysis_for_context,
+    resolve_athlete_max_hr,
     build_system_prompt,
 )
 from running_coach_ai.coach.side_effects import (
-    _reconcile_cancelled_garmin_workouts,
+    reconcile_cancelled_garmin_workouts,
     extract_and_apply_plan,
     extract_and_save_memories,
     extract_and_sync_garmin,
@@ -216,7 +216,7 @@ def _handle_message_core(
         "ultra_running", "virtual_run", "obstacle_run",
     }
     spotlight_analyses: list[str] = []
-    athlete_max_hr, max_hr_run_count = _resolve_athlete_max_hr(athlete.id, db_session)
+    athlete_max_hr, max_hr_run_count = resolve_athlete_max_hr(athlete.id, db_session)
 
     # Always include the most recent run with telemetry
     latest_run = (
@@ -227,15 +227,15 @@ def _handle_message_core(
         .first()
     )
     if latest_run:
-        analysis = _format_run_analysis_for_context(latest_run, athlete, athlete_max_hr, max_hr_run_count)
+        analysis = format_run_analysis_for_context(latest_run, athlete, athlete_max_hr, max_hr_run_count)
         if analysis:
             spotlight_analyses.append(analysis)
 
     # On-demand: also include any specific past run the user refers to by date/day
     latest_id = latest_run.id if latest_run else None
-    referenced_run = _detect_referenced_workout(text, athlete.id, latest_id, db_session)
+    referenced_run = detect_referenced_workout(text, athlete.id, latest_id, db_session)
     if referenced_run:
-        ref_analysis = _format_run_analysis_for_context(referenced_run, athlete, athlete_max_hr, max_hr_run_count)
+        ref_analysis = format_run_analysis_for_context(referenced_run, athlete, athlete_max_hr, max_hr_run_count)
         if ref_analysis:
             spotlight_analyses.append(ref_analysis)
 
@@ -275,7 +275,7 @@ def _handle_message_core(
             )
             fresh_analyses: list[str] = []
             if fresh_latest:
-                a = _format_run_analysis_for_context(fresh_latest, athlete, athlete_max_hr, max_hr_run_count)
+                a = format_run_analysis_for_context(fresh_latest, athlete, athlete_max_hr, max_hr_run_count)
                 if a:
                     fresh_analyses.append(a)
             fresh_system_prompt = build_system_prompt(
@@ -298,7 +298,7 @@ def _handle_message_core(
     # the plan handler already synced affected weeks — preventing a double-upload.
     had_plan_block = bool(re.search(r"<plan>", response, re.DOTALL))
     response = extract_and_apply_plan(athlete.id, response, db_session)
-    _reconcile_cancelled_garmin_workouts(athlete.id, db_session)
+    reconcile_cancelled_garmin_workouts(athlete.id, db_session)
     response, sync_note = extract_and_sync_garmin(
         athlete.id, response, db_session, plan_already_synced=had_plan_block
     )

@@ -44,7 +44,7 @@ def app_and_db():
         flask_app = Flask(__name__)
         flask_app.config["SECRET_KEY"] = "integration-test-key"
         flask_app.config["TESTING"] = True
-        flask_app.register_blueprint(bp)
+        flask_app.register_blueprint(bp, url_prefix="/auth")
 
         yield flask_app, db
 
@@ -60,9 +60,15 @@ def test_full_auth_flow(app_and_db):
         # Step 1: login
         resp = client.post("/auth/login", json={"username": "sarah", "password": "hunter2"})
         assert resp.status_code == 200, resp.get_data(as_text=True)
-        data = resp.get_json()
-        assert data["name"] == "Sarah"
-        assert data["is_admin"] is False
+        assert resp.get_json()["ok"] is True
+
+        # Step 1b: confirm session via /auth/me
+        resp = client.get("/auth/me")
+        assert resp.status_code == 200
+        me = resp.get_json()
+        assert me["authenticated"] is True
+        assert me["name"] == "Sarah"
+        assert me["is_admin"] is False
 
         # Step 2: logout
         resp = client.post("/auth/logout")

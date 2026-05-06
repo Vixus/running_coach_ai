@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from running_coach_ai.coach.side_effects import (
     _delete_garmin_workout,
-    _reconcile_cancelled_garmin_workouts,
+    reconcile_cancelled_garmin_workouts,
     extract_and_apply_plan,
 )
 
@@ -187,7 +187,7 @@ class TestDeleteGarminWorkoutIdRetention:
 
 
 # ---------------------------------------------------------------------------
-# _reconcile_cancelled_garmin_workouts: retries lingering IDs
+# reconcile_cancelled_garmin_workouts: retries lingering IDs
 # ---------------------------------------------------------------------------
 
 class TestReconciliation:
@@ -201,7 +201,7 @@ class TestReconciliation:
         db.query.return_value.filter.return_value.all.return_value = [w1, w2]
 
         with patch("running_coach_ai.coach.side_effects._delete_garmin_workout") as mock_delete:
-            _reconcile_cancelled_garmin_workouts(1, db)
+            reconcile_cancelled_garmin_workouts(1, db)
 
         assert mock_delete.call_count == 2
 
@@ -211,6 +211,6 @@ class TestReconciliation:
         db.query.return_value.filter.return_value.all.return_value = []
 
         with patch("running_coach_ai.coach.side_effects._delete_garmin_workout") as mock_delete:
-            _reconcile_cancelled_garmin_workouts(1, db)
+            reconcile_cancelled_garmin_workouts(1, db)
 
         mock_delete.assert_not_called()

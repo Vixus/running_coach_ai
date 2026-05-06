@@ -221,7 +221,7 @@ def _delete_garmin_workout(athlete_id: int, workout: PlannedWorkout, db_session:
         logger.error("Failed to delete Garmin workout for athlete %d: %s", athlete_id, e)
 
 
-def _reconcile_cancelled_garmin_workouts(athlete_id: int, db_session: Session) -> None:
+def reconcile_cancelled_garmin_workouts(athlete_id: int, db_session: Session) -> None:
     """Retry Garmin deletion for any cancelled/skipped workouts that still have Garmin IDs.
 
     Called after every plan mutation so that transient failures don't leave

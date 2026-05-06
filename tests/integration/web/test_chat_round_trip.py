@@ -43,7 +43,7 @@ def app_and_db():
     flask_app = Flask(__name__)
     flask_app.config["SECRET_KEY"] = "test-integration-key"
     flask_app.config["TESTING"] = True
-    flask_app.register_blueprint(auth_bp)
+    flask_app.register_blueprint(auth_bp, url_prefix="/auth")
     flask_app.register_blueprint(chat_bp)
 
     with patch("running_coach_ai.web.auth.get_session", fake_get_session), \

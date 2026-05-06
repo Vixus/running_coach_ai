@@ -184,7 +184,7 @@ _MONTH_NAME = {
 }
 
 
-def _resolve_athlete_max_hr(athlete_id: int, db_session: Session) -> tuple[int, int]:
+def resolve_athlete_max_hr(athlete_id: int, db_session: Session) -> tuple[int, int]:
     """Return (athlete_max_hr, max_hr_run_count) for HR zone calibration."""
     from sqlalchemy import func as _sql_func
 
@@ -237,7 +237,7 @@ def _parse_date_references(text: str, today: date) -> list[date]:
     return sorted(set(candidates), reverse=True)
 
 
-def _detect_referenced_workout(
+def detect_referenced_workout(
     text: str,
     athlete_id: int,
     exclude_id: int | None,
@@ -268,7 +268,7 @@ def _detect_referenced_workout(
     return None
 
 
-def _format_run_analysis_for_context(
+def format_run_analysis_for_context(
     completed: "CompletedWorkout",
     athlete: "Athlete",
     athlete_max_hr: int,

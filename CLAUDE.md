@@ -88,9 +88,15 @@ First-deploy admin seeding: set `BOOTSTRAP_ADMIN_EMAIL` + `BOOTSTRAP_ADMIN_PASSW
 
 Surface-agnostic. The web `/api/chat/message` endpoint dispatches to `coach.onboarding.handle_turn()` whenever `athlete.onboarding_complete == False`. Claude drives the 8-question intake; on the closing turn it emits `<onboarding_complete>{...json...}</onboarding_complete>`, which is parsed and stored in `athlete.pending_onboarding_data` (with `pending_onboarding_data_created_at` for 24h TTL). The chat response includes `{"onboarding": {"pending_garmin": true}}` to trigger the front-end Garmin credentials modal. Submitting the modal calls `/api/onboarding/garmin-creds` which validates the creds, runs `coach.onboarding.complete_onboarding()` (creates `Goal`, generates plan, syncs week 1 to Garmin), and returns the week-1 summary.
 
-### Coaching conversation (`coach/conversation.py`)
+### Coaching conversation (split across three files)
 
-`build_system_prompt()` assembles 8 context sections on every turn: persona, current date, athlete profile, training phase + this week, health data (today + 7-day HRV trend), recent completed workouts, upcoming Garmin calendar (next 4 weeks with sync status), weather, and coach memories.
+The conversation flow is split across three files in `coach/`:
+
+| File | Responsibility |
+|---|---|
+| `coach/prompt.py` | `build_system_prompt()` + the 8 context-section helpers (athlete profile, plan/week, health, recent workouts, calendar, weather, memories, run-telemetry spotlights). Also owns `_validate_garmin_sync` (the inline DB↔Garmin reconciliation pass that runs while building the calendar section). |
+| `coach/side_effects.py` | The five XML tag extractors and their helpers — `extract_and_apply_plan`, `extract_and_sync_garmin`, `extract_and_save_memories`, `extract_prescription_switch`, `extract_coach_switch`. |
+| `coach/conversation.py` | Orchestrator only — `process_message`, the `<garmin_fetch/>` re-call loop, and DB persistence of conversation messages. |
 
 **`process_message(athlete, user_text, db_session, source="web", coach_key=None) -> str`** is the central coaching function. It temporarily overrides `athlete.coach_key` in a `try/finally` block (ephemeral — does not persist to DB), then calls Claude and returns the response text.
 
@@ -151,16 +157,18 @@ Flask 3.x app factory (`create_app()`) with blueprints deferred inside the facto
 - **Sync scope**: `sync_week_to_garmin` only uploads workouts with `scheduled_date >= today`. Past dates are never written to Garmin.
 - **Admin operations** (`garmin/admin.py`): `verify_garmin_for_athlete()`, `resync_garmin_for_athlete()`, `clean_garmin_for_athlete()` — all return structured dicts (counts, failed dates, error string), consumed by `/api/admin/athletes/<id>/...` endpoints.
 
-### Scheduler jobs (`scheduler/jobs.py`)
+### Scheduler jobs (split per job)
 
-| Job | Trigger | Action |
+`scheduler/jobs.py` is the registration entrypoint and re-exports the public symbols. Each job body lives in its own module:
+
+| Job module | Trigger | Action |
 |---|---|---|
-| `morning_checkin_{id}` | Daily 07:00 athlete local time | Fetch Garmin health → weather → Claude → adapt plan → write Notification |
-| `activity_poll` | Every 30 min, 06:00–22:00 only | Poll new Garmin activities → telemetry → biomechanics → write feedback Notification |
-| `weekly_review` | Sunday 20:00 system time | Aggregate week → Claude review → adapt next week → sync Garmin → write Notification |
-| `garmin_reconciliation` | Daily 08:30 | Verify DB plan matches Garmin library |
-| `health_backfill` | Daily 14:00 | Catch missed morning health snapshots |
-| `refresh_athlete_morning_jobs` | Every 5 min | Idempotently register morning jobs for newly-onboarded web athletes |
+| `scheduler/morning.py` (`morning_checkin_{id}`) | Daily 07:00 athlete local time | Fetch Garmin health → weather → Claude → adapt plan → write Notification |
+| `scheduler/activity_poll.py` (`activity_poll`) | Every 30 min, 06:00–22:00 only | Poll new Garmin activities → telemetry → biomechanics → write feedback Notification |
+| `scheduler/weekly_review.py` (`weekly_review`) | Sunday 20:00 system time | Aggregate week → Claude review → adapt next week → sync Garmin → write Notification |
+| `scheduler/reconcile.py` (`garmin_reconciliation`) | Daily 08:30 | Verify DB plan matches Garmin library |
+| `scheduler/health_backfill.py` (`health_backfill`) | Daily 14:00 | Catch missed morning health snapshots |
+| `scheduler/jobs.py` (`refresh_athlete_morning_jobs`) | Every 5 min | Idempotently register morning jobs for newly-onboarded web athletes |
 
 Morning check-in gate: skips if `athlete.last_morning_checkin_date == today` (dedup) or before 06:00 local. For athletes with Garmin, waits for `training_readiness` (or sleep_score fallback) to be populated; retries on next tick until 12:00, then skips for the day.
 
