@@ -106,6 +106,9 @@ def refresh_garmin_data(athlete_id: int, days_back: int = 7) -> dict:
     try:
         garmin = get_garmin_client(athlete_id, garmin_email, garmin_pw)
     except Exception as e:
+        import traceback as _tb
+        logger.error("Admin refresh: Garmin client failed for athlete %d: %s\n%s",
+                     athlete_id, e, _tb.format_exc())
         msg = f"Garmin auth failed: {e}" if is_garmin_auth_error(e) else str(e)
         return {"ok": False, "error": msg}
 
