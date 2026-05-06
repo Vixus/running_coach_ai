@@ -515,7 +515,7 @@ class TestMorningCheckinMessageContent:
 # Conversation live re-fetch — stale snapshot with all-None key fields
 # ---------------------------------------------------------------------------
 
-_CONV = "running_coach_ai.coach.conversation"
+_CONV = "running_coach_ai.coach.prompt"
 
 
 def _make_stale_snapshot():
@@ -592,7 +592,7 @@ class TestConversationLiveRefetch:
         a.coach_key = "default"
         return a
 
-    @patch("running_coach_ai.coach.conversation.scoped_query")
+    @patch("running_coach_ai.coach.prompt.scoped_query")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -600,14 +600,14 @@ class TestConversationLiveRefetch:
         self, mock_garmin, mock_raw, mock_parse, mock_scoped
     ):
         """All three key fields None → live fetch fires."""
-        from running_coach_ai.coach.conversation import build_system_prompt
+        from running_coach_ai.coach.prompt import build_system_prompt
         mock_parse.return_value = _make_good_snapshot()
         mock_scoped.side_effect = self._scoped_side_effect(_make_stale_snapshot())
         build_system_prompt(self._make_athlete(), MagicMock())
         mock_garmin.assert_called_once()
         mock_parse.assert_called_once()
 
-    @patch("running_coach_ai.coach.conversation.scoped_query")
+    @patch("running_coach_ai.coach.prompt.scoped_query")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -617,7 +617,7 @@ class TestConversationLiveRefetch:
         """HRV + body battery stored but sleep_score=None → live fetch still fires.
         This is the exact scenario where the morning check-in stored partial data
         (e.g. broken sleep score parser) and the user asks for their morning report."""
-        from running_coach_ai.coach.conversation import build_system_prompt
+        from running_coach_ai.coach.prompt import build_system_prompt
         partial = _make_stale_snapshot()
         partial.hrv_score = 32          # HRV was stored correctly
         partial.body_battery_start = 89  # body battery was stored correctly
@@ -627,7 +627,7 @@ class TestConversationLiveRefetch:
         build_system_prompt(self._make_athlete(), MagicMock())
         mock_garmin.assert_called_once()
 
-    @patch("running_coach_ai.coach.conversation.scoped_query")
+    @patch("running_coach_ai.coach.prompt.scoped_query")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -635,13 +635,13 @@ class TestConversationLiveRefetch:
         self, mock_garmin, mock_raw, mock_parse, mock_scoped
     ):
         """Original behaviour: no row at all → live fetch fires."""
-        from running_coach_ai.coach.conversation import build_system_prompt
+        from running_coach_ai.coach.prompt import build_system_prompt
         mock_parse.return_value = _make_good_snapshot()
         mock_scoped.side_effect = self._scoped_side_effect(None)
         build_system_prompt(self._make_athlete(), MagicMock())
         mock_garmin.assert_called_once()
 
-    @patch("running_coach_ai.coach.conversation.scoped_query")
+    @patch("running_coach_ai.coach.prompt.scoped_query")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -650,7 +650,7 @@ class TestConversationLiveRefetch:
     ):
         """If the stored snapshot already has all three key fields populated,
         no live fetch should occur — avoids unnecessary Garmin API calls."""
-        from running_coach_ai.coach.conversation import build_system_prompt
+        from running_coach_ai.coach.prompt import build_system_prompt
         mock_scoped.side_effect = self._scoped_side_effect(_make_good_snapshot())
         build_system_prompt(self._make_athlete(), MagicMock())
         mock_garmin.assert_not_called()

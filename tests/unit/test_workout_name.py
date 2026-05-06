@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 from running_coach_ai.garmin.workout_builder import build_workout_json
 
 TODAY = date.today()
-_CONV = "running_coach_ai.coach.conversation"
+_CONV = "running_coach_ai.coach.side_effects"
 _WB = "running_coach_ai.garmin.workout_builder"
 
 
@@ -138,7 +138,7 @@ def _db_for_plan(athlete, existing_workout=None, plan=None):
 class TestExtractAndApplyPlanWorkoutName:
 
     def _run(self, plan_json_sessions, existing_workout=None, plan=None):
-        from running_coach_ai.coach.conversation import extract_and_apply_plan
+        from running_coach_ai.coach.side_effects import extract_and_apply_plan
 
         athlete = _make_athlete()
         db = _db_for_plan(athlete, existing_workout=existing_workout, plan=plan)
@@ -242,7 +242,7 @@ class TestExtractAndApplyPlanWorkoutName:
         }]
         response = f"<plan>{json.dumps({'sessions': sessions})}</plan>"
 
-        from running_coach_ai.coach.conversation import extract_and_apply_plan
+        from running_coach_ai.coach.side_effects import extract_and_apply_plan
 
         with patch(f"{_WB}.get_garmin_client") as mock_auth, \
              patch(f"{_WB}.get_garmin_workout_library", return_value=[]), \
@@ -298,7 +298,7 @@ class TestExtractAndApplyPlanWorkoutName:
         sessions = [{"date": target_date.isoformat(), "workout_type": "easy", "status": "planned"}]
         response = f"<plan>{json.dumps({'sessions': sessions})}</plan>"
 
-        from running_coach_ai.coach.conversation import extract_and_apply_plan
+        from running_coach_ai.coach.side_effects import extract_and_apply_plan
 
         with patch(f"{_WB}.get_garmin_client") as mock_auth, \
              patch(f"{_WB}.get_garmin_workout_library", return_value=[]), \

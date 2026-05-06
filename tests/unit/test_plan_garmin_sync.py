@@ -11,7 +11,8 @@ from datetime import date, timedelta
 from unittest.mock import MagicMock, patch
 
 
-from running_coach_ai.coach.conversation import extract_and_sync_garmin, process_message
+from running_coach_ai.coach.conversation import process_message
+from running_coach_ai.coach.side_effects import extract_and_sync_garmin
 
 
 TODAY = date.today()

@@ -151,7 +151,7 @@ def generate_post_run_feedback(
 ) -> None:
     """Generate and send post-run feedback for a completed workout."""
     from running_coach_ai.database.models import PlannedWorkout
-    from running_coach_ai.coach.conversation import extract_and_save_memories
+    from running_coach_ai.coach.side_effects import extract_and_save_memories
 
     from running_coach_ai.database.models import Goal
 

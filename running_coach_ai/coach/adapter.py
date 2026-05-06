@@ -10,7 +10,7 @@ from running_coach_ai.coach.persona import call_claude, format_miles, format_pac
 from running_coach_ai.coach.personas import get_persona
 from running_coach_ai.database.models import Athlete, HealthSnapshot, PlannedWorkout
 from running_coach_ai.database.session import scoped_query
-from running_coach_ai.coach.conversation import extract_and_apply_plan
+from running_coach_ai.coach.side_effects import extract_and_apply_plan
 
 logger = logging.getLogger(__name__)
 
@@ -255,7 +255,7 @@ def adapt_next_week(athlete: Athlete, week_summary: dict, db_session: Session) -
     Applies changes via <plan> mutations.
     """
     from running_coach_ai.coach.persona import call_claude
-    from running_coach_ai.coach.conversation import extract_and_apply_plan
+    from running_coach_ai.coach.side_effects import extract_and_apply_plan
 
     completion_pct = week_summary.get("completion_pct", 100)
     next_week_start = date.fromisoformat(week_summary["week_start"]) + timedelta(weeks=1)
