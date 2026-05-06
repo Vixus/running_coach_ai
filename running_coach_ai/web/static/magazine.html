@@ -209,8 +209,12 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
 .fr-hed{font-family:'Bebas Neue',sans-serif;font-size:clamp(52px,8vw,110px);line-height:.86;color:#fff;margin-bottom:0;}
 .fr-dek{font-family:'DM Serif Display',serif;font-style:italic;font-size:19px;color:rgba(255,255,255,.45);margin-bottom:0;}
 .fr-stats{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:0;}
-.fr-stat{border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:18px 20px;transition:all .2s;cursor:default;}
+.fr-stat{border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:18px 20px;transition:all .2s;cursor:default;position:relative;overflow:hidden;}
 .fr-stat:hover{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.03);transform:translateY(-1px);}
+.fr-stat.fr-clickable{cursor:pointer;}
+.fr-stat.fr-clickable:hover{border-color:rgba(255,255,255,.32);background:rgba(255,255,255,.06);transform:translateY(-2px);}
+.fr-stat.fr-clickable::after{content:'↗ trend';position:absolute;bottom:8px;right:10px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.28);opacity:0;transition:opacity .2s;}
+.fr-stat.fr-clickable:hover::after{opacity:1;}
 .fr-stat-v{font-family:'Bebas Neue',sans-serif;font-size:46px;color:#fff;line-height:1;}
 .fr-stat-v em{color:var(--lime);font-style:normal;}
 .fr-stat-l{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-top:3px;}
@@ -749,12 +753,12 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
     <h2 class="fr-hed R d1" id="fr-hed" style="visibility:hidden;">&nbsp;<br>&nbsp;</h2>
     <p class="fr-dek R d2" id="fr-dek" style="visibility:hidden;">&nbsp;</p>
     <div class="fr-stats R d3">
-      <div class="fr-stat"><div class="fr-stat-v" id="fr-mi">—</div><div class="fr-stat-l">Miles</div></div>
-      <div class="fr-stat"><div class="fr-stat-v"><em id="fr-pace">—</em></div><div class="fr-stat-l">Avg Pace /mi</div></div>
-      <div class="fr-stat"><div class="fr-stat-v" id="fr-hr">—</div><div class="fr-stat-l">Avg HR bpm</div></div>
-      <div class="fr-stat"><div class="fr-stat-v" id="fr-load">—</div><div class="fr-stat-l">Training Load</div></div>
-      <div class="fr-stat"><div class="fr-stat-v" id="fr-cad">—</div><div class="fr-stat-l">Cadence spm</div></div>
-      <div class="fr-stat"><div class="fr-stat-v" id="fr-pow">—</div><div class="fr-stat-l">Power W</div></div>
+      <div class="fr-stat" id="frs-mi"><div class="fr-stat-v" id="fr-mi">—</div><div class="fr-stat-l">Miles</div></div>
+      <div class="fr-stat" id="frs-pace"><div class="fr-stat-v"><em id="fr-pace">—</em></div><div class="fr-stat-l">Avg Pace /mi</div></div>
+      <div class="fr-stat" id="frs-hr"><div class="fr-stat-v" id="fr-hr">—</div><div class="fr-stat-l">Avg HR bpm</div></div>
+      <div class="fr-stat" id="frs-load"><div class="fr-stat-v" id="fr-load">—</div><div class="fr-stat-l">Training Load</div></div>
+      <div class="fr-stat" id="frs-cad"><div class="fr-stat-v" id="fr-cad">—</div><div class="fr-stat-l">Cadence spm</div></div>
+      <div class="fr-stat" id="frs-pow"><div class="fr-stat-v" id="fr-pow">—</div><div class="fr-stat-l">Power W</div></div>
     </div>
     <div class="R d4">
       <div class="fr-zone-lbl">Pace per Mile · hover to inspect</div>
@@ -1406,8 +1410,14 @@ function buildActFeed() {
           <div class="act-meta">
             <span style="font-weight:600;">${a.dist} mi</span>
             <span>${a.time||''}</span>
-            <span>${a.pace||''}</span>
-            ${a.hr?`<span>Avg ${a.hr} bpm</span>`:''}
+            ${a.pacePerMile&&a.pacePerMile.length>=2
+              ? `<span style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;" onclick="event.stopPropagation();openActTS(${a.id},'pace')" title="View pace trend">${a.pace||''}</span>`
+              : `<span>${a.pace||''}</span>`}
+            ${a.hr
+              ? (a.hrPerMile&&a.hrPerMile.length>=2
+                  ? `<span style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;" onclick="event.stopPropagation();openActTS(${a.id},'hr')" title="View HR trend">Avg ${a.hr} bpm</span>`
+                  : `<span>Avg ${a.hr} bpm</span>`)
+              : ''}
           </div>
           ${zonesArr.some(z=>z>0)?`<div style="margin-top:8px;">
             <div style="display:flex;height:7px;border-radius:4px;overflow:hidden;gap:1px;">
@@ -1440,14 +1450,15 @@ function buildActFeed() {
             <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mid);margin-bottom:10px;">Run Stats</div>
             <div class="act-bio-grid">
               ${[
-                a.cadence?{k:'Cadence',v:`${a.cadence} spm`,good:a.cadence>=178&&a.cadence<=185,tip:'Target 178–185 spm.'}:null,
-                a.power?{k:'Power',v:`${a.power} W`,good:true,tip:'Average running power.'}:null,
-                a.elevation_ft?{k:'Elevation',v:`${a.elevation_ft.toLocaleString()} ft`,good:true,tip:'Total ascent.'}:null,
-                a.tss?{k:'Load',v:`${a.tss}`,good:true,tip:'Training load score.'}:null,
-              ].filter(Boolean).map(b=>`<div class="act-bio-card" title="${b.tip}">
+                a.cadence?{k:'Cadence',v:`${a.cadence} spm`,good:a.cadence>=178&&a.cadence<=185,tip:'View cadence trend',onClick:a.cadencePerMile&&a.cadencePerMile.length>=2?`openActTS(${a.id},'cadence')`:null}:null,
+                a.power?{k:'Power',v:`${a.power} W`,good:true,tip:'View power trend',onClick:a.powerPerMile&&a.powerPerMile.length>=2?`openActTS(${a.id},'power')`:null}:null,
+                a.hr&&(!a.hrPerMile||a.hrPerMile.length<2)?{k:'Avg HR',v:`${a.hr} bpm`,good:true,tip:'Average heart rate',onClick:null}:null,
+                a.elevation_ft?{k:'Elevation',v:`${a.elevation_ft.toLocaleString()} ft`,good:true,tip:'Total ascent',onClick:null}:null,
+                a.tss?{k:'Load',v:`${a.tss}`,good:true,tip:'Training load score',onClick:null}:null,
+              ].filter(Boolean).map(b=>`<div class="act-bio-card${b.onClick?' rc-card':''}" ${b.onClick?`onclick="${b.onClick}"`:`title="${b.tip}"`}>
                 <div class="act-bio-status" style="background:${b.good?'#5a8a62':'#b8673e'};"></div>
                 <div class="act-bio-v">${b.v}</div>
-                <div class="act-bio-l">${b.k}</div>
+                <div class="act-bio-l">${b.k}${b.onClick?' ↗':''}</div>
               </div>`).join('')}
             </div>
             ${zonesArr.some(z=>z>0)?`
@@ -1566,6 +1577,36 @@ function storyScroll(y, vh) {
   }
 }
 
+// ── Per-activity time series modal ────────────────────────────
+function openActTS(actId, metric) {
+  const a = ACTIVITIES_DATA.find(x => x.id === actId);
+  if (!a) return;
+  const fmtPace = v => `${Math.floor(v)}:${String(Math.round((v%1)*60)).padStart(2,'0')}/mi`;
+  const mkLabels = arr => arr.map((_,i) => `Mi ${i+1}`);
+  const cfgs = {
+    pace:    { eye:'Pace per Mile', title:'Pace / Mile', unit:'/mi', val:a.pace||'—', color:'#b8673e',
+               data:a.pacePerMile||[], formatVal:fmtPace,
+               insight:'"Consistent mile splits build aerobic efficiency. Negative splits — faster second half — signal great pacing control."' },
+    hr:      { eye:'Heart Rate per Mile', title:'HR / Mile', unit:'bpm', val:a.hr!=null?a.hr+' bpm':'—', color:'#c05040',
+               data:a.hrPerMile||[],
+               insight:'"Cardiac drift — HR rising while pace stays constant — signals heat stress or dehydration. Monitor mid-to-late miles."' },
+    cadence: { eye:'Cadence per Mile', title:'Cadence / Mile', unit:'spm', val:a.cadence!=null?a.cadence+' spm':'—', color:'#8a7aba',
+               data:a.cadencePerMile||[],
+               insight:'"Target 178–185 spm at easy effort. Higher cadence reduces ground contact time and lowers injury risk."' },
+    power:   { eye:'Power per Mile', title:'Power / Mile', unit:'W', val:a.power!=null?a.power+' W':'—', color:'#c4a040',
+               data:a.powerPerMile||[],
+               insight:'"Running power captures both pace and grade, giving a consistent effort measure regardless of terrain."' },
+  };
+  const cfg = cfgs[metric];
+  if (!cfg || cfg.data.length < 1) return;
+  METRIC_TS._act = {
+    eye: cfg.eye, title: cfg.title, unit: cfg.unit, val: cfg.val, color: cfg.color,
+    daily: [], weekly: { data: cfg.data, labels: mkLabels(cfg.data) },
+    formatVal: cfg.formatVal || null, insight: cfg.insight,
+  };
+  openTS('_act');
+}
+
 // ── Time series modal ─────────────────────────────────────────
 let _tsCurrentKey = null;
 let _tsCurrentView = 'daily';
@@ -1662,9 +1703,10 @@ function renderTSChart(){
       </linearGradient>
     </defs>
     ${[0,0.25,0.5,0.75,1].map(p=>{
-      const y=pad+(p*(H-pad*2)); const v=(mx-(p*(mx-mn))).toFixed(1);
+      const y=pad+(p*(H-pad*2)); const v=(mx-(p*(mx-mn)));
+      const dispV = d.formatVal ? d.formatVal(v) : v.toFixed(1);
       return `<line x1="${pad}" y1="${y.toFixed(1)}" x2="${W-pad}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>
-      <text x="${pad-5}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="9" fill="rgba(255,255,255,.2)" font-family="Inter">${v}</text>`;
+      <text x="${pad-5}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="9" fill="rgba(255,255,255,.2)" font-family="Inter">${dispV}</text>`;
     }).join('')}
     ${series.map((s,i)=>i%labelStep===0||i===N-1?`<text x="${xAt(i).toFixed(1)}" y="${H-4}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,.25)" font-family="Inter">${s.label||''}</text>`:'').join('')}
     ${areaD ? `<path d="${areaD}" fill="url(#${id}g)"/>` : ''}
@@ -1679,7 +1721,8 @@ function renderTSChart(){
     }).join('')}`;
   svgEl.querySelectorAll('.ts-hit').forEach(dot => {
     dot.addEventListener('mouseenter', () => {
-      tipEl.innerHTML = `<strong style="color:${d.color}">${dot.dataset.lbl} · ${dot.dataset.v} ${d.unit}</strong>`;
+      const _tipVal = d.formatVal ? d.formatVal(parseFloat(dot.dataset.v)) : `${dot.dataset.v} ${d.unit}`;
+      tipEl.innerHTML = `<strong style="color:${d.color}">${dot.dataset.lbl} · ${_tipVal}</strong>`;
       const sx = parseFloat(dot.dataset.x) * (svgEl.clientWidth / W);
       const sy = parseFloat(dot.dataset.y) * (svgEl.clientHeight / H);
       tipEl.style.left = `${sx - 60}px`; tipEl.style.top = `${sy - 44}px`;
@@ -2271,12 +2314,69 @@ async function hydrate(){
     document.getElementById('fr-dek').textContent = 'Once you complete a run, the breakdown lives here.';
   }
 
+  // Per-mile TS entries for featured run stat boxes
+  if (m.last_run) {
+    const _lr = m.last_run;
+    const _laps = _lr.laps || [];
+    const _fmtPace = v => `${Math.floor(v)}:${String(Math.round((v%1)*60)).padStart(2,'0')}/mi`;
+    const _lapPace = _laps.map((l,i)=>l.pace?{value:(([mn,sc])=>mn+sc/60)(l.pace.split(':').map(Number)),label:`Mi ${i+1}`,missing:false}:null).filter(Boolean);
+    const _lapHr   = _laps.map((l,i)=>l.hr?{value:l.hr,label:`Mi ${i+1}`,missing:false}:null).filter(Boolean);
+    const _lapCad  = _laps.map((l,i)=>l.cadence?{value:l.cadence,label:`Mi ${i+1}`,missing:false}:null).filter(Boolean);
+    const _lapPow  = _laps.map((l,i)=>l.power?{value:l.power,label:`Mi ${i+1}`,missing:false}:null).filter(Boolean);
+
+    METRIC_TS.fr_pace = {
+      eye:'Pace per Mile · Featured Run', title:'Pace / Mile', unit:'/mi',
+      val:_lr.pace_mi||'—', color:'#b8673e', formatVal:_fmtPace,
+      daily:[], weekly:{data:_lapPace.map(p=>p.value), labels:_lapPace.map(p=>p.label)},
+      insight:'"Consistent mile splits build aerobic efficiency. Negative splits — faster second half — signal great pacing control."',
+    };
+    METRIC_TS.fr_hr = {
+      eye:'Heart Rate per Mile · Featured Run', title:'HR / Mile', unit:'bpm',
+      val:_lr.avg_hr!=null?_lr.avg_hr+' bpm':'—', color:'#c05040',
+      daily:[], weekly:{data:_lapHr.map(p=>p.value), labels:_lapHr.map(p=>p.label)},
+      insight:'"Cardiac drift — HR rising while pace holds constant — signals heat stress or dehydration. Monitor mid-to-late miles."',
+    };
+    if (_lapCad.length >= 2) {
+      METRIC_TS.fr_cad = {
+        eye:'Cadence per Mile · Featured Run', title:'Cadence / Mile', unit:'spm',
+        val:_lr.cadence!=null?_lr.cadence+' spm':'—', color:'#8a7aba',
+        daily:[], weekly:{data:_lapCad.map(p=>p.value), labels:_lapCad.map(p=>p.label)},
+        insight:'"Target 178–185 spm at easy effort. Higher cadence reduces ground contact time and injury risk."',
+      };
+    }
+    if (_lapPow.length >= 2) {
+      METRIC_TS.fr_pow = {
+        eye:'Power per Mile · Featured Run', title:'Power / Mile', unit:'W',
+        val:_lr.power_w!=null?_lr.power_w+' W':'—', color:'#c4a040',
+        daily:[], weekly:{data:_lapPow.map(p=>p.value), labels:_lapPow.map(p=>p.label)},
+        insight:'"Running power captures both pace and grade, giving a consistent effort measure regardless of terrain."',
+      };
+    }
+
+    // Make the stat boxes clickable
+    [
+      {id:'frs-pace', key:'fr_pace', check:_lapPace.length>=2},
+      {id:'frs-hr',   key:'fr_hr',   check:_lapHr.length>=2},
+      {id:'frs-cad',  key:'fr_cad',  check:_lapCad.length>=2},
+      {id:'frs-pow',  key:'fr_pow',  check:_lapPow.length>=2},
+      {id:'frs-load', key:'load',    check:true},
+    ].forEach(({id, key, check}) => {
+      const el = document.getElementById(id);
+      if (!el || !check) return;
+      el.classList.add('fr-clickable');
+      el.onclick = () => openTS(key);
+    });
+  }
+
   // Activity feed — derive from last_run + history
   ACTIVITIES_DATA = [];
   if (m.last_run) {
     const lr = m.last_run;
-    const ppm = (lr.laps||[]).filter(l=>l.pace).map(l=>{const [mn,sc]=l.pace.split(':').map(Number);return mn+sc/60;});
-    const hpm = (lr.laps||[]).filter(l=>l.hr).map(l=>l.hr);
+    const laps = lr.laps || [];
+    const ppm = laps.filter(l=>l.pace).map(l=>{const [mn,sc]=l.pace.split(':').map(Number);return mn+sc/60;});
+    const hpm = laps.filter(l=>l.hr).map(l=>l.hr);
+    const cpm = laps.filter(l=>l.cadence).map(l=>l.cadence);
+    const wpm = laps.filter(l=>l.power).map(l=>l.power);
     ACTIVITIES_DATA.push({
       id: 1,
       date: lr.date_pretty ? lr.date_pretty.split(',').slice(1).join(',').trim() : '—',
@@ -2293,6 +2393,8 @@ async function hydrate(){
       zones: lr.hr_zones ? lr.hr_zones.map(z=>z.pct) : [0,0,0,0,0],
       pacePerMile: ppm,
       hrPerMile: hpm,
+      cadencePerMile: cpm,
+      powerPerMile: wpm,
       note: lr.coach_analysis ? `"${lr.coach_analysis}"` : null,
     });
   }
