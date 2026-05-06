@@ -173,7 +173,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
         });
-        if (res.ok) { window.location.href = '/app'; }
+        if (res.ok) { window.location.href = '/'; }
         else {
           const data = await res.json();
           errorEl.textContent = data.error || 'Login failed';
@@ -197,7 +197,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password, invite_token }),
         });
-        if (res.ok) { window.location.href = '/app'; }
+        if (res.ok) { window.location.href = '/'; }
         else {
           const data = await res.json();
           errorEl.textContent = data.error || 'Signup failed';

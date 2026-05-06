@@ -106,6 +106,18 @@ def admin_reset_onboarding(athlete_id: int):
     return jsonify(result)
 
 
+@bp.route("/api/admin/athletes/<int:athlete_id>/refresh-garmin-data", methods=["POST"])
+@admin_required
+def admin_refresh_garmin_data(athlete_id: int):
+    body = request.get_json(silent=True) or {}
+    try:
+        days_back = min(int(body.get("days_back", 7)), 30)
+    except (TypeError, ValueError):
+        days_back = 7
+    result = admin_ops.refresh_garmin_data(athlete_id, days_back=days_back)
+    return jsonify(result), (200 if result.get("ok") else 400)
+
+
 @bp.route("/api/admin/athletes/<int:athlete_id>/morning-checkin", methods=["POST"])
 @admin_required
 def admin_morning_checkin(athlete_id: int):

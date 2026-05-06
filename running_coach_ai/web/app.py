@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 from flask import Flask, redirect, render_template, request, send_from_directory, session
-from sqlalchemy import event, text
+from sqlalchemy import event
 
 from running_coach_ai.config import settings
 from running_coach_ai.database.session import engine, get_session
@@ -98,31 +98,24 @@ def create_app() -> Flask:
 
     @app.route('/')
     def index():
-        return redirect('/login')
-
-    @app.route('/login')
-    def login_page():
-        if "athlete_id" in session:
-            return redirect('/magazine')
-        return render_template('login.html')
-
-    @app.route('/app')
-    def app_page():
-        if "athlete_id" not in session:
-            return redirect('/login')
-        with get_session() as db:
-            athlete = db.get(Athlete, session["athlete_id"])
-            if not athlete or not athlete.is_admin:
-                return redirect('/magazine')
-        static_dir = os.path.join(os.path.dirname(__file__), 'static')
-        return send_from_directory(static_dir, 'app.html')
-
-    @app.route('/magazine')
-    def magazine_page():
         if "athlete_id" not in session:
             return redirect('/login')
         static_dir = os.path.join(os.path.dirname(__file__), 'static')
         return send_from_directory(static_dir, 'magazine.html')
+
+    @app.route('/login')
+    def login_page():
+        if "athlete_id" in session:
+            return redirect('/')
+        return render_template('login.html')
+
+    @app.route('/app')
+    def app_page():
+        return redirect('/')
+
+    @app.route('/magazine')
+    def magazine_page():
+        return redirect('/')
 
     @app.route('/admin/upload-db', methods=['POST'])
     def upload_db():

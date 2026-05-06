@@ -561,6 +561,63 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
     z-index:20;font-family:'Inter',sans-serif;
   }
 }
+
+/* ── Admin Panel ──────────────────────────────────────────────────────── */
+#admin-overlay{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .25s ease;}
+#admin-overlay.open{opacity:1;pointer-events:all;}
+#admin-panel{position:fixed;top:0;right:0;bottom:0;width:min(520px,100vw);z-index:901;background:#0e0d0b;border-left:1px solid rgba(255,255,255,.09);box-shadow:-24px 0 64px rgba(0,0,0,.6);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.16,1,.3,1);}
+#admin-panel.open{transform:none;}
+#admin-panel-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+#admin-panel-head h2{margin:0;font-size:17px;font-weight:700;color:#fff;letter-spacing:-.02em;}
+#admin-close-btn{background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:6px;line-height:1;}
+#admin-close-btn:hover{color:#fff;background:rgba(255,255,255,.07);}
+#admin-tabs{display:flex;gap:2px;padding:10px 16px 0;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+.adm-tab{background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.45);cursor:pointer;font-size:13px;font-weight:500;padding:8px 12px 10px;transition:color .15s,border-color .15s;}
+.adm-tab.active{color:#fff;border-bottom-color:#b8ff4f;}
+#admin-body{flex:1;overflow-y:auto;padding:16px 20px 24px;}
+#admin-body::-webkit-scrollbar{width:3px;}
+#admin-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px;}
+.adm-sec{display:none;}.adm-sec.active{display:block;}
+.adm-card{border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px 14px;margin-bottom:8px;background:rgba(255,255,255,.02);}
+.adm-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.adm-athlete-name{font-weight:600;font-size:13px;color:#fff;}
+.adm-athlete-meta{font-size:11px;color:rgba(255,255,255,.38);margin-top:2px;}
+.adm-btns{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;}
+.adm-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.8);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;transition:all .15s;}
+.adm-btn:hover{background:rgba(255,255,255,.11);color:#fff;}
+.adm-btn.danger{color:#ff6b6b;border-color:rgba(255,107,107,.3);}
+.adm-btn.danger:hover{background:rgba(255,107,107,.1);}
+.adm-btn.primary{background:#b8ff4f;color:#0e0d0b;border-color:#b8ff4f;font-weight:600;}
+.adm-btn.primary:hover{background:#c9ff6b;}
+.adm-btn:disabled{opacity:.4;cursor:not-allowed;}
+.adm-result{margin-top:8px;padding:8px 10px;background:rgba(255,255,255,.04);border-radius:6px;font-size:11px;color:rgba(255,255,255,.5);font-family:monospace;white-space:pre-wrap;word-break:break-word;}
+.adm-result.ok{color:rgba(184,255,79,.7);}
+.adm-result.err{color:rgba(255,107,107,.8);}
+.adm-row-hd{display:flex;justify-content:flex-end;margin-bottom:10px;}
+.adm-reload-btn{background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.6);border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;}
+.adm-reload-btn:hover{color:#fff;border-color:rgba(255,255,255,.25);}
+.adm-invite-box{border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;margin-bottom:16px;}
+.adm-invite-box h4{margin:0 0 10px;font-size:13px;font-weight:600;color:#fff;}
+.adm-invite-row{display:flex;gap:8px;}
+.adm-invite-input{flex:1;padding:7px 10px;border:1px solid rgba(255,255,255,.1);border-radius:7px;background:rgba(255,255,255,.05);color:#fff;font-size:13px;}
+.adm-invite-input::placeholder{color:rgba(255,255,255,.3);}
+.adm-invite-url{margin-top:10px;padding:10px;background:rgba(184,255,79,.05);border:1px solid rgba(184,255,79,.15);border-radius:7px;font-family:monospace;font-size:11px;color:#b8ff4f;word-break:break-all;cursor:pointer;}
+.adm-event-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.adm-ef-group{display:flex;gap:3px;}
+.adm-ef-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.55);border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;}
+.adm-ef-btn.on{background:#b8ff4f;border-color:#b8ff4f;color:#0e0d0b;font-weight:600;}
+.adm-ev{border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:11px;}
+.adm-ev-ts{color:rgba(255,255,255,.3);font-family:monospace;}
+.adm-ev-sev{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-left:6px;}
+.adm-ev-sev.info{background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);}
+.adm-ev-sev.warn{background:rgba(230,126,34,.15);color:#e67e22;}
+.adm-ev-sev.error{background:rgba(231,76,60,.15);color:#e74c3c;}
+.adm-ev-msg{color:rgba(255,255,255,.75);margin-top:3px;}
+.adm-ev-who{color:rgba(255,255,255,.3);margin-top:1px;}
+.adm-pager{display:flex;justify-content:center;gap:8px;margin-top:10px;}
+.adm-pager-btn{background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.6);border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;}
+.adm-pager-btn:disabled{opacity:.3;cursor:not-allowed;}
+.adm-empty{padding:32px;text-align:center;color:rgba(255,255,255,.25);font-size:13px;}
 </style>
 </head>
 <body>
@@ -587,7 +644,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
       </button>
       <div class="coach-picker-menu" id="coach-picker-menu"></div>
     </div>
-    <a href="/app" id="nav-admin-link" class="nav-link" style="display:none;text-decoration:none;">Admin</a>
+    <button id="nav-admin-btn" class="nav-link" style="display:none;background:none;border:none;cursor:pointer;padding:0;" onclick="openAdminPanel()">Admin</button>
     <div class="nav-profile" id="nav-profile" title="Profile">—</div>
   </div>
 </nav>
@@ -2494,7 +2551,7 @@ window.addEventListener('load', async () => {
   // Run hydrate + coach-options + auth/me in parallel
   const [m, , me] = await Promise.all([hydrate(), loadCoachOptions(), fetchMe()]);
   if (me && me.is_admin) {
-    const el = document.getElementById('nav-admin-link');
+    const el = document.getElementById('nav-admin-btn');
     if (el) el.style.display = '';
   }
   if (me && !me.onboarding_complete) {
@@ -2597,6 +2654,282 @@ function setupTouchInteractions(){
     }, {passive: true});
   }
 }
+</script>
+
+<!-- ── Admin Panel ──────────────────────────────────────────────────── -->
+<div id="admin-overlay" onclick="if(event.target===this)closeAdminPanel()"></div>
+<div id="admin-panel" role="dialog" aria-label="Admin panel">
+  <div id="admin-panel-head">
+    <h2>Admin</h2>
+    <button id="admin-close-btn" onclick="closeAdminPanel()" title="Close">✕</button>
+  </div>
+  <div id="admin-tabs">
+    <button class="adm-tab active" data-tab="athletes" onclick="admSwitchTab('athletes',this)">Athletes</button>
+    <button class="adm-tab" data-tab="invites" onclick="admSwitchTab('invites',this)">Invites</button>
+    <button class="adm-tab" data-tab="events" onclick="admSwitchTab('events',this)">Events</button>
+  </div>
+  <div id="admin-body">
+    <div id="adm-athletes" class="adm-sec active"></div>
+    <div id="adm-invites" class="adm-sec"></div>
+    <div id="adm-events" class="adm-sec"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ─── helpers ─────────────────────────────────────────────────────── */
+  async function admFetch(path, opts){
+    const r = await fetch(path, {credentials:'same-origin', ...opts});
+    return r;
+  }
+
+  function admSel(id){ return document.getElementById(id); }
+
+  function fmtResult(data, ok){
+    const el = document.createElement('div');
+    el.className = 'adm-result ' + (ok ? 'ok' : 'err');
+    el.textContent = JSON.stringify(data, null, 2);
+    return el;
+  }
+
+  /* ─── open / close ────────────────────────────────────────────────── */
+  window.openAdminPanel = function(){
+    admSel('admin-overlay').classList.add('open');
+    admSel('admin-panel').classList.add('open');
+    admLoadAthletes();
+  };
+  window.closeAdminPanel = function(){
+    admSel('admin-overlay').classList.remove('open');
+    admSel('admin-panel').classList.remove('open');
+  };
+  document.addEventListener('keydown', e => { if(e.key==='Escape') closeAdminPanel(); });
+
+  /* ─── tab switching ───────────────────────────────────────────────── */
+  window.admSwitchTab = function(tab, btn){
+    document.querySelectorAll('.adm-tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.adm-sec').forEach(s=>s.classList.remove('active'));
+    btn.classList.add('active');
+    admSel('adm-'+tab).classList.add('active');
+    if(tab==='athletes') admLoadAthletes();
+    if(tab==='invites')  admLoadInvites();
+    if(tab==='events')   admLoadEvents();
+  };
+
+  /* ─── athletes ────────────────────────────────────────────────────── */
+  let _athleteResults = {};
+
+  async function admLoadAthletes(){
+    const sec = admSel('adm-athletes');
+    sec.innerHTML = '<div class="adm-empty">Loading…</div>';
+    const r = await admFetch('/api/admin/athletes');
+    if(!r.ok){ sec.innerHTML='<div class="adm-empty">Failed to load athletes.</div>'; return; }
+    const {athletes} = await r.json();
+    _athleteResults = {};
+    renderAthletes(athletes);
+  }
+
+  function renderAthletes(list){
+    const sec = admSel('adm-athletes');
+    if(!list.length){ sec.innerHTML='<div class="adm-empty">No athletes.</div>'; return; }
+    sec.innerHTML='';
+    const hd = document.createElement('div');
+    hd.className='adm-row-hd';
+    hd.innerHTML='<button class="adm-reload-btn" onclick="admLoadAthletes()">↺ Refresh</button>';
+    sec.appendChild(hd);
+
+    list.forEach(a => {
+      const status = !a.allowed ? '🚫 disabled' : !a.onboarding_complete ? '⏳ onboarding' : '✅ active';
+      const card = document.createElement('div');
+      card.className='adm-card';
+      card.id='adm-athlete-'+a.id;
+      card.innerHTML=`
+        <div class="adm-card-head">
+          <div>
+            <div class="adm-athlete-name">${a.name||'(unnamed)'} <span style="font-size:10px;color:rgba(255,255,255,.3);font-weight:400;">#${a.id} · ${a.email||a.web_username||'—'}</span></div>
+            <div class="adm-athlete-meta">${status} · ${a.coach_key} · ${a.timezone||'no tz'} · ${a.has_garmin?'garmin ✓':'no garmin'}${a.is_admin?' · admin':''}</div>
+          </div>
+        </div>
+        <div class="adm-btns" id="adm-btns-${a.id}"></div>
+        <div id="adm-res-${a.id}"></div>`;
+      sec.appendChild(card);
+
+      const btns = admSel('adm-btns-'+a.id);
+
+      function mkBtn(label, cls, handler){
+        const b = document.createElement('button');
+        b.className='adm-btn'+(cls?' '+cls:'');
+        b.textContent=label;
+        b.onclick=handler;
+        btns.appendChild(b);
+        return b;
+      }
+
+      async function doCall(label, path, method='POST', body, reloadList){
+        const allBtns = btns.querySelectorAll('button');
+        allBtns.forEach(b=>b.disabled=true);
+        const resEl = admSel('adm-res-'+a.id);
+        resEl.innerHTML='<div class="adm-result">Running…</div>';
+        try{
+          const opts = {method};
+          if(body){ opts.headers={'Content-Type':'application/json'}; opts.body=JSON.stringify(body); }
+          const r = await admFetch(path, opts);
+          const d = await r.json().catch(()=>null);
+          resEl.innerHTML='';
+          resEl.appendChild(fmtResult(d, r.ok));
+          if(reloadList) setTimeout(admLoadAthletes, 600);
+        } catch(e){
+          resEl.innerHTML='<div class="adm-result err">'+e.message+'</div>';
+        } finally {
+          allBtns.forEach(b=>b.disabled=false);
+        }
+      }
+
+      if(a.allowed){
+        mkBtn('Disable','danger',()=>doCall('Disable',`/api/admin/athletes/${a.id}/disable`,'POST',null,true));
+      } else {
+        mkBtn('Allow','primary',()=>doCall('Allow',`/api/admin/athletes/${a.id}/allow`,'POST',null,true));
+      }
+
+      if(a.has_garmin){
+        mkBtn('Verify','',()=>doCall('Verify',`/api/admin/athletes/${a.id}/verify-garmin`,'GET'));
+        mkBtn('Refresh Garmin','primary',()=>doCall('Refresh',`/api/admin/athletes/${a.id}/refresh-garmin-data`,'POST',{days_back:7}));
+        mkBtn('Resync','',()=>{
+          if(!confirm(`Resync Garmin for ${a.name}? Deletes app-marked workouts and re-uploads from DB.`)) return;
+          doCall('Resync',`/api/admin/athletes/${a.id}/resync-garmin`);
+        });
+        mkBtn('Clean','danger',()=>{
+          if(!confirm(`Clean Garmin for ${a.name}? WIPES ENTIRE GARMIN LIBRARY and re-uploads upcoming workouts.`)) return;
+          doCall('Clean',`/api/admin/athletes/${a.id}/clean-garmin`);
+        });
+      }
+
+      if(a.onboarding_complete){
+        mkBtn('Morning','',()=>doCall('Morning',`/api/admin/athletes/${a.id}/morning-checkin`,'POST',{force:true}));
+      }
+
+      mkBtn('Reset onboarding','danger',()=>{
+        if(!confirm(`Reset onboarding for ${a.name}? Chat history deleted; runs/plans kept.`)) return;
+        doCall('Reset',`/api/admin/athletes/${a.id}/reset-onboarding`,'POST',null,true);
+      });
+    });
+  }
+
+  /* ─── invites ─────────────────────────────────────────────────────── */
+  async function admLoadInvites(){
+    const sec = admSel('adm-invites');
+    sec.innerHTML='<div class="adm-empty">Loading…</div>';
+    const r = await admFetch('/api/admin/invites');
+    if(!r.ok){ sec.innerHTML='<div class="adm-empty">Failed.</div>'; return; }
+    const {invites} = await r.json();
+    renderInvites(invites);
+  }
+
+  function renderInvites(invites){
+    const sec = admSel('adm-invites');
+    sec.innerHTML=`
+      <div class="adm-invite-box">
+        <h4>Issue invite</h4>
+        <div class="adm-invite-row">
+          <input class="adm-invite-input" id="adm-invite-hint" placeholder="Email hint (optional)">
+          <button class="adm-btn primary" id="adm-invite-create-btn" onclick="admCreateInvite()">Create</button>
+        </div>
+        <div id="adm-invite-result"></div>
+      </div>
+      <div id="adm-invite-list"></div>`;
+
+    const list = admSel('adm-invite-list');
+    if(!invites.length){ list.innerHTML='<div class="adm-empty">No invites yet.</div>'; return; }
+    invites.forEach(i=>{
+      const state = i.used_by_athlete_id ? `used by #${i.used_by_athlete_id}` :
+                    (i.expires_at && new Date(i.expires_at)<new Date()) ? 'expired' : 'available';
+      const d = document.createElement('div');
+      d.className='adm-card';
+      d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+        <span style="font-family:monospace;color:rgba(255,255,255,.7);">${i.token.slice(0,16)}…${i.email_hint?` <span style="color:rgba(255,255,255,.35);">(${i.email_hint})</span>`:''}</span>
+        <span style="color:rgba(255,255,255,.35);">${state}</span></div>`;
+      list.appendChild(d);
+    });
+  }
+
+  window.admCreateInvite = async function(){
+    const hint = admSel('adm-invite-hint').value.trim();
+    const btn = admSel('adm-invite-create-btn');
+    btn.disabled=true; btn.textContent='…';
+    try{
+      const r = await admFetch('/api/admin/invites',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({email_hint:hint||null,ttl_days:30})
+      });
+      const d = await r.json();
+      if(r.ok){
+        const resEl = admSel('adm-invite-result');
+        resEl.innerHTML=`<div class="adm-invite-url" onclick="navigator.clipboard?.writeText('${d.signup_url}');this.textContent='Copied!'">${d.signup_url}</div><div style="font-size:10px;color:rgba(255,255,255,.3);margin-top:4px;">Click to copy · Expires ${new Date(d.expires_at).toLocaleDateString()}</div>`;
+        admSel('adm-invite-hint').value='';
+        admLoadInvites();
+      }
+    }finally{ btn.disabled=false; btn.textContent='Create'; }
+  };
+
+  /* ─── events ──────────────────────────────────────────────────────── */
+  let _evCat='all', _evSev='all', _evOffset=0;
+  const EV_LIMIT=50;
+
+  async function admLoadEvents(){
+    const sec = admSel('adm-events');
+    if(!sec.querySelector('.adm-event-filters')){
+      const CATS=['all','auth','garmin','claude','scheduler','http'];
+      const SEVS=['all','info','warn','error'];
+      sec.innerHTML=`
+        <div class="adm-row-hd"><button class="adm-reload-btn" onclick="_admEvReload()">↺ Refresh</button></div>
+        <div class="adm-event-filters">
+          <div class="adm-ef-group">${CATS.map(c=>`<button class="adm-ef-btn${c==='all'?' on':''}" data-ec="${c}" onclick="_admEvCat(this,'${c}')">${c}</button>`).join('')}</div>
+          <div class="adm-ef-group">${SEVS.map(s=>`<button class="adm-ef-btn${s==='all'?' on':''}" data-es="${s}" onclick="_admEvSev(this,'${s}')">${s}</button>`).join('')}</div>
+        </div>
+        <div id="adm-ev-list"></div>
+        <div class="adm-pager">
+          <button class="adm-pager-btn" id="adm-ev-prev" onclick="_admEvPage(-1)" disabled>← Prev</button>
+          <button class="adm-pager-btn" id="adm-ev-next" onclick="_admEvPage(1)">Next →</button>
+        </div>`;
+    }
+    _admEvFetch();
+  }
+
+  window._admEvReload = ()=>{ _evOffset=0; _admEvFetch(); };
+  window._admEvCat = (btn,cat)=>{
+    document.querySelectorAll('[data-ec]').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on'); _evCat=cat; _evOffset=0; _admEvFetch();
+  };
+  window._admEvSev = (btn,sev)=>{
+    document.querySelectorAll('[data-es]').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on'); _evSev=sev; _evOffset=0; _admEvFetch();
+  };
+  window._admEvPage = (dir)=>{
+    _evOffset=Math.max(0,_evOffset+dir*EV_LIMIT); _admEvFetch();
+  };
+
+  async function _admEvFetch(){
+    const list = admSel('adm-ev-list');
+    if(!list) return;
+    list.innerHTML='<div class="adm-empty">Loading…</div>';
+    const r = await admFetch(`/api/admin/events?category=${_evCat}&severity=${_evSev}&limit=${EV_LIMIT}&offset=${_evOffset}`);
+    if(!r.ok){ list.innerHTML='<div class="adm-empty">Failed.</div>'; return; }
+    const {events,total} = await r.json();
+    list.innerHTML='';
+    if(!events.length){ list.innerHTML='<div class="adm-empty">No events.</div>'; return; }
+    events.forEach(ev=>{
+      const sev = ev.severity||'info';
+      const d = document.createElement('div');
+      d.className='adm-ev';
+      d.innerHTML=`<div><span class="adm-ev-ts">${ev.timestamp.replace('T',' ').slice(0,19)}</span><span class="adm-ev-sev ${sev}">${sev}</span><span style="font-size:10px;color:rgba(255,255,255,.3);margin-left:6px;">${ev.category||''}</span></div>
+        <div class="adm-ev-msg">${ev.message||''}</div>
+        ${ev.athlete_name?`<div class="adm-ev-who">${ev.athlete_name}</div>`:''}`;
+      list.appendChild(d);
+    });
+    const prev = admSel('adm-ev-prev'), next = admSel('adm-ev-next');
+    if(prev) prev.disabled = _evOffset===0;
+    if(next) next.disabled = _evOffset+EV_LIMIT>=total;
+  }
+})();
 </script>
 </body>
 </html>
