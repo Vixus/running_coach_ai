@@ -1911,17 +1911,19 @@ function buildMilesGrid(m){
   const weekStarts = ((m && m.weekly_history) || []).map(w => w.wk_start_iso).filter(Boolean).sort();
   function weekLabel(dateStr) {
     if (!weekStarts.length) return '';
-    let label = '';
+    // Find the most recent week start that's <= dateStr (weekStarts is ascending)
+    let idx = -1;
     for (let i = 0; i < weekStarts.length; i++) {
-      if (dateStr >= weekStarts[i]) {
-        const idx = i;
-        const totalW = (m.training && m.training.total_weeks) || weekStarts.length;
-        const startIdx = (m.training && m.training.current_week) ? m.training.current_week - (weekStarts.length - 1) : null;
-        if (startIdx != null) return `Week ${startIdx + idx} of ${totalW}`;
-        return `Week ${idx + 1}`;
-      }
+      if (dateStr >= weekStarts[i]) idx = i;
+      else break;
     }
-    return '';
+    if (idx === -1) return '';
+    const totalW = (m.training && m.training.total_weeks) || weekStarts.length;
+    if (m.training && m.training.current_week) {
+      const weekNum = Math.max(1, m.training.current_week - (weekStarts.length - 1 - idx));
+      return `Week ${weekNum} of ${totalW}`;
+    }
+    return `Week ${idx + 1}`;
   }
 
   grid.innerHTML = '';
