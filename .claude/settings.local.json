@@ -64,7 +64,22 @@
       "Bash(git checkout *)",
       "Bash(netstat -ano)",
       "Bash(start \"\" \"C:\\\\Users\\\\vixus\\\\Projects\\\\running_coach_ai\\\\running_coach_ai\\\\web\\\\static\\\\story_protos.html\")",
-      "Bash(start *)"
+      "Bash(start *)",
+      "Bash(curl *)",
+      "Bash(xargs wc *)",
+      "Bash(git log *)",
+      "Bash(git rm *)",
+      "Bash(grep -n '^\"\"\"\\\\|\"\"\"$\\\\|COACH_PERSONA' running_coach_ai/coach/persona.py)",
+      "Bash(grep -nB1 -A8 'notify\\(' running_coach_ai/scheduler/jobs.py running_coach_ai/coach/feedback.py running_coach_ai/coach/adapter.py)",
+      "PowerShell(.specify/scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly)",
+      "PowerShell(.specify/scripts/powershell/setup-plan.ps1 -Json)",
+      "PowerShell(.specify/scripts/powershell/update-agent-context.ps1 -AgentType claude)",
+      "PowerShell(.specify/scripts/powershell/update-agent-context.ps1 -AgentType claude 2>&1)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "PowerShell(.specify/scripts/powershell/check-prerequisites.ps1 -Json)",
+      "PowerShell(if \\(-not \\(Test-Path specs/006-magazine-features\\)\\) { New-Item -ItemType Directory specs/006-magazine-features | Out-Null; Copy-Item specs/006-athlete-story/plan.md specs/006-magazine-features/plan.md; Copy-Item specs/006-athlete-story/spec.md specs/006-magazine-features/spec.md; Copy-Item specs/006-athlete-story/tasks.md specs/006-magazine-features/tasks.md }; .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks 2>&1)",
+      "Bash(git reset *)"
     ]
   }
 }
