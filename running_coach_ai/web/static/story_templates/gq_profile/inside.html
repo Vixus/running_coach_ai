@@ -1,0 +1,33 @@
+<div class="tpl-gq tpl-gq-inside">
+  <article class="tpl-gq-body">
+    {% set paragraphs = editorial_body.split('\n\n') %}
+    {% for para in paragraphs %}
+      {% if loop.index == (paragraphs|length // 2 + 1) and pull_quote %}
+        <aside class="tpl-gq-pullquote"><p>&ldquo;{{ pull_quote }}&rdquo;</p></aside>
+        <p class="tpl-gq-para">{{ para }}</p>
+      {% else %}
+        <p class="tpl-gq-para">{{ para }}</p>
+      {% endif %}
+    {% endfor %}
+  </article>
+
+  <aside class="tpl-gq-marginalia">
+    {% if training_stats %}
+    <div class="tpl-gq-stat-block">
+      {% if training_stats.total_miles %}<div><span class="tpl-gq-stat-key">Miles</span><span class="tpl-gq-stat-val">{{ training_stats.total_miles }}</span></div>{% endif %}
+      {% if training_stats.race_time %}<div><span class="tpl-gq-stat-key">Time</span><span class="tpl-gq-stat-val">{{ training_stats.race_time }}</span></div>{% endif %}
+      {% if training_stats.weeks_trained %}<div><span class="tpl-gq-stat-key">Weeks</span><span class="tpl-gq-stat-val">{{ training_stats.weeks_trained }}</span></div>{% endif %}
+    </div>
+    {% endif %}
+    {% if images and images|length > 1 %}
+    <div class="tpl-gq-photos">
+      {% for img in images[1:] %}
+      <figure class="tpl-gq-photo">
+        <img src="{{ img.url }}" alt="{{ img.caption or '' }}">
+        {% if img.caption %}<figcaption>{{ img.caption }}</figcaption>{% endif %}
+      </figure>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </aside>
+</div>

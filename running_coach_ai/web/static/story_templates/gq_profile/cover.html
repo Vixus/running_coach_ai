@@ -1,0 +1,12 @@
+<div class="tpl-gq tpl-gq-cover">
+  {% if cover_image_url %}
+  <div class="tpl-gq-cover-image" style="background-image:url('{{ cover_image_url }}');"></div>
+  {% else %}
+  <div class="tpl-gq-cover-image tpl-gq-cover-placeholder"></div>
+  {% endif %}
+  <div class="tpl-gq-cover-overlay">
+    <div class="tpl-gq-issue">{{ milestone_label }}</div>
+    <h1 class="tpl-gq-headline">{{ athlete_first_name|upper }}<br>{{ athlete_last_name|upper }}</h1>
+    <div class="tpl-gq-deck">{{ deck_text }}</div>
+  </div>
+</div>

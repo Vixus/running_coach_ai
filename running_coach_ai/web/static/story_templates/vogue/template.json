@@ -1,0 +1,7 @@
+{
+  "key": "vogue",
+  "display_name": "Editorial Profile",
+  "voice_description": "Glossy, aspirational, present-tense scene-setting. Open with a vignette — a single sensory image of the athlete in motion. End with a quote pulled from the athlete's own words. Sparse adjectives; intentional white space in the prose. Reads like a fashion-editorial profile, not a sports report.",
+  "trigger_affinities": ["race_complete", "pr_set"],
+  "thumbnail": "thumbnail.jpg"
+}

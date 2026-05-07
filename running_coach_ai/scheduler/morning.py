@@ -55,6 +55,55 @@ def _run_morning_checkin_for_athlete(athlete_id: int) -> None:
                 if is_garmin_auth_error(inner_e):
                     _notify_garmin_auth_error(athlete)
                 raise
+
+            # Story triggers: race_upcoming (7d before goal) + difficult_week + stalled-session sweep.
+            # Wrapped in try/except per Constitution V — never abort the morning job for story errors.
+            try:
+                from datetime import date as _date, datetime as _dt, timedelta as _td
+                from running_coach_ai.coach.story import (
+                    detect_race_upcoming, detect_difficult_week,
+                    fire_trigger_if_eligible, close_session,
+                )
+                from running_coach_ai.database.models import (
+                    StoryInterviewSession, StoryQuestion,
+                )
+
+                today = _date.today()
+                goal = detect_race_upcoming(athlete, today, db_session)
+                if goal is not None:
+                    fire_trigger_if_eligible(
+                        athlete, "race_upcoming", {"goal_id": goal.id}, db_session,
+                    )
+                elif detect_difficult_week(athlete, db_session, today):
+                    fire_trigger_if_eligible(
+                        athlete, "difficult_week", {}, db_session,
+                    )
+
+                # Stalled-session sweep (T035): close any session whose newest
+                # StoryQuestion was asked >7 days ago and is still unanswered.
+                stale_cutoff = _dt.utcnow() - _td(days=7)
+                stalled = (
+                    db_session.query(StoryInterviewSession)
+                    .filter(
+                        StoryInterviewSession.athlete_id == athlete.id,
+                        StoryInterviewSession.completed_at.is_(None),
+                    )
+                    .all()
+                )
+                for s in stalled:
+                    newest_q = (
+                        db_session.query(StoryQuestion)
+                        .filter(StoryQuestion.session_id == s.id)
+                        .order_by(StoryQuestion.asked_at.desc())
+                        .first()
+                    )
+                    if newest_q and newest_q.asked_at < stale_cutoff:
+                        close_session(s, db_session, skipped=False)
+                        logger.info("Closed stalled story session %d for athlete %d",
+                                    s.id, athlete.id)
+            except Exception as story_err:
+                logger.warning("Story morning hooks failed for athlete %d: %s",
+                               athlete.id, story_err)
     except Exception as e:
         logger.error("Morning check-in failed for athlete %d: %s", athlete_id, e)
 

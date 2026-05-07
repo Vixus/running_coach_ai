@@ -1,0 +1,31 @@
+/* The Field Notes (outside) — earth-tone, large landscape cover */
+.tpl-out { --paper:#ede5d8; --ink:#2a2620; --sage:#5a8a62; --terra:#b8673e; --moss:#3d4a35; }
+.tpl-out { font-family:'Inter',sans-serif;color:var(--ink);background:var(--paper);}
+
+/* Cover */
+.tpl-out-cover{position:relative;min-height:100vh;overflow:hidden;}
+.tpl-out-cover-image{position:absolute;inset:0;background-size:cover;background-position:center;}
+.tpl-out-cover-image::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(42,38,32,0.85) 0%,rgba(42,38,32,0.2) 50%,rgba(42,38,32,0.6) 100%);}
+.tpl-out-cover-placeholder{background:linear-gradient(180deg,#5a8a62 0%,#3d4a35 50%,#2a2620 100%);}
+.tpl-out-cover-overlay{position:absolute;bottom:8vh;left:6vw;right:6vw;color:var(--paper);z-index:2;}
+.tpl-out-coords{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:.3em;border:1px solid var(--paper);display:inline-block;padding:6px 14px;margin-bottom:1.6rem;}
+.tpl-out-headline{font-family:'Bebas Neue',sans-serif;font-size:clamp(64px,12vw,180px);line-height:.92;margin:0;letter-spacing:-.02em;}
+.tpl-out-headline span{display:block;color:var(--terra);}
+.tpl-out-deck{margin-top:2rem;max-width:520px;font-family:'Inter',sans-serif;font-size:18px;font-weight:300;line-height:1.5;letter-spacing:.01em;}
+
+/* Inside */
+.tpl-out-inside{padding:8vh 6vw;max-width:1100px;margin:0 auto;}
+.tpl-out-body{max-width:680px;font-family:'Inter',sans-serif;}
+.tpl-out-para{font-size:18px;line-height:1.7;margin-bottom:1.4rem;color:var(--ink);}
+.tpl-out-para:first-of-type{font-size:20px;color:var(--moss);font-weight:300;}
+.tpl-out-photos{margin:48px 0;display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+.tpl-out-photo{margin:0;}
+.tpl-out-photo:first-child{grid-column:1 / -1;}
+.tpl-out-photo img{width:100%;height:auto;display:block;border-radius:2px;}
+.tpl-out-photo figcaption{font-family:'Inter',sans-serif;font-size:11px;color:var(--moss);margin-top:6px;letter-spacing:.04em;text-transform:uppercase;}
+.tpl-out-stats{margin-top:48px;}
+.tpl-out-stats-rule{height:2px;background:var(--terra);margin-bottom:32px;width:120px;}
+.tpl-out-stats-row{display:flex;gap:64px;flex-wrap:wrap;}
+.tpl-out-stat-num{font-family:'Bebas Neue',sans-serif;font-size:48px;line-height:1;color:var(--moss);display:block;}
+.tpl-out-stat-lbl{font-family:'Inter',sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--terra);margin-top:6px;display:block;}
+@media (max-width:720px){.tpl-out-photos{grid-template-columns:1fr;}.tpl-out-stats-row{gap:32px;}}

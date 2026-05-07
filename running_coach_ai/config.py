@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     GARMIN_TIMEOUT: int = 30  # Timeout in seconds for Garmin API calls
     WEB_SECRET_KEY: str = ""
     WEB_PORT: int = 8080
+    STORY_IMAGE_DIR: str = "/data/story_images/"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

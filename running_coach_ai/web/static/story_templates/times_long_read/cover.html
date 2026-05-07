@@ -1,0 +1,15 @@
+<div class="tpl-tlr tpl-tlr-cover">
+  <div class="tpl-tlr-cover-frame">
+    {% if cover_image_url %}
+    <div class="tpl-tlr-cover-photo" style="background-image:url('{{ cover_image_url }}');"></div>
+    {% else %}
+    <div class="tpl-tlr-cover-photo tpl-tlr-cover-placeholder"></div>
+    {% endif %}
+    <div class="tpl-tlr-cover-text">
+      <div class="tpl-tlr-section-mark">{{ milestone_label|upper }}</div>
+      <h1 class="tpl-tlr-headline">{{ athlete_first_name }} {{ athlete_last_name }}</h1>
+      <div class="tpl-tlr-kicker"><em>{{ deck_text }}</em></div>
+      <div class="tpl-tlr-byline">A profile</div>
+    </div>
+  </div>
+</div>

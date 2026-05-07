@@ -233,6 +233,51 @@ def _ingest_and_feedback(athlete, activity_id: str, garmin, db_session, schedule
                 athlete, completed, biomechanics_result, db_session,
                 athlete_max_hr=athlete_max_hr,
             )
+
+            # Story triggers: PR / race-complete detection and (if eligible) generation.
+            # Wrapped in try/except so trigger failures never abort activity ingestion
+            # (Constitution V — graceful degradation).
+            try:
+                from running_coach_ai.coach.story import (
+                    detect_pr_set, detect_race_complete,
+                    fire_trigger_if_eligible, generate_story,
+                )
+                if detect_race_complete(completed, db_session):
+                    goal = detect_race_complete(completed, db_session)
+                    fire_trigger_if_eligible(
+                        athlete, "race_complete",
+                        {"goal_id": goal.id, "completed_workout_id": completed.id},
+                        db_session,
+                    )
+                    # If athlete has ≥4 answered questions, also fire generation
+                    try:
+                        from running_coach_ai.database.models import StoryQuestion, StoryInterviewSession
+                        answered_count = (
+                            db_session.query(StoryQuestion)
+                            .join(StoryInterviewSession,
+                                  StoryInterviewSession.id == StoryQuestion.session_id)
+                            .filter(
+                                StoryQuestion.athlete_id == athlete.id,
+                                StoryQuestion.answered_at.isnot(None),
+                                StoryInterviewSession.completed_at.isnot(None),
+                                StoryInterviewSession.skipped == False,
+                                StoryInterviewSession.story_id.is_(None),
+                            )
+                            .count()
+                        )
+                        if answered_count >= 4:
+                            generate_story(athlete, "race_complete", db_session)
+                    except Exception as gen_err:
+                        logger.warning("Auto-generation skipped for athlete %d: %s",
+                                       athlete.id, gen_err)
+                elif detect_pr_set(completed, db_session):
+                    fire_trigger_if_eligible(
+                        athlete, "pr_set", {"completed_workout_id": completed.id},
+                        db_session,
+                    )
+            except Exception as story_err:
+                logger.warning("Story trigger detection failed for athlete %d: %s",
+                               athlete.id, story_err)
         else:
             # Cross-training (skiing, hiking, tennis, etc.): store the activity for
             # fatigue/fitness context in coaching conversations but skip running-specific

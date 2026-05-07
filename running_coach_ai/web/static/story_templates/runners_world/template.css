@@ -1,0 +1,30 @@
+/* The Build-Up (runners_world) — practical reportage, 3-col body + stat sidebar */
+.tpl-rw { --paper:#f4f1ea; --ink:#1c1c1a; --mid:#5e7e96; --accent:#5a8a62; --hi:#b8ff4f; }
+.tpl-rw { font-family:'Inter',sans-serif;color:var(--ink);background:var(--paper);}
+
+/* Cover */
+.tpl-rw-cover{position:relative;min-height:100vh;overflow:hidden;}
+.tpl-rw-cover-image{position:absolute;inset:0;background-size:cover;background-position:center;}
+.tpl-rw-cover-image::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(28,28,26,0.1) 0%,rgba(28,28,26,0.7) 60%,rgba(28,28,26,0.95) 100%);}
+.tpl-rw-cover-placeholder{background:linear-gradient(135deg,#2a3530 0%,#1c1c1a 100%);}
+.tpl-rw-cover-overlay{position:absolute;bottom:8vh;left:6vw;right:6vw;color:#f4f1ea;z-index:2;}
+.tpl-rw-banner{display:inline-block;background:var(--hi);color:var(--ink);padding:6px 14px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:.18em;margin-bottom:1.6rem;}
+.tpl-rw-headline{font-family:'Bebas Neue',sans-serif;font-size:clamp(48px,9vw,128px);line-height:.95;letter-spacing:-.01em;margin:0;}
+.tpl-rw-deck{margin-top:1.6rem;max-width:540px;font-family:'Inter',sans-serif;font-size:clamp(15px,1.8vw,20px);line-height:1.5;opacity:.85;}
+.tpl-rw-stat-strip{margin-top:2rem;display:flex;gap:32px;flex-wrap:wrap;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:.1em;opacity:.75;}
+.tpl-rw-stat-strip strong{font-size:24px;letter-spacing:0;display:block;color:var(--hi);}
+
+/* Inside spread */
+.tpl-rw-inside{padding:8vh 6vw;display:grid;grid-template-columns:2fr 1fr;gap:48px;max-width:1200px;margin:0 auto;}
+.tpl-rw-body{font-family:'Inter',sans-serif;}
+.tpl-rw-para{font-size:17px;line-height:1.7;margin-bottom:1.4rem;color:var(--ink);}
+.tpl-rw-sidebar{border-left:2px solid var(--accent);padding-left:32px;}
+.tpl-rw-sidebar-h{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.16em;color:var(--accent);margin-bottom:18px;}
+.tpl-rw-stats-grid{margin-bottom:32px;}
+.tpl-rw-stats-grid dt{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mid);margin-top:14px;}
+.tpl-rw-stats-grid dd{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--ink);margin:4px 0 0;}
+.tpl-rw-photo-stack{display:flex;flex-direction:column;gap:16px;}
+.tpl-rw-photo{margin:0;}
+.tpl-rw-photo img{width:100%;height:auto;display:block;border-radius:2px;}
+.tpl-rw-photo figcaption{font-size:11px;color:var(--mid);margin-top:6px;letter-spacing:.04em;}
+@media (max-width:720px){.tpl-rw-inside{grid-template-columns:1fr;gap:32px;}.tpl-rw-sidebar{border-left:0;border-top:2px solid var(--accent);padding:24px 0 0;}}

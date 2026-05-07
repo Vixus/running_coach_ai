@@ -1,0 +1,7 @@
+{
+  "key": "outside",
+  "display_name": "The Field Notes",
+  "voice_description": "Adventure prose, sensory, weather-aware. First person. Open with a single environmental image — '4°C dawn, gravel still wet from rain'. Treat the body as terrain. Sentences are short and physical. Reads like a Sunday-morning trail journal.",
+  "trigger_affinities": ["race_complete", "difficult_week"],
+  "thumbnail": "thumbnail.jpg"
+}

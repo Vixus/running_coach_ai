@@ -1,0 +1,15 @@
+<div class="tpl-vogue tpl-vogue-cover">
+  {% if cover_image_url %}
+  <div class="tpl-vogue-cover-image" style="background-image: url('{{ cover_image_url }}');"></div>
+  {% else %}
+  <div class="tpl-vogue-cover-image tpl-vogue-cover-placeholder"></div>
+  {% endif %}
+
+  <div class="tpl-vogue-cover-overlay">
+    <div class="tpl-vogue-kicker">{{ milestone_label }}</div>
+    <h1 class="tpl-vogue-headline">
+      {{ athlete_first_name|upper }}<br><em>{{ athlete_last_name|upper }}</em>
+    </h1>
+    <div class="tpl-vogue-deck">{{ deck_text }}</div>
+  </div>
+</div>

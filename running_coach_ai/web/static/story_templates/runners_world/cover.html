@@ -1,0 +1,19 @@
+<div class="tpl-rw tpl-rw-cover">
+  {% if cover_image_url %}
+  <div class="tpl-rw-cover-image" style="background-image: url('{{ cover_image_url }}');"></div>
+  {% else %}
+  <div class="tpl-rw-cover-image tpl-rw-cover-placeholder"></div>
+  {% endif %}
+  <div class="tpl-rw-cover-overlay">
+    <div class="tpl-rw-banner">{{ milestone_label }}</div>
+    <h1 class="tpl-rw-headline">{{ athlete_first_name|upper }} {{ athlete_last_name|upper }}</h1>
+    <div class="tpl-rw-deck">{{ deck_text }}</div>
+    {% if training_stats %}
+    <div class="tpl-rw-stat-strip">
+      {% if training_stats.total_miles %}<span><strong>{{ training_stats.total_miles }}</strong> mi</span>{% endif %}
+      {% if training_stats.race_time %}<span><strong>{{ training_stats.race_time }}</strong> finish</span>{% endif %}
+      {% if training_stats.weeks_trained %}<span><strong>{{ training_stats.weeks_trained }}</strong> weeks</span>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>

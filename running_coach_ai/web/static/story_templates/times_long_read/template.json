@@ -1,0 +1,7 @@
+{
+  "key": "times_long_read",
+  "display_name": "The Long Read",
+  "voice_description": "Third-person observational, like a Sunday-magazine profile. Quietly confident. Let small details carry meaning — a weather report, a quote overheard, the way the athlete's hands shake at the start line. Break the piece into chapters with subheads. Avoid hyperbole; trust the reader.",
+  "trigger_affinities": ["pace_recalibration", "difficult_week"],
+  "thumbnail": "thumbnail.jpg"
+}

@@ -48,6 +48,8 @@ class Athlete(Base):
     web_password_hash = Column(Text, nullable=True)
     is_admin = Column(Boolean, nullable=False, default=False)
     prescription_style = Column(Text, nullable=True)  # "time" | "distance" | None (not yet set)
+    story_opt_in = Column(Boolean, nullable=False, default=False)
+    story_intro_seen_at = Column(DateTime, nullable=True)
 
     goals = relationship("Goal", back_populates="athlete")
     health_snapshots = relationship("HealthSnapshot", back_populates="athlete")
@@ -377,4 +379,100 @@ class Notification(Base):
     __table_args__ = (
         Index("ix_notifications_athlete_created", "athlete_id", "created_at"),
         Index("ix_notifications_athlete_unread", "athlete_id", "read_at"),
+    )
+
+
+class AthleteStory(Base):
+    __tablename__ = "athlete_stories"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    athlete_id = Column(Integer, ForeignKey("athletes.id", ondelete="CASCADE"), nullable=False, index=True)
+    milestone_type = Column(Text, nullable=False)  # 'race_complete' (only v1; CHECK constraint in migration)
+    title = Column(Text, nullable=False)
+    editorial_body = Column(Text, nullable=False)
+    cover_image_path = Column(Text, nullable=True)
+    template_key = Column(Text, nullable=False, default="vogue")
+    template_locked_by_athlete = Column(Boolean, nullable=False, default=False)
+    share_token = Column(Text, unique=True, nullable=False, index=True)
+    regeneration_count = Column(Integer, nullable=False, default=0)
+    last_regenerated_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    published_at = Column(DateTime, nullable=True)
+    deleted_at = Column(DateTime, nullable=True, index=True)
+
+    athlete = relationship("Athlete")
+    images = relationship("StoryImage", back_populates="story", cascade="all, delete-orphan",
+                          order_by="StoryImage.sort_order")
+    sessions = relationship("StoryInterviewSession", back_populates="story",
+                            foreign_keys="StoryInterviewSession.story_id")
+
+    __table_args__ = (
+        Index("ix_athlete_stories_athlete_deleted", "athlete_id", "deleted_at"),
+        Index("ix_athlete_stories_athlete_milestone", "athlete_id", "milestone_type", "deleted_at"),
+    )
+
+
+class StoryInterviewSession(Base):
+    __tablename__ = "story_interview_sessions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    athlete_id = Column(Integer, ForeignKey("athletes.id", ondelete="CASCADE"), nullable=False, index=True)
+    trigger_kind = Column(Text, nullable=False)  # CHECK in (pr_set,race_upcoming,race_complete,pace_recalibration,difficult_week)
+    trigger_context_json = Column(JSON, nullable=False, default=dict)
+    started_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True, index=True)
+    skipped = Column(Boolean, nullable=False, default=False)
+    story_id = Column(Integer, ForeignKey("athlete_stories.id"), nullable=True)
+
+    athlete = relationship("Athlete")
+    story = relationship("AthleteStory", back_populates="sessions", foreign_keys=[story_id])
+    questions = relationship("StoryQuestion", back_populates="session",
+                             cascade="all, delete-orphan",
+                             order_by="StoryQuestion.question_index")
+
+    __table_args__ = (
+        Index("ix_story_sessions_athlete_completed", "athlete_id", "completed_at"),
+        Index("ix_story_sessions_athlete_story", "athlete_id", "story_id"),
+    )
+
+
+class StoryQuestion(Base):
+    __tablename__ = "story_questions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(Integer, ForeignKey("story_interview_sessions.id", ondelete="CASCADE"),
+                        nullable=False, index=True)
+    athlete_id = Column(Integer, ForeignKey("athletes.id"), nullable=False, index=True)
+    story_id = Column(Integer, ForeignKey("athlete_stories.id"), nullable=True)
+    question_index = Column(Integer, nullable=False)
+    question = Column(Text, nullable=False)
+    options_json = Column(JSON, nullable=False)
+    answer = Column(Text, nullable=True)
+    is_custom_answer = Column(Boolean, nullable=True)
+    asked_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    answered_at = Column(DateTime, nullable=True)
+
+    session = relationship("StoryInterviewSession", back_populates="questions")
+
+    __table_args__ = (
+        UniqueConstraint("session_id", "question_index", name="uq_story_question_index"),
+        Index("ix_story_questions_athlete_answered", "athlete_id", "answered_at"),
+    )
+
+
+class StoryImage(Base):
+    __tablename__ = "story_images"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    story_id = Column(Integer, ForeignKey("athlete_stories.id", ondelete="CASCADE"),
+                      nullable=False, index=True)
+    filename = Column(Text, nullable=False)
+    caption = Column(Text, nullable=True)
+    sort_order = Column(Integer, nullable=False, default=0)
+    uploaded_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    story = relationship("AthleteStory", back_populates="images")
+
+    __table_args__ = (
+        Index("ix_story_images_story_sort", "story_id", "sort_order"),
     )

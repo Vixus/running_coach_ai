@@ -32,6 +32,19 @@
       <div class="coach-picker-menu" id="coach-picker-menu"></div>
     </div>
     <button id="nav-admin-btn" class="nav-link" style="display:none;background:none;border:none;cursor:pointer;padding:0;" onclick="openAdminPanel()">Admin</button>
+    <button id="story-toggle" class="nav-mode-btn" title="Story feature" onclick="toggleStoryMenu(event)" aria-label="Story feature">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    </button>
+    <div id="story-menu" role="dialog" aria-label="Story feature">
+      <div class="sm-head">My Story</div>
+      <div class="sm-body">
+        <label class="sm-toggle-row">
+          <span>Enable story feature</span>
+          <input type="checkbox" id="story-opt-in" onchange="onStoryOptInChange(event)">
+        </label>
+        <div class="sm-note">Your coach will ask a few questions at key training moments to build a magazine-style story about your journey.</div>
+      </div>
+    </div>
     <button id="notif-bell" class="nav-mode-btn" title="Notifications" onclick="toggleNotifPanel(event)" aria-label="Notifications">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
       <span id="notif-badge" class="notif-badge" style="display:none;">0</span>
@@ -269,6 +282,34 @@
   <div id="sw-detail"></div>
 </section>
 
+<section id="mystory" style="display:none;">
+  <span class="eye R">Your Story</span>
+  <h2 class="hed hed-lg R d1" id="ms-headline">YOUR<br><em>SPREAD</em></h2>
+  <div id="ms-card" class="ms-card R d2">
+    <div id="ms-cover" class="ms-cover"></div>
+    <div class="ms-body">
+      <div id="ms-title" class="ms-title"></div>
+      <div id="ms-preview" class="ms-preview"></div>
+      <div id="ms-actions" class="ms-actions">
+        <button class="ms-btn ms-btn-primary" id="ms-share-btn" onclick="msPublishToggle()">Share</button>
+        <button class="ms-btn" id="ms-regen-btn" onclick="msRegenerate()">Regenerate</button>
+        <button class="ms-btn ms-btn-secondary" id="ms-delete-btn" onclick="msDelete()">Delete</button>
+        <a class="ms-btn ms-btn-link" id="ms-preview-link" href="#" target="_blank">Preview</a>
+      </div>
+      <div class="ms-templates">
+        <div class="ms-templates-head">Try a different look</div>
+        <div id="ms-template-carousel" class="ms-template-carousel"></div>
+      </div>
+      <div id="ms-photos" class="ms-photos"></div>
+      <div class="ms-upload">
+        <label class="ms-upload-label" for="ms-upload-input">+ Add photo</label>
+        <input type="file" id="ms-upload-input" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="msUploadImage(event)">
+      </div>
+      <div id="ms-error" class="ms-error" style="display:none;"></div>
+    </div>
+  </div>
+</section>
+
 <section id="miles">
   <span class="miles-eye R">The Season · Mile by Mile</span>
   <h2 class="miles-hed R d1"><span id="miles-num">0</span> <em>MILES</em></h2>
@@ -391,11 +432,62 @@
     <button class="adm-tab active" data-tab="athletes" onclick="admSwitchTab('athletes',this)">Athletes</button>
     <button class="adm-tab" data-tab="invites" onclick="admSwitchTab('invites',this)">Invites</button>
     <button class="adm-tab" data-tab="events" onclick="admSwitchTab('events',this)">Events</button>
+    <button class="adm-tab" data-tab="stories" onclick="admSwitchTab('stories',this)">Stories</button>
   </div>
   <div id="admin-body">
     <div id="adm-athletes" class="adm-sec active"></div>
     <div id="adm-invites" class="adm-sec"></div>
     <div id="adm-events" class="adm-sec"></div>
+    <div id="adm-stories" class="adm-sec"></div>
+  </div>
+</div>
+
+<!-- ── Story Intro Modal (5 pages with infographic animations) ────── -->
+<div id="story-intro-overlay" onclick="if(event.target===this)closeStoryIntro()"></div>
+<div id="story-intro-modal" role="dialog" aria-label="About the story feature">
+  <div class="sim-pages">
+    <div class="sim-page active" data-page="1">
+      <div class="sim-art sim-art-1">
+        <svg viewBox="0 0 200 120" class="sim-svg"><circle cx="100" cy="60" r="40" stroke="currentColor" stroke-width="2" fill="none" class="sim-pulse"/><text x="100" y="68" text-anchor="middle" font-family="DM Serif Display" font-size="24">📖</text></svg>
+      </div>
+      <h2>Your Magazine Story</h2>
+      <p>Every athlete has a story worth telling. As you train, your coach will quietly capture the moments worth narrating.</p>
+    </div>
+    <div class="sim-page" data-page="2">
+      <div class="sim-art sim-art-2">
+        <svg viewBox="0 0 200 120" class="sim-svg"><rect x="40" y="30" width="120" height="60" rx="8" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="60" cy="60" r="6" fill="currentColor" class="sim-blink"/><line x1="76" y1="55" x2="140" y2="55" stroke="currentColor" stroke-width="2"/><line x1="76" y1="65" x2="120" y2="65" stroke="currentColor" stroke-width="2" opacity="0.4"/></svg>
+      </div>
+      <h2>Questions When It Matters</h2>
+      <p>After a PR, an upcoming race, or a tough week, your coach asks a few short questions in chat — multiple-choice or your own words.</p>
+    </div>
+    <div class="sim-page" data-page="3">
+      <div class="sim-art sim-art-3">
+        <svg viewBox="0 0 200 120" class="sim-svg"><path d="M30,90 Q60,30 100,60 T170,40" stroke="currentColor" stroke-width="2" fill="none" class="sim-trace"/><circle cx="100" cy="60" r="4" fill="currentColor"/></svg>
+      </div>
+      <h2>Your Words Shape The Story</h2>
+      <p>When a milestone arrives — your goal race, a season finale — your coach uses everything you've shared to write a 400–600 word editorial in a magazine style.</p>
+    </div>
+    <div class="sim-page" data-page="4">
+      <div class="sim-art sim-art-4">
+        <svg viewBox="0 0 200 120" class="sim-svg"><rect x="50" y="30" width="40" height="60" stroke="currentColor" stroke-width="2" fill="none"/><rect x="105" y="30" width="40" height="60" stroke="currentColor" stroke-width="2" fill="none" opacity="0.5"/><text x="70" y="70" text-anchor="middle" font-family="DM Serif Display" font-size="11">A</text><text x="125" y="70" text-anchor="middle" font-family="DM Serif Display" font-size="11">B</text></svg>
+      </div>
+      <h2>Pick Your Style</h2>
+      <p>The system picks a magazine template that matches your story's voice. You can swap to any of the five — Vogue-style, Runner's World, Times Long Read, Outside, GQ — instantly.</p>
+    </div>
+    <div class="sim-page" data-page="5">
+      <div class="sim-art sim-art-5">
+        <svg viewBox="0 0 200 120" class="sim-svg"><circle cx="100" cy="60" r="35" stroke="currentColor" stroke-width="2" fill="none"/><path d="M85,60 L95,72 L120,48" stroke="currentColor" stroke-width="3" fill="none" class="sim-check"/></svg>
+      </div>
+      <h2>Private Until You Share</h2>
+      <p>Your story is private until you press Share. Then it becomes a public link you can send to anyone — and you can unpublish or delete it any time.</p>
+    </div>
+  </div>
+  <div class="sim-nav">
+    <button id="sim-prev" class="sim-btn sim-btn-secondary" onclick="storyIntroPrev()" disabled>Back</button>
+    <div id="sim-dots" class="sim-dots">
+      <span class="active"></span><span></span><span></span><span></span><span></span>
+    </div>
+    <button id="sim-next" class="sim-btn sim-btn-primary" onclick="storyIntroNext()">Next</button>
   </div>
 </div>
 

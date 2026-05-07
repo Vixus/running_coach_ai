@@ -293,6 +293,7 @@ class TestHandleMessageSyncPrompt:
 
         with patch(f"{self._CONV}.call_claude", return_value=claude_response), \
              patch(f"{self._CONV}.build_system_prompt", return_value="system prompt"), \
+             patch("running_coach_ai.coach.story.get_pending_question", return_value=None), \
              patch(f"{self._WB}.get_garmin_client") as mock_auth, \
              patch(f"{self._WB}.get_garmin_workout_library", return_value=[]), \
              patch(f"{self._WB}.upload_workout", side_effect=_mock_upload) as mock_up, \
@@ -593,6 +594,7 @@ class TestPlanAlreadySynced:
 
         with patch(f"{_CONV}.call_claude", return_value=claude_response), \
              patch(f"{_CONV}.build_system_prompt", return_value="system"), \
+             patch("running_coach_ai.coach.story.get_pending_question", return_value=None), \
              patch(f"{_WB}.get_garmin_client") as mock_auth, \
              patch(f"{_WB}.get_garmin_workout_library", return_value=[]), \
              patch(f"{_WB}.upload_workout", return_value={"workoutId": 9001}) as mock_up, \

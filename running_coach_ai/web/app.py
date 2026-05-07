@@ -90,6 +90,13 @@ def create_app() -> Flask:
     app = Flask(__name__, static_folder="static", template_folder="templates")
     app.config["SECRET_KEY"] = settings.WEB_SECRET_KEY
 
+    # Ensure the story image directory exists (Railway Volume on prod, any path locally)
+    os.makedirs(settings.STORY_IMAGE_DIR, exist_ok=True)
+
+    # Load the magazine-template registry once at startup
+    from running_coach_ai.coach.story_templates import load_registry
+    load_registry(force=True)
+
     event.listen(engine, "connect", _enable_wal_mode)
 
     # Auth routes and page serving
@@ -204,6 +211,12 @@ def create_app() -> Flask:
 
     from running_coach_ai.web.api.onboarding import bp as onboarding_bp
     app.register_blueprint(onboarding_bp)
+
+    from running_coach_ai.web.api.stories import bp as stories_bp
+    app.register_blueprint(stories_bp)
+
+    from running_coach_ai.web.routes.public_story import bp as public_story_bp
+    app.register_blueprint(public_story_bp)
 
     from running_coach_ai.web.events import attach_web_event_handler
     attach_web_event_handler(app)

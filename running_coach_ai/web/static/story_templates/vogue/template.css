@@ -1,0 +1,91 @@
+/* Editorial Profile (vogue) — magazine cover + 2-column inside spread */
+.tpl-vogue { --paper:#f0ebe3; --ink:#141210; --mid:#8a7868; --accent:#b8673e; }
+.tpl-vogue { font-family: 'Inter', -apple-system, sans-serif; color: var(--ink); background: var(--paper); }
+
+/* Cover */
+.tpl-vogue-cover { position: relative; min-height: 100vh; overflow: hidden; }
+.tpl-vogue-cover-image {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  filter: contrast(1.05) saturate(0.9);
+}
+.tpl-vogue-cover-image::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(20,18,16,0.05) 0%, rgba(20,18,16,0.65) 70%, rgba(20,18,16,0.85) 100%);
+}
+.tpl-vogue-cover-placeholder {
+  background: radial-gradient(ellipse at center, #4a3f33 0%, #1a1614 100%);
+}
+.tpl-vogue-cover-overlay {
+  position: absolute; bottom: 8vh; left: 6vw; right: 6vw;
+  color: #f0ebe3; z-index: 2;
+}
+.tpl-vogue-kicker {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px; letter-spacing: .35em; opacity: .85;
+  margin-bottom: 1.2rem; text-transform: uppercase;
+}
+.tpl-vogue-headline {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(56px, 11vw, 168px); line-height: .92;
+  font-weight: 400; letter-spacing: -.02em; margin: 0;
+}
+.tpl-vogue-headline em { font-style: italic; opacity: .85; }
+.tpl-vogue-deck {
+  margin-top: 1.8rem; max-width: 540px;
+  font-family: 'DM Serif Display', serif; font-style: italic;
+  font-size: clamp(18px, 2.2vw, 26px); line-height: 1.4; opacity: .9;
+}
+
+/* Inside spread */
+.tpl-vogue-inside { padding: 8vh 6vw; min-height: 100vh; }
+.tpl-vogue-spread {
+  max-width: 1100px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 280px; gap: 60px;
+}
+.tpl-vogue-body { font-family: 'DM Serif Display', serif; }
+.tpl-vogue-para {
+  font-size: 19px; line-height: 1.65;
+  margin-bottom: 1.4rem; color: var(--ink);
+}
+.tpl-vogue-lead { font-size: 22px; }
+.tpl-vogue-dropcap {
+  float: left; font-size: 86px; line-height: 0.85;
+  padding: 8px 12px 0 0; font-weight: 700;
+  color: var(--accent);
+}
+.tpl-vogue-pullquote {
+  margin: 2rem 0; padding: 1.5rem 0;
+  border-top: 1px solid rgba(20,18,16,0.15);
+  border-bottom: 1px solid rgba(20,18,16,0.15);
+  font-family: 'DM Serif Display', serif; font-style: italic;
+  font-size: 28px; line-height: 1.35; color: var(--accent); text-align: center;
+}
+.tpl-vogue-photos { display: flex; flex-direction: column; gap: 24px; }
+.tpl-vogue-photo {
+  margin: 0; position: relative;
+  background: rgba(20,18,16,0.04); padding: 8px;
+}
+.tpl-vogue-photo img {
+  width: 100%; height: auto; display: block;
+  filter: contrast(1.05) saturate(0.85);
+}
+.tpl-vogue-photo figcaption {
+  font-family: 'Inter', sans-serif; font-size: 11px;
+  margin-top: 8px; color: var(--mid); letter-spacing: .03em;
+}
+.tpl-vogue-stats {
+  grid-column: 1 / -1; margin-top: 3rem; padding-top: 2rem;
+  border-top: 2px solid var(--ink);
+}
+.tpl-vogue-stats dl {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+  font-family: 'Bebas Neue', sans-serif;
+}
+.tpl-vogue-stats dt { font-size: 11px; letter-spacing: .25em; opacity: .55; text-transform: uppercase; }
+.tpl-vogue-stats dd { font-size: 32px; margin-top: 6px; }
+
+@media (max-width: 720px) {
+  .tpl-vogue-spread { grid-template-columns: 1fr; gap: 32px; }
+  .tpl-vogue-stats dl { grid-template-columns: 1fr 1fr; }
+}

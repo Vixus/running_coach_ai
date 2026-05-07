@@ -206,6 +206,33 @@ def _handle_message_core(
     source: str = "web",
 ) -> str:
     """Core message processing logic called by process_message."""
+    # Story-interview short-circuit: if there's a pending StoryQuestion for this athlete,
+    # capture the user's reply as the answer (and queue the next adaptive question)
+    # instead of running a regular coaching turn. Per coach/story.py:capture_chat_answer.
+    try:
+        from running_coach_ai.coach.story import capture_chat_answer, get_pending_question
+        if get_pending_question(athlete.id, db_session) is not None:
+            answered = capture_chat_answer(athlete, text, db_session)
+            if answered is not None:
+                # Persist the user message in the chat history so the thread reads naturally,
+                # then return a brief acknowledgement. The next question (if any) is delivered
+                # via /api/stories/current's hydrate on the next magazine refresh.
+                user_msg = ConversationMessage(
+                    athlete_id=athlete.id, role="user", content=text, source=source,
+                )
+                db_session.add(user_msg)
+                ack_text = "Got it — thanks for that."
+                ack_msg = ConversationMessage(
+                    athlete_id=athlete.id, role="assistant", content=ack_text, source=source,
+                )
+                db_session.add(ack_msg)
+                db_session.commit()
+                return ack_text
+    except Exception as e:
+        logger.warning("Story-answer capture short-circuit failed for athlete %d: %s",
+                       athlete.id, e)
+        # Fall through to regular coaching turn
+
     # Build messages for Claude
     messages = [{"role": msg.role, "content": msg.content} for msg in history]
     messages.append({"role": "user", "content": text})

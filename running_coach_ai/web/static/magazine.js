@@ -1318,6 +1318,8 @@ async function hydrate(){
   } catch (e) { console.warn('Magazine hydration failed:', e); return null; }
   window.__MAG_DATA = m;
 
+  try { hydrateStoryState(m); } catch(e) { console.warn('story hydrate', e); }
+
   // Hero
   const nameEl = document.getElementById('hero-name');
   if (m.athlete && m.athlete.name && m.athlete.name.trim()) {
@@ -1972,6 +1974,124 @@ function setupTouchInteractions(){
     if(tab==='athletes') admLoadAthletes();
     if(tab==='invites')  admLoadInvites();
     if(tab==='events')   admLoadEvents();
+    if(tab==='stories')  admLoadStories();
+  };
+
+  /* ─── stories admin tab ───────────────────────────────────────────── */
+  async function admLoadStories(){
+    const sec = admSel('adm-stories');
+    sec.innerHTML = '<div class="adm-sub" style="padding:16px;">Loading…</div>';
+    try{
+      const [tplRes, athRes] = await Promise.all([
+        fetch('/api/admin/stories/templates', {credentials:'same-origin'}),
+        fetch('/api/admin/athletes', {credentials:'same-origin'}),
+      ]);
+      const tplData = tplRes.ok ? await tplRes.json() : {templates: []};
+      const athData = athRes.ok ? await athRes.json() : {athletes: []};
+
+      const TRIGGERS = ['pr_set', 'race_upcoming', 'race_complete', 'pace_recalibration', 'difficult_week'];
+      const tplOptions = (tplData.templates || []).map(t =>
+        `<option value="${t.key}">${escapeHtml(t.display_name)}</option>`).join('');
+
+      const athleteRows = (athData.athletes || []).map(a => `
+        <tr>
+          <td><strong>${escapeHtml(a.name || a.email || '#'+a.id)}</strong> <span style="color:rgba(255,255,255,0.4);font-size:11px;">#${a.id}</span></td>
+          <td>
+            <select id="adm-story-trigger-${a.id}" class="adm-select">
+              ${TRIGGERS.map(t => `<option value="${t}">${t}</option>`).join('')}
+            </select>
+            <button class="adm-btn" onclick="admStartInterview(${a.id})">Start interview</button>
+          </td>
+          <td><button class="adm-btn" onclick="admGenerateStory(${a.id})">Generate story (race_complete)</button></td>
+        </tr>`).join('');
+
+      sec.innerHTML = `
+        <div class="adm-sub" style="padding:16px;">
+          <h4 style="color:#fff;margin-bottom:12px;">Available templates</h4>
+          <div class="adm-tpl-grid">
+            ${(tplData.templates || []).map(t => `
+              <div class="adm-tpl-card">
+                <img src="${t.thumbnail}" alt="${escapeHtml(t.display_name)}" />
+                <div class="adm-tpl-name">${escapeHtml(t.display_name)} <span style="color:rgba(255,255,255,0.4);font-size:10px;">${t.key}</span></div>
+              </div>`).join('')}
+          </div>
+          <h4 style="color:#fff;margin-top:24px;margin-bottom:12px;">Athletes — fire interview / generate story</h4>
+          <table class="adm-table">
+            <thead><tr><th>Athlete</th><th>Trigger</th><th>Generation</th></tr></thead>
+            <tbody>${athleteRows || '<tr><td colspan="3">No athletes</td></tr>'}</tbody>
+          </table>
+          <h4 style="color:#fff;margin-top:24px;margin-bottom:12px;">Re-render existing story</h4>
+          <div class="adm-render-form">
+            <input type="number" id="adm-render-story-id" placeholder="Story ID" class="adm-input">
+            <select id="adm-render-template" class="adm-select">${tplOptions}</select>
+            <button class="adm-btn" onclick="admRenderStory()">Re-render</button>
+            <input type="number" id="adm-delete-story-id" placeholder="Story ID" class="adm-input">
+            <button class="adm-btn adm-btn-danger" onclick="admHardDeleteStory()">Hard delete</button>
+          </div>
+          <div id="adm-story-result" class="adm-story-result"></div>
+        </div>`;
+    } catch(e){
+      sec.innerHTML = `<div class="adm-sub">Failed to load: ${escapeHtml(String(e))}</div>`;
+    }
+  }
+
+  function admShowStoryResult(text, isErr){
+    const el = admSel('adm-story-result');
+    if(!el) return;
+    el.style.color = isErr ? '#e08e6e' : 'var(--lime)';
+    el.textContent = text;
+  }
+
+  window.admStartInterview = async function(athleteId){
+    const trigger = admSel('adm-story-trigger-'+athleteId).value;
+    try{
+      const r = await fetch(`/api/admin/athletes/${athleteId}/start-interview?trigger=${trigger}`, {
+        method:'POST', credentials:'same-origin',
+      });
+      const data = await r.json();
+      if(!r.ok){ admShowStoryResult(data.error || 'Failed', true); return; }
+      admShowStoryResult(`Session ${data.session_id} opened — first question: "${data.first_question.question}"`);
+    } catch(e){ admShowStoryResult('Network error', true); }
+  };
+
+  window.admGenerateStory = async function(athleteId){
+    if(!confirm('Generate a story for this athlete? Calls Claude (~30s).')) return;
+    try{
+      const r = await fetch(`/api/admin/athletes/${athleteId}/generate-story?milestone=race_complete`, {
+        method:'POST', credentials:'same-origin',
+      });
+      const data = await r.json();
+      if(!r.ok){ admShowStoryResult(data.error || 'Failed', true); return; }
+      admShowStoryResult(`Story ${data.story_id} generated — preview ${data.preview_url}`);
+    } catch(e){ admShowStoryResult('Network error', true); }
+  };
+
+  window.admRenderStory = async function(){
+    const sid = parseInt(admSel('adm-render-story-id').value, 10);
+    const tpl = admSel('adm-render-template').value;
+    if(!sid || !tpl){ admShowStoryResult('Story ID and template required', true); return; }
+    try{
+      const r = await fetch(`/api/admin/stories/${sid}/render?template=${tpl}`, {
+        method:'POST', credentials:'same-origin',
+      });
+      const data = await r.json();
+      if(!r.ok){ admShowStoryResult(data.error || 'Failed', true); return; }
+      admShowStoryResult(`Rendered story ${sid} in ${tpl} — ${data.preview_url}`);
+    } catch(e){ admShowStoryResult('Network error', true); }
+  };
+
+  window.admHardDeleteStory = async function(){
+    const sid = parseInt(admSel('adm-delete-story-id').value, 10);
+    if(!sid){ admShowStoryResult('Story ID required', true); return; }
+    if(!confirm(`HARD DELETE story ${sid}? Removes the row, all images, and linked sessions. Cannot be undone.`)) return;
+    try{
+      const r = await fetch(`/api/admin/stories/${sid}?hard=1`, {
+        method:'DELETE', credentials:'same-origin',
+      });
+      const data = await r.json();
+      if(!r.ok){ admShowStoryResult(data.error || 'Failed', true); return; }
+      admShowStoryResult(`Deleted story ${sid}: ${JSON.stringify(data.deleted)}`);
+    } catch(e){ admShowStoryResult('Network error', true); }
   };
 
   /* ─── athletes ────────────────────────────────────────────────────── */
@@ -2189,3 +2309,329 @@ function setupTouchInteractions(){
     if(next) next.disabled = _evOffset+EV_LIMIT>=total;
   }
 })();
+
+// ── Story feature: opt-in toggle, intro modal, chat option buttons ─────
+let _storyState = { feature_enabled: false, needs_intro_modal: false, current_story: null };
+let _storyIntroPage = 1;
+const _STORY_INTRO_TOTAL = 5;
+
+function toggleStoryMenu(ev){
+  if(ev) ev.stopPropagation();
+  const menu = document.getElementById('story-menu');
+  if(!menu) return;
+  menu.classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const menu = document.getElementById('story-menu');
+  const btn = document.getElementById('story-toggle');
+  if(!menu || !menu.classList.contains('open')) return;
+  if(menu.contains(e.target) || (btn && btn.contains(e.target))) return;
+  menu.classList.remove('open');
+});
+
+async function onStoryOptInChange(ev){
+  const opted_in = !!ev.target.checked;
+  try{
+    const r = await fetch('/api/stories/opt-in', {
+      method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({opted_in}),
+    });
+    if(!r.ok){ ev.target.checked = !opted_in; return; }
+    const data = await r.json();
+    _storyState.feature_enabled = data.story_opt_in;
+    if(data.story_opt_in){
+      // Trigger an /api/magazine refresh to learn if we need the intro modal
+      const m = await fetch('/api/magazine', {credentials:'same-origin'});
+      if(m.ok){
+        const mb = await m.json();
+        if(mb.story && mb.story.needs_intro_modal){ openStoryIntro(); }
+      }
+    }
+  } catch(e){ ev.target.checked = !opted_in; }
+}
+
+function openStoryIntro(){
+  _storyIntroPage = 1;
+  _renderStoryIntroPage();
+  document.getElementById('story-intro-overlay').classList.add('open');
+  document.getElementById('story-intro-modal').classList.add('open');
+}
+function closeStoryIntro(){
+  document.getElementById('story-intro-overlay').classList.remove('open');
+  document.getElementById('story-intro-modal').classList.remove('open');
+}
+function _renderStoryIntroPage(){
+  document.querySelectorAll('#story-intro-modal .sim-page').forEach(p=>{
+    p.classList.toggle('active', p.dataset.page === String(_storyIntroPage));
+  });
+  document.querySelectorAll('#story-intro-modal .sim-dots span').forEach((s,i)=>{
+    s.classList.toggle('active', i+1 === _storyIntroPage);
+  });
+  document.getElementById('sim-prev').disabled = _storyIntroPage === 1;
+  const nextBtn = document.getElementById('sim-next');
+  nextBtn.textContent = (_storyIntroPage === _STORY_INTRO_TOTAL) ? "I'm ready" : 'Next';
+}
+function storyIntroPrev(){
+  if(_storyIntroPage > 1){ _storyIntroPage--; _renderStoryIntroPage(); }
+}
+async function storyIntroNext(){
+  if(_storyIntroPage < _STORY_INTRO_TOTAL){
+    _storyIntroPage++;
+    _renderStoryIntroPage();
+    return;
+  }
+  // Final page: acknowledge and close
+  try{
+    await fetch('/api/stories/intro-acknowledged', {method:'POST', credentials:'same-origin'});
+  } catch{}
+  _storyState.needs_intro_modal = false;
+  closeStoryIntro();
+}
+
+// Hydrate the story state from /api/magazine response (called by hydrate())
+function hydrateStoryState(magazinePayload){
+  if(!magazinePayload || !magazinePayload.story){
+    _storyState = { feature_enabled: false, needs_intro_modal: false, current_story: null };
+    return;
+  }
+  _storyState = magazinePayload.story;
+  // Show the toggle in nav for everyone
+  const toggle = document.getElementById('story-toggle');
+  if(toggle) toggle.style.display = '';
+  // Reflect opt-in state on the checkbox
+  const cb = document.getElementById('story-opt-in');
+  if(cb) cb.checked = !!_storyState.feature_enabled;
+  // Auto-show the intro modal on first load if needed
+  if(_storyState.feature_enabled && _storyState.needs_intro_modal){
+    setTimeout(openStoryIntro, 600);
+  }
+}
+
+// Render multiple-choice option buttons inside the chat panel.
+// Called by cpAdd-extension / or when a story question lands in chat.
+function cpAddStoryOptions(questionId, sessionId, options){
+  const m = document.getElementById('cp-msgs');
+  if(!m) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'cp-msg coach';
+  wrap.innerHTML = `<div><div class="cp-options" data-question="${questionId}" data-session="${sessionId}">
+    ${options.map(o => `<button class="cp-option" onclick="onStoryOptionPick(${sessionId}, ${questionId}, ${JSON.stringify(o).replace(/"/g, '&quot;')}, this)">${escapeHtml(o)}</button>`).join('')}
+  </div></div>`;
+  m.appendChild(wrap);
+  m.scrollTop = m.scrollHeight;
+}
+
+async function onStoryOptionPick(sessionId, questionId, optionText, btn){
+  // Disable the option group on click
+  const group = btn.closest('.cp-options');
+  if(group){
+    group.querySelectorAll('button').forEach(b => b.disabled = true);
+    btn.style.background = 'rgba(184,255,79,0.25)';
+  }
+  // Echo as user message in transcript
+  cpAdd('user', optionText);
+  try{
+    const r = await fetch(`/api/stories/sessions/${sessionId}/respond`, {
+      method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({question_id: questionId, option: optionText}),
+    });
+    if(!r.ok) return;
+    const data = await r.json();
+    if(data.session_complete){
+      cpAdd('coach', 'Thanks for sharing — I have what I need. Your story will be ready when the moment arrives.');
+      return;
+    }
+    if(data.next_question){
+      cpAdd('coach', data.next_question.question);
+      cpAddStoryOptions(data.next_question.question_id, sessionId, data.next_question.options || []);
+    }
+  } catch(e){
+    cpAdd('coach', "Hmm, I lost connection — try again in a moment.");
+  }
+}
+
+// ── My Story section: hydrate, render, and CRUD actions ────────────
+function _msSel(id){ return document.getElementById(id); }
+
+function _msShowError(msg){
+  const el = _msSel('ms-error');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.display = '';
+  setTimeout(()=>{ el.style.display = 'none'; }, 5000);
+}
+
+async function msHydrate(){
+  if(!_storyState.feature_enabled){ _msSel('mystory').style.display = 'none'; return; }
+  const story = _storyState.current_story;
+  if(!story){ _msSel('mystory').style.display = 'none'; return; }
+
+  _msSel('mystory').style.display = '';
+  _msSel('ms-title').textContent = story.title || 'Your story';
+  const previewText = (story.editorial_body || '').slice(0, 240);
+  _msSel('ms-preview').textContent = previewText + (story.editorial_body && story.editorial_body.length > 240 ? '…' : '');
+
+  // Cover image
+  const cov = _msSel('ms-cover');
+  if(story.images && story.images.length > 0){
+    cov.style.backgroundImage = `url('${story.images[0].url}')`;
+  } else {
+    cov.style.backgroundImage = '';
+  }
+
+  // Share button text reflects published state
+  const shareBtn = _msSel('ms-share-btn');
+  shareBtn.textContent = story.published_at ? 'Unpublish' : 'Share';
+  _msSel('ms-preview-link').href = story.preview_url;
+
+  // Regenerate button: respect cooldown
+  const regenBtn = _msSel('ms-regen-btn');
+  const canAt = story.can_regenerate_at ? new Date(story.can_regenerate_at) : null;
+  const cooldownActive = canAt && canAt > new Date();
+  regenBtn.disabled = !!cooldownActive;
+  if(cooldownActive){
+    const minutes = Math.ceil((canAt - new Date()) / 60000);
+    regenBtn.textContent = `Regenerate (${minutes}m)`;
+  } else {
+    regenBtn.textContent = 'Regenerate';
+  }
+
+  // Template carousel
+  const carousel = _msSel('ms-template-carousel');
+  carousel.innerHTML = (story.available_templates || []).map(t =>
+    `<div class="ms-template-card ${t.key === story.template_key ? 'active' : ''}"
+          onclick="msSwapTemplate('${t.key}')">
+       <div class="ms-thumb" style="background-image:url('${t.thumbnail}')"></div>
+       <div class="ms-thumb-name">${escapeHtml(t.display_name)}</div>
+     </div>`
+  ).join('');
+
+  // Photos grid
+  const photosEl = _msSel('ms-photos');
+  photosEl.innerHTML = (story.images || []).map(img =>
+    `<div class="ms-photo-thumb" style="background-image:url('${img.url}')">
+       <button class="ms-photo-del" onclick="msDeleteImage(${img.id})">×</button>
+     </div>`
+  ).join('');
+
+  // Hide upload if at limit
+  const limitReached = (story.images || []).length >= 5;
+  _msSel('ms-upload-input').disabled = limitReached;
+
+  window.__MAG_STORY = story;
+}
+
+async function msReload(){
+  try{
+    const r = await fetch('/api/stories/current', {credentials:'same-origin'});
+    if(!r.ok) return;
+    const d = await r.json();
+    _storyState.current_story = d.story;
+    msHydrate();
+  } catch(e){ console.warn('msReload', e); }
+}
+
+async function msSwapTemplate(key){
+  const story = window.__MAG_STORY;
+  if(!story) return;
+  try{
+    const r = await fetch(`/api/stories/${story.id}/template`, {
+      method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({template_key: key}),
+    });
+    if(!r.ok){ _msShowError('Could not swap template'); return; }
+    msReload();
+  } catch(e){ _msShowError('Network error'); }
+}
+
+async function msPublishToggle(){
+  const story = window.__MAG_STORY;
+  if(!story) return;
+  const path = story.published_at ? 'unpublish' : 'publish';
+  try{
+    const r = await fetch(`/api/stories/${story.id}/${path}`, {
+      method:'POST', credentials:'same-origin',
+    });
+    if(!r.ok){ _msShowError(`Could not ${path}`); return; }
+    if(path === 'publish'){
+      const d = await r.json();
+      const url = window.location.origin + d.share_url;
+      navigator.clipboard?.writeText(url).catch(()=>{});
+      alert('Published! Share URL copied to clipboard:\n\n' + url);
+    }
+    msReload();
+  } catch(e){ _msShowError('Network error'); }
+}
+
+async function msRegenerate(){
+  const story = window.__MAG_STORY;
+  if(!story) return;
+  if(!confirm('Rewrite the story? This will overwrite the current text.')) return;
+  try{
+    const r = await fetch(`/api/stories/${story.id}/regenerate`, {
+      method:'POST', credentials:'same-origin',
+    });
+    if(r.status === 429){
+      const d = await r.json();
+      _msShowError(`Cooldown active — try again in ${Math.ceil((d.retry_after||0)/60)} min`);
+      return;
+    }
+    if(!r.ok){ _msShowError('Regeneration failed'); return; }
+    msReload();
+  } catch(e){ _msShowError('Network error'); }
+}
+
+async function msDelete(){
+  const story = window.__MAG_STORY;
+  if(!story) return;
+  if(!confirm('Delete this story? Photos are kept until an admin hard-deletes.')) return;
+  try{
+    const r = await fetch(`/api/stories/${story.id}`, {
+      method:'DELETE', credentials:'same-origin',
+    });
+    if(!r.ok){ _msShowError('Could not delete'); return; }
+    _storyState.current_story = null;
+    msHydrate();
+  } catch(e){ _msShowError('Network error'); }
+}
+
+async function msUploadImage(ev){
+  const file = ev.target.files && ev.target.files[0];
+  if(!file) return;
+  if(file.size > 10 * 1024 * 1024){ _msShowError('File exceeds 10 MB'); return; }
+  const fd = new FormData();
+  fd.append('file', file);
+  try{
+    const r = await fetch('/api/stories/current/images', {
+      method:'POST', credentials:'same-origin', body: fd,
+    });
+    if(!r.ok){
+      const err = await r.json().catch(()=>({error:'Upload failed'}));
+      _msShowError(err.error || 'Upload failed');
+      return;
+    }
+    msReload();
+  } catch(e){ _msShowError('Network error'); }
+  ev.target.value = '';  // allow re-picking the same file
+}
+
+async function msDeleteImage(imgId){
+  if(!confirm('Remove this photo?')) return;
+  try{
+    const r = await fetch(`/api/stories/images/${imgId}`, {
+      method:'DELETE', credentials:'same-origin',
+    });
+    if(!r.ok){ _msShowError('Could not delete photo'); return; }
+    msReload();
+  } catch(e){ _msShowError('Network error'); }
+}
+
+// Wire msHydrate into hydrateStoryState
+const _origHydrateStoryState = hydrateStoryState;
+hydrateStoryState = function(payload){
+  _origHydrateStoryState(payload);
+  try { msHydrate(); } catch(e) { console.warn('msHydrate', e); }
+};

@@ -810,6 +810,28 @@ def magazine():
         # ── Geographic landmark for season miles ────────────────────────────
         miles_landmark = _miles_landmark(season_miles)
 
+        # ── Story feature block ─────────────────────────────────────────────
+        story_block: dict
+        if not athlete.story_opt_in:
+            story_block = {"feature_enabled": False}
+        else:
+            from running_coach_ai.database.models import AthleteStory as _AS
+            current = (
+                db.query(_AS)
+                .filter(_AS.athlete_id == athlete_id, _AS.deleted_at.is_(None))
+                .order_by(_AS.created_at.desc())
+                .first()
+            )
+            current_payload = None
+            if current is not None:
+                from running_coach_ai.web.api.stories import _serialise_story_full
+                current_payload = _serialise_story_full(current, db)
+            story_block = {
+                "feature_enabled": True,
+                "needs_intro_modal": athlete.story_intro_seen_at is None,
+                "current_story": current_payload,
+            }
+
         return jsonify({
             "athlete": {
                 "id": athlete.id,
@@ -841,4 +863,5 @@ def magazine():
             "calendar_range": calendar_range,
             "health_history": health_history,
             "miles_landmark": miles_landmark,
+            "story":          story_block,
         })

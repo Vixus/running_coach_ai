@@ -1,0 +1,31 @@
+<div class="tpl-rw tpl-rw-inside">
+  <article class="tpl-rw-body">
+    {% set paragraphs = editorial_body.split('\n\n') %}
+    {% for para in paragraphs %}
+    <p class="tpl-rw-para">{{ para }}</p>
+    {% endfor %}
+  </article>
+
+  <aside class="tpl-rw-sidebar">
+    {% if training_stats %}
+    <h3 class="tpl-rw-sidebar-h">By the Numbers</h3>
+    <dl class="tpl-rw-stats-grid">
+      {% if training_stats.total_miles %}<dt>Total Miles</dt><dd>{{ training_stats.total_miles }}</dd>{% endif %}
+      {% if training_stats.race_time %}<dt>Race Time</dt><dd>{{ training_stats.race_time }}</dd>{% endif %}
+      {% if training_stats.weeks_trained %}<dt>Weeks of Training</dt><dd>{{ training_stats.weeks_trained }}</dd>{% endif %}
+      {% if training_stats.hrv_trend %}<dt>HRV Trend</dt><dd>{{ training_stats.hrv_trend }}</dd>{% endif %}
+    </dl>
+    {% endif %}
+
+    {% if images and images|length > 1 %}
+    <div class="tpl-rw-photo-stack">
+      {% for img in images[1:] %}
+      <figure class="tpl-rw-photo">
+        <img src="{{ img.url }}" alt="{{ img.caption or '' }}">
+        {% if img.caption %}<figcaption>{{ img.caption }}</figcaption>{% endif %}
+      </figure>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </aside>
+</div>

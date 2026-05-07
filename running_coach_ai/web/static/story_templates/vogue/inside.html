@@ -1,0 +1,48 @@
+<div class="tpl-vogue tpl-vogue-inside">
+  <div class="tpl-vogue-spread">
+    <article class="tpl-vogue-body">
+      {% set paragraphs = editorial_body.split('\n\n') %}
+      {% for para in paragraphs %}
+        {% if loop.first %}
+          <p class="tpl-vogue-para tpl-vogue-lead">
+            <span class="tpl-vogue-dropcap">{{ para[0] }}</span>{{ para[1:] }}
+          </p>
+        {% elif loop.index == (paragraphs|length // 2 + 1) and pull_quote %}
+          <aside class="tpl-vogue-pullquote">
+            <p>&ldquo;{{ pull_quote }}&rdquo;</p>
+          </aside>
+          <p class="tpl-vogue-para">{{ para }}</p>
+        {% else %}
+          <p class="tpl-vogue-para">{{ para }}</p>
+        {% endif %}
+      {% endfor %}
+    </article>
+
+    {% if images and images|length > 1 %}
+    <aside class="tpl-vogue-photos">
+      {% for img in images[1:] %}
+      <figure class="tpl-vogue-photo">
+        <img src="{{ img.url }}" alt="{{ img.caption or '' }}">
+        {% if img.caption %}<figcaption>{{ img.caption }}</figcaption>{% endif %}
+      </figure>
+      {% endfor %}
+    </aside>
+    {% endif %}
+
+    {% if training_stats %}
+    <footer class="tpl-vogue-stats">
+      <dl>
+        {% if training_stats.total_miles %}
+          <dt>Total Miles</dt><dd>{{ training_stats.total_miles }}</dd>
+        {% endif %}
+        {% if training_stats.race_time %}
+          <dt>Race Time</dt><dd>{{ training_stats.race_time }}</dd>
+        {% endif %}
+        {% if training_stats.weeks_trained %}
+          <dt>Weeks Trained</dt><dd>{{ training_stats.weeks_trained }}</dd>
+        {% endif %}
+      </dl>
+    </footer>
+    {% endif %}
+  </div>
+</div>

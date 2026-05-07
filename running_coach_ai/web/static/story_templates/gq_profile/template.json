@@ -1,0 +1,7 @@
+{
+  "key": "gq_profile",
+  "display_name": "The Profile",
+  "voice_description": "Polished, slightly journalistic. Achievement-focused. Crisp present tense. Use a single mid-piece pull quote that lands like a thesis statement. The athlete is the subject of a feature interview — confident but not boastful. Reads like a magazine profile of someone arriving.",
+  "trigger_affinities": ["pr_set", "race_complete"],
+  "thumbnail": "thumbnail.jpg"
+}

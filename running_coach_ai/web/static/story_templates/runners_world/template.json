@@ -1,0 +1,7 @@
+{
+  "key": "runners_world",
+  "display_name": "The Build-Up",
+  "voice_description": "Practical, reportage-style, second-person. Address the athlete directly: 'you found your stride…'. Embed training stats inline. Reads like a coach's race recap — confident, specific, grounded in the work. No purple prose; let the data carry the weight.",
+  "trigger_affinities": ["race_complete", "pace_recalibration"],
+  "thumbnail": "thumbnail.jpg"
+}

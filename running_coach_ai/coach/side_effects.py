@@ -61,6 +61,10 @@ def extract_and_apply_plan(
     resync_days: set[date] = set()     # specific dates needing targeted day sync
     delete_workouts: list[PlannedWorkout] = []  # cancelled/skipped workouts to remove
 
+    # Track per-session pace shifts for the pace_recalibration story trigger.
+    # Each entry is (old_pace_min_per_km, new_pace_min_per_km).
+    pace_shifts: list[tuple[float, float]] = []
+
     for block in plan_blocks:
         try:
             plan_data = json.loads(block.strip())
@@ -95,7 +99,11 @@ def extract_and_apply_plan(
                 if "target_duration_seconds" in session:
                     workout.target_duration_seconds = _round_duration(session["target_duration_seconds"])
                 if "target_pace_min_per_km" in session:
-                    workout.target_pace_min_per_km = session["target_pace_min_per_km"]
+                    old_pace = workout.target_pace_min_per_km
+                    new_pace = session["target_pace_min_per_km"]
+                    if old_pace and new_pace and new_pace < old_pace:
+                        pace_shifts.append((old_pace, new_pace))
+                    workout.target_pace_min_per_km = new_pace
                 if "target_zones_json" in session:
                     workout.target_zones_json = session["target_zones_json"]
                 if "status" in session:
@@ -163,6 +171,29 @@ def extract_and_apply_plan(
                         "Targeted day sync failed for athlete %d on %s: %s",
                         athlete_id, target_date, e,
                     )
+
+    # Story trigger: pace_recalibration when ≥3 sessions were faster-recalibrated
+    # by ≥10 sec/mi. Wrapped per Constitution V.
+    if pace_shifts:
+        try:
+            from running_coach_ai.coach.story import (
+                detect_pace_recalibration, fire_trigger_if_eligible,
+            )
+            # Convert pace deltas (min/km) to sec/mi for the threshold check
+            sec_per_mi_shifts = [(old - new) * 60 * 1.60934 for old, new in pace_shifts]
+            avg_shift = sum(sec_per_mi_shifts) / len(sec_per_mi_shifts) if sec_per_mi_shifts else 0
+            if detect_pace_recalibration(athlete_id, len(pace_shifts), avg_shift, db_session):
+                athlete = db_session.query(Athlete).get(athlete_id)
+                if athlete is not None:
+                    fire_trigger_if_eligible(
+                        athlete, "pace_recalibration",
+                        {"sessions_recalibrated": len(pace_shifts),
+                         "avg_shift_sec_per_mi": round(avg_shift, 1)},
+                        db_session,
+                    )
+        except Exception as e:
+            logger.warning("pace_recalibration trigger failed for athlete %d: %s",
+                           athlete_id, e)
 
     # Strip all <plan> blocks from response
     cleaned = re.sub(r"<plan>.*?</plan>", "", claude_response, flags=re.DOTALL).strip()

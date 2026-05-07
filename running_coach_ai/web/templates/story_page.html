@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<link rel="canonical" href="{{ share_url }}">
+<title>{{ title }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+{% if template_css_url %}<link rel="stylesheet" href="{{ template_css_url }}">{% endif %}
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;}
+.preview-banner{position:fixed;top:0;left:0;right:0;background:#b8673e;color:#fff;text-align:center;padding:8px 16px;font-size:13px;font-family:'Inter',sans-serif;z-index:9999;}
+</style>
+</head>
+<body>
+{% if is_preview %}
+<div class="preview-banner">This story is not yet public — only you and admins can see it.</div>
+{% endif %}
+{{ cover_html|safe }}
+{{ inside_html|safe }}
+</body>
+</html>

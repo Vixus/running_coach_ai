@@ -1,4 +1,4 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -144,10 +144,24 @@ Flask 3.x app factory (`create_app()`) with blueprints deferred inside the facto
 | `web/api/chat.py` | `GET /api/chat/history`, `POST /api/chat/message` |
 | `web/api/onboarding.py` | `POST /api/onboarding/garmin-creds`, `POST /api/onboarding/skip-garmin` |
 | `web/api/notifications.py` | `GET /api/notifications`, unread-count, mark-read, read-all |
-| `web/api/admin.py` | Admin-only: athletes CRUD, Garmin resync/clean/verify, invites, events |
+| `web/api/admin.py` | Admin-only: athletes CRUD, Garmin resync/clean/verify, invites, events, story start-interview/generate/render/hard-delete/list-templates |
 | `web/api/magazine.py` | `GET /api/magazine`, `GET/POST /api/coach` |
+| `web/api/stories.py` | Athlete story API — opt-in, intro-acknowledged, list/current, swap template, regenerate, publish/unpublish, soft-delete, image upload/get/patch/delete, session respond/decline |
+| `web/routes/public_story.py` | Public no-auth `GET /story/<token>` (with rate limit + noindex) and `GET /robots.txt` |
 
 **`WebEvent` dual-sink logging** (`web/events.py`): `WebEventHandler` writes log records to the `web_events` table; `web_event()` is a convenience helper for explicit event writes.
+
+### Athlete Story (`coach/story.py`, `coach/story_templates.py`)
+
+The story feature is opt-in (default `Athlete.story_opt_in=False`). Once opted in and the multi-page intro modal is acknowledged (`story_intro_seen_at`), event triggers fire interview sessions. Five trigger kinds with priority order (highest first): `race_complete > race_upcoming > pr_set > pace_recalibration > difficult_week`. Detection lives inside the existing pipelines (no new APScheduler job): `_ingest_and_feedback` for `pr_set`/`race_complete`, `_run_morning_checkin_for_athlete` for `race_upcoming`/`difficult_week`, `extract_and_apply_plan` for `pace_recalibration`. Each trigger runs through `coach.story.fire_trigger_if_eligible(...)` which enforces opt-in + intro-seen + active-session + 24h priority dedup gates.
+
+Sessions ask 5–10 adaptive questions via Claude (C-001 prompt), each with 2–4 multiple-choice options + a free-text fallback. The conversation hook in `coach/conversation.py:_handle_message_core` short-circuits regular coaching turns when a `StoryQuestion` is pending, capturing the user's reply via `coach.story.capture_chat_answer`.
+
+When a `race_complete` milestone fires (and ≥4 questions are answered across linked sessions), `generate_story` produces a 400–600 word editorial via Claude (C-002 prompt) with auto-template-selection in the same call. Five magazine templates ship in v1: `vogue` / `runners_world` / `times_long_read` / `outside` / `gq_profile` — each declared by a directory under `web/static/story_templates/<key>/` containing `template.json` + `cover.html` + `inside.html` + `template.css` + `thumbnail.jpg`. Athletes can swap templates instantly (no Claude call); swapping locks the template against future regenerations and switches the prompt to the locked-voice variant per FR-S035.
+
+Public sharing happens at `/story/<share_token>` — server-rendered Jinja2, no auth, `noindex` meta, `robots.txt: Disallow: /story/`, in-memory per-IP sliding-window rate limit (30 req/min). Unpublished/deleted stories return 404 except for `?preview=1` viewed by the owning athlete or an admin.
+
+Admin tooling under `/api/admin/...` (gated by `is_admin=True`): start-interview (bypasses real-trigger detection + intro-modal gate), generate-story (synchronous; 30s target, 60s timeout returns 504 + `story_failed` notification), render (admin override of template_key without locking), hard-delete (cascade story + image files + sessions), list-templates.
 
 ### Garmin integration (`garmin/`)
 

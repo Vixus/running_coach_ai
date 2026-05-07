@@ -1,0 +1,30 @@
+/* The Long Read (times_long_read) — newsprint, narrow column, hairline rules */
+.tpl-tlr { --paper:#fafafa; --ink:#111; --mid:#666; --rule:#222; }
+.tpl-tlr { font-family:'Georgia','Times New Roman',serif;color:var(--ink);background:var(--paper);}
+
+/* Cover */
+.tpl-tlr-cover{padding:7vh 8vw;min-height:100vh;display:flex;align-items:center;}
+.tpl-tlr-cover-frame{max-width:880px;margin:0 auto;display:grid;grid-template-columns:1.2fr 1fr;gap:48px;align-items:center;}
+.tpl-tlr-cover-photo{height:520px;background-size:cover;background-position:center;filter:grayscale(0.85) contrast(1.1);}
+.tpl-tlr-cover-placeholder{background:linear-gradient(135deg,#888 0%,#222 100%);}
+.tpl-tlr-section-mark{font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:.3em;border-bottom:1px solid var(--rule);padding-bottom:8px;margin-bottom:24px;color:var(--mid);}
+.tpl-tlr-headline{font-family:'DM Serif Display',serif;font-size:clamp(40px,5.5vw,80px);line-height:1.05;font-weight:400;margin:0 0 18px;letter-spacing:-.01em;}
+.tpl-tlr-kicker{font-family:'Georgia',serif;font-size:18px;line-height:1.5;color:var(--mid);}
+.tpl-tlr-kicker em{font-style:italic;}
+.tpl-tlr-byline{margin-top:48px;font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:.25em;color:var(--mid);}
+
+/* Inside */
+.tpl-tlr-inside{padding:8vh 0;}
+.tpl-tlr-body{max-width:640px;margin:0 auto;padding:0 24px;font-family:'Georgia',serif;}
+.tpl-tlr-para{font-size:18px;line-height:1.75;margin-bottom:1.4rem;color:var(--ink);}
+.tpl-tlr-lead{font-size:20px;}
+.tpl-tlr-dropcap{float:left;font-family:'DM Serif Display',serif;font-size:72px;line-height:0.85;padding:6px 10px 0 0;font-weight:700;}
+.tpl-tlr-photos{max-width:840px;margin:48px auto;display:flex;flex-direction:column;gap:32px;padding:0 24px;}
+.tpl-tlr-photo{margin:0;}
+.tpl-tlr-photo img{width:100%;height:auto;display:block;filter:grayscale(0.85);}
+.tpl-tlr-photo figcaption{font-family:'Georgia',serif;font-style:italic;font-size:14px;color:var(--mid);margin-top:8px;}
+.tpl-tlr-stats{max-width:640px;margin:60px auto 0;padding:0 24px;}
+.tpl-tlr-rule{border:0;border-top:1px solid var(--rule);margin:0 0 24px;}
+.tpl-tlr-stats-row{display:flex;gap:48px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:.04em;color:var(--ink);}
+.tpl-tlr-stats-row em{font-style:normal;font-size:11px;letter-spacing:.18em;color:var(--mid);display:block;}
+@media (max-width:720px){.tpl-tlr-cover-frame{grid-template-columns:1fr;gap:24px;}.tpl-tlr-cover-photo{height:360px;}.tpl-tlr-stats-row{flex-direction:column;gap:18px;}}

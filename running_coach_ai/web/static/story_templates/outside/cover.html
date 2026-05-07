@@ -1,0 +1,12 @@
+<div class="tpl-out tpl-out-cover">
+  {% if cover_image_url %}
+  <div class="tpl-out-cover-image" style="background-image:url('{{ cover_image_url }}');"></div>
+  {% else %}
+  <div class="tpl-out-cover-image tpl-out-cover-placeholder"></div>
+  {% endif %}
+  <div class="tpl-out-cover-overlay">
+    <div class="tpl-out-coords">{{ milestone_label }}</div>
+    <h1 class="tpl-out-headline">{{ athlete_first_name|upper }}<br><span>{{ athlete_last_name|upper }}</span></h1>
+    <div class="tpl-out-deck">{{ deck_text }}</div>
+  </div>
+</div>
