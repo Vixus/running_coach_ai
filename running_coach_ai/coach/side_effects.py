@@ -214,7 +214,7 @@ def _delete_garmin_workout(athlete_id: int, workout: PlannedWorkout, db_session:
         from running_coach_ai.garmin.client import (
             delete_workout, get_garmin_client, remove_workout_schedule,
         )
-        garmin = get_garmin_client(athlete_id, athlete.garmin_email, athlete.garmin_password_encrypted)
+        garmin = get_garmin_client(athlete_id, athlete.garmin_email, athlete.garmin_password_encrypted, db_session)
 
         if workout.garmin_schedule_id:
             try:
@@ -298,7 +298,7 @@ def _resync_garmin_workout(athlete_id: int, workout: PlannedWorkout, db_session:
         )
         from running_coach_ai.garmin.workout_builder import build_workout_json
 
-        garmin = get_garmin_client(athlete_id, athlete.garmin_email, athlete.garmin_password_encrypted)
+        garmin = get_garmin_client(athlete_id, athlete.garmin_email, athlete.garmin_password_encrypted, db_session)
 
         # Remove calendar entry first, then workout definition
         if workout.garmin_schedule_id:

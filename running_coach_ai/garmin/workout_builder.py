@@ -327,7 +327,7 @@ def sync_week_to_garmin(
         if sample:
             fallback_paces[wt] = sample
 
-    garmin = garmin_client if garmin_client is not None else get_garmin_client(athlete_id, email, encrypted_password)
+    garmin = garmin_client if garmin_client is not None else get_garmin_client(athlete_id, email, encrypted_password, db_session)
 
     # --- Pre-scan: build a map of app-created library entries for this week's dates ---
     # Scans the description field for [rca:{athlete_id}:{date}] markers so we can delete
@@ -538,7 +538,7 @@ def sync_day_to_garmin(
         if sample:
             fallback_paces[wt] = sample
 
-    garmin = get_garmin_client(athlete_id, email, encrypted_password)
+    garmin = get_garmin_client(athlete_id, email, encrypted_password, db_session)
     date_iso = target_date.isoformat()
     all_success = True
 

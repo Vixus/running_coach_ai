@@ -37,14 +37,15 @@ def _run_activity_poll(scheduler=None) -> None:
                     continue
                 # Skip re-auth if no cached session exists — avoids 429 rate limits
                 # from repeated SSO login attempts. The session is created during
-                # onboarding or via !admin resync-garmin.
+                # onboarding or via admin resync-garmin.
                 import os as _os
                 from running_coach_ai.config import settings as _settings
                 token_dir = _os.path.join(_settings.GARMIN_SESSION_DIR, str(athlete.id))
-                if not _os.path.isfile(_os.path.join(token_dir, "oauth1_token.json")):
+                has_fs_tokens = _os.path.isfile(_os.path.join(token_dir, "oauth1_token.json"))
+                if not has_fs_tokens and not athlete.garmin_oauth_tokens:
                     logger.debug("Skipping activity poll for athlete %d: no cached Garmin session", athlete.id)
                     continue
-                garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted)
+                garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted, db_session)
                 new_ids = poll_new_activities(garmin, athlete.id, db_session)
 
                 for activity_id in new_ids:

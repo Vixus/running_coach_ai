@@ -50,6 +50,7 @@ class Athlete(Base):
     prescription_style = Column(Text, nullable=True)  # "time" | "distance" | None (not yet set)
     story_opt_in = Column(Boolean, nullable=False, default=False)
     story_intro_seen_at = Column(DateTime, nullable=True)
+    garmin_oauth_tokens = Column(Text, nullable=True)   # Fernet-encrypted garth dumps() string
 
     goals = relationship("Goal", back_populates="athlete")
     health_snapshots = relationship("HealthSnapshot", back_populates="athlete")

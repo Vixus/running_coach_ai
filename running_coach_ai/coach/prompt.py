@@ -65,7 +65,7 @@ def _validate_garmin_sync(
         from running_coach_ai.garmin.workout_builder import APP_MARKER_RE
 
         garmin = get_garmin_client(
-            athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted
+            athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted, db_session
         )
 
         # Single library scan — build date → [workout_id] map from app markers
@@ -605,7 +605,7 @@ def build_system_prompt(
             for _attempt in range(3):
                 try:
                     garmin = get_garmin_client(
-                        athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted
+                        athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted, db_session
                     )
                     raw = get_health_snapshot(garmin, today.isoformat())
                     parse_health_snapshot(raw, athlete.id, today, db_session)

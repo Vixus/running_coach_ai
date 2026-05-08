@@ -98,7 +98,7 @@ def run_morning_checkin(athlete: Athlete, db_session: Session) -> None:
         try:
             from running_coach_ai.garmin.client import get_garmin_client, get_health_snapshot
             from running_coach_ai.garmin.parser import parse_health_snapshot
-            garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted)
+            garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted, db_session)
             raw_health = get_health_snapshot(garmin, today_str)
             snapshot = parse_health_snapshot(raw_health, athlete.id, today, db_session)
             logger.info("Fetched live Garmin health data for athlete %d", athlete.id)

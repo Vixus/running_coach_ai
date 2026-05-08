@@ -69,7 +69,7 @@ def _run_health_backfill() -> None:
 
             try:
                 garmin = get_garmin_client(
-                    athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted
+                    athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted, db_session
                 )
                 raw = get_health_snapshot(garmin, today_str)
                 parse_health_snapshot(raw, athlete.id, today, db_session)

@@ -72,7 +72,7 @@ def _handle_garmin_fetch(athlete: Athlete, db_session: Session) -> bool:
         return False
 
     try:
-        garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted)
+        garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted, db_session)
         new_ids = poll_new_activities(garmin, athlete.id, db_session)
         if not new_ids:
             return False

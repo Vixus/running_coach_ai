@@ -100,17 +100,14 @@ def refresh_garmin_data(athlete_id: int, days_back: int = 7) -> dict:
             return {"ok": False, "error": "Athlete not found"}
         if not a.garmin_email or not a.garmin_password_encrypted:
             return {"ok": False, "error": "No Garmin credentials configured"}
-        garmin_email = a.garmin_email
-        garmin_pw = a.garmin_password_encrypted
-
-    try:
-        garmin = get_garmin_client(athlete_id, garmin_email, garmin_pw)
-    except Exception as e:
-        import traceback as _tb
-        logger.error("Admin refresh: Garmin client failed for athlete %d: %s\n%s",
-                     athlete_id, e, _tb.format_exc())
-        msg = f"Garmin auth failed: {e}" if is_garmin_auth_error(e) else str(e)
-        return {"ok": False, "error": msg}
+        try:
+            garmin = get_garmin_client(a.id, a.garmin_email, a.garmin_password_encrypted, db)
+        except Exception as e:
+            import traceback as _tb
+            logger.error("Admin refresh: Garmin client failed for athlete %d: %s\n%s",
+                         athlete_id, e, _tb.format_exc())
+            msg = f"Garmin auth failed: {e}" if is_garmin_auth_error(e) else str(e)
+            return {"ok": False, "error": msg}
 
     today = date.today()
     start_date = (today - timedelta(days=days_back)).isoformat()

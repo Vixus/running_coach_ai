@@ -142,13 +142,24 @@ def _login_with_rate_limit_retry(garmin: Garmin, athlete_id: int, max_attempts: 
                 raise
 
 
-def get_garmin_client(athlete_id: int, email: str, encrypted_password: bytes) -> Garmin:
+def get_garmin_client(
+    athlete_id: int,
+    email: str,
+    encrypted_password: bytes,
+    db_session=None,
+) -> Garmin:
     """Return an authenticated Garmin client for a specific athlete.
 
-    Attempts to load cached garth tokens first. Falls back to full
-    re-authentication with decrypted credentials if the cached session
-    is invalid.
+    Token resolution order:
+    1. DB-stored tokens (Athlete.garmin_oauth_tokens) — tried first when db_session provided
+    2. Filesystem token cache (garth oauth JSON files)
+    3. Full SSO re-authentication — last resort, hits Railway's rate-limited IP
+
+    After any successful load, saves current tokens back to DB so they stay
+    fresh across Railway redeploys (which wipe the filesystem token cache).
     """
+    from running_coach_ai.database.models import Athlete as _AthleteModel
+
     token_path = _token_dir(athlete_id)
     os.makedirs(token_path, exist_ok=True)
 
@@ -156,25 +167,64 @@ def get_garmin_client(athlete_id: int, email: str, encrypted_password: bytes) ->
     garmin = Garmin(email, password)
 
     if hasattr(garmin, 'garth'):
-        # Modern garminconnect: uses garth for OAuth token caching.
         garmin.garth.configure(timeout=settings.GARMIN_TIMEOUT)
+
+        def _save_tokens(g: Garmin) -> None:
+            if db_session is None:
+                return
+            try:
+                row = db_session.get(_AthleteModel, athlete_id)
+                if row:
+                    row.garmin_oauth_tokens = encrypt_password(g.garth.dumps()).decode()
+                    db_session.flush()
+                    logger.debug("Saved Garmin tokens to DB for athlete %s", athlete_id)
+            except Exception as _e:
+                logger.warning("Could not save Garmin tokens to DB for athlete %s: %s", athlete_id, _e)
+
+        def _validate(g: Garmin) -> None:
+            """Lightweight API call to confirm tokens are usable; sets display_name."""
+            g.get_full_name()
+            if g.garth.profile:
+                g.display_name = g.garth.profile.get("displayName")
+
+        def _is_rate_limited(e: Exception) -> bool:
+            s = str(e)
+            return "429" in s or "too many requests" in s.lower()
+
+        # --- 1. DB tokens ---
+        if db_session is not None:
+            try:
+                row = db_session.get(_AthleteModel, athlete_id)
+                db_tokens = row.garmin_oauth_tokens if row else None
+            except Exception:
+                db_tokens = None
+
+            if db_tokens:
+                try:
+                    garmin.garth.loads(decrypt_password(db_tokens.encode()))
+                    _validate(garmin)
+                    _save_tokens(garmin)  # refresh in case garth auto-renewed the OAuth2 token
+                    logger.info("Garmin session loaded from DB for athlete %s", athlete_id)
+                    return garmin
+                except Exception as e:
+                    if _is_rate_limited(e):
+                        logger.warning(
+                            "Garmin API rate limited (429) for athlete %s during DB token validation — "
+                            "skipping re-auth.",
+                            athlete_id,
+                        )
+                        raise
+                    logger.warning("DB tokens invalid for athlete %s (%s), trying filesystem", athlete_id, e)
+
+        # --- 2. Filesystem tokens ---
         try:
             garmin.garth.load(token_path)
-            # Verify the loaded tokens are usable with a lightweight call.
-            # Do NOT call garmin.login() — that triggers a full SSO re-auth.
-            garmin.get_full_name()
-            # Populate display_name — required by get_rhr_day() / get_steps_data()
-            # which embed it in the URL path. login() sets it; cache loads do not.
-            if garmin.garth.profile:
-                garmin.display_name = garmin.garth.profile.get("displayName")
+            _validate(garmin)
+            _save_tokens(garmin)  # migrate filesystem tokens into DB
             logger.info("Garmin session loaded from cache for athlete %s", athlete_id)
             return garmin
         except Exception as e:
-            err_str = str(e)
-            # A 429 on the validation call means the API is rate-limiting us, NOT
-            # that the tokens are invalid. Don't trigger SSO re-auth — just re-raise
-            # so the calling job skips Garmin for this tick and retries later.
-            if "429" in err_str or "too many requests" in err_str.lower():
+            if _is_rate_limited(e):
                 logger.warning(
                     "Garmin API rate limited (429) for athlete %s during session validation — "
                     "tokens may still be valid; skipping re-auth.",
@@ -187,9 +237,11 @@ def get_garmin_client(athlete_id: int, email: str, encrypted_password: bytes) ->
             else:
                 logger.warning("Token directory %s does not exist", token_path)
 
+        # --- 3. Full SSO re-authentication ---
         try:
             _login_with_rate_limit_retry(garmin, athlete_id)
             garmin.garth.dump(token_path)
+            _save_tokens(garmin)
             logger.info("Garmin re-authenticated and session cached for athlete %s", athlete_id)
             return garmin
         except Exception as e:

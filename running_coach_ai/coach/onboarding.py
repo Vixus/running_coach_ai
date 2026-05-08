@@ -263,7 +263,7 @@ def _import_historical_activities(athlete: Athlete, db: Session) -> int:
 
     end_date = date.today()
     start_date = end_date - timedelta(days=365)
-    garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted)
+    garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted, db)
     activities = fetch_historical_activities(garmin, athlete.id, start_date.isoformat(), end_date.isoformat())
     if not activities:
         return 0
@@ -438,7 +438,7 @@ def complete_onboarding(
             try:
                 from running_coach_ai.garmin.client import get_garmin_client
                 garmin_client = get_garmin_client(
-                    athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted,
+                    athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted, db,
                 )
                 week = plan.valid_from
                 while week <= plan.valid_to:

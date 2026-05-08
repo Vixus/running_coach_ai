@@ -229,7 +229,7 @@ def sync_week_to_garmin(athlete, db_session) -> int:
 
     # Get unique weeks
     weeks = sorted({w.scheduled_date - timedelta(days=w.scheduled_date.weekday()) for w in upcoming_workouts})
-    garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted)
+    garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted, db_session)
 
     total = 0
     for week_start in weeks:

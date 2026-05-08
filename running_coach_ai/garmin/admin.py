@@ -45,7 +45,7 @@ def _run_garmin_verify(athlete: Athlete, db: Session):
     if not upcoming:
         return [], [], []
 
-    garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted)
+    garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted, db)
 
     # Scan library for [rca:{athlete_id}:{date}] markers
     library_by_date: dict[str, list[int]] = {}
@@ -156,7 +156,7 @@ def resync_garmin_for_athlete(athlete: Athlete, db: Session) -> dict:
     last_date = max(d.scheduled_date for d in upcoming)
 
     try:
-        garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted)
+        garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted, db)
     except Exception as e:
         result["error"] = f"Could not authenticate with Garmin: {e}"
         return result
@@ -257,7 +257,7 @@ def clean_garmin_for_athlete(athlete: Athlete, db: Session) -> dict:
     today = date.today()
 
     try:
-        garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted)
+        garmin = get_garmin_client(athlete.id, athlete.garmin_email, athlete.garmin_password_encrypted, db)
     except Exception as e:
         result["error"] = f"Could not authenticate with Garmin: {e}"
         return result
