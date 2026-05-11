@@ -94,7 +94,8 @@
       "Bash(findstr /I \"ENCRYPTION\")",
       "Bash(tee /tmp/seed_export.txt)",
       "Bash(railway ssh *)",
-      "Bash(railway run *)"
+      "Bash(railway run *)",
+      "Bash(railway logs *)"
     ]
   }
 }

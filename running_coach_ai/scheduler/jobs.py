@@ -31,6 +31,7 @@ from running_coach_ai.scheduler.morning import (  # noqa: F401
     register_athlete_morning_job,
 )
 from running_coach_ai.scheduler.reconcile import _run_garmin_reconciliation  # noqa: F401
+from running_coach_ai.scheduler.token_refresh import _run_token_refresh  # noqa: F401
 from running_coach_ai.scheduler.weekly_review import (  # noqa: F401
     _run_weekly_review,
     _upsert_weekly_review_summary,
@@ -99,6 +100,17 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
         _run_health_backfill,
         CronTrigger(hour=14, minute=0),
         id="health_backfill",
+        replace_existing=True,
+        misfire_grace_time=1800,
+    )
+
+    # Daily Garmin OAuth2 token refresh — 05:30, just before activity_poll opens at 06:00.
+    # Primes the OAuth2 access token (expired after the 22:00 -> 06:00 overnight gap)
+    # so the day's first real Garmin call doesn't have to refresh under load.
+    scheduler.add_job(
+        _run_token_refresh,
+        CronTrigger(hour=5, minute=30),
+        id="garmin_token_refresh",
         replace_existing=True,
         misfire_grace_time=1800,
     )
