@@ -127,7 +127,7 @@ function renderCalendar() {
           ? `<div class="cc-done">✓ ${data.actual_pace_mi}/mi</div>`
           : isDone ? `<div class="cc-done">✓ done</div>` : '';
         html += `<div class="${classes}" onclick="selectCalDay('${iso}')" data-iso="${iso}">
-          <div class="cc-top"><span class="cc-emoji">${meta.emoji}</span>${mi>0?`<span class="cc-mi">${mi}mi</span>`:''}</div>
+          <div class="cc-top"><span style="display:flex;align-items:center;gap:3px;"><span style="font-size:9px;color:rgba(255,255,255,.35);">${d}</span><span class="cc-emoji">${meta.emoji}</span></span>${mi>0?`<span class="cc-mi">${mi}mi</span>`:''}</div>
           <div class="cc-name">${data.name||data.type_label||'Run'}</div>
           <div class="cc-sub">${subStr}</div>
           ${data.tss>0?`<div class="cc-tss">${data.tss} Load</div>`:''}

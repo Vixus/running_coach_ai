@@ -89,8 +89,21 @@ def verify_garmin_for_athlete(athlete: Athlete, db: Session) -> dict:
     try:
         matched, library_only, missing = _run_garmin_verify(athlete, db)
     except Exception as e:
+        err_str = str(e)
+        is_429 = "429" in err_str or "too many requests" in err_str.lower()
         logger.error("verify_garmin failed for athlete %d: %s", athlete.id, e)
-        return {"ok": False, "error": str(e),
+        if is_429:
+            return {
+                "ok": False,
+                "error": (
+                    "Garmin is rate-limiting this server's IP on the OAuth refresh "
+                    "endpoint (HTTP 429). This is common on shared cloud hosts "
+                    "(Railway, etc.) and usually clears within a few minutes. "
+                    "We retried automatically — please wait a moment and try again."
+                ),
+                "matched": [], "library_only": [], "missing": [],
+            }
+        return {"ok": False, "error": err_str,
                 "matched": [], "library_only": [], "missing": []}
 
     def _ser(rows):

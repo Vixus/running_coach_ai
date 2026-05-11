@@ -79,7 +79,13 @@
       "Skill(update-config:*)",
       "PowerShell(.specify/scripts/powershell/check-prerequisites.ps1 -Json)",
       "PowerShell(if \\(-not \\(Test-Path specs/006-magazine-features\\)\\) { New-Item -ItemType Directory specs/006-magazine-features | Out-Null; Copy-Item specs/006-athlete-story/plan.md specs/006-magazine-features/plan.md; Copy-Item specs/006-athlete-story/spec.md specs/006-magazine-features/spec.md; Copy-Item specs/006-athlete-story/tasks.md specs/006-magazine-features/tasks.md }; .specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks 2>&1)",
-      "Bash(git reset *)"
+      "Bash(git reset *)",
+      "Bash(sed -n '67,70p' running_coach_ai/coach/prompt.py)",
+      "Bash(sed -n '605,612p' running_coach_ai/coach/prompt.py)",
+      "Bash(sed -n '438,444p' running_coach_ai/coach/onboarding.py)",
+      "Bash(sed -n '70,75p' running_coach_ai/scheduler/health_backfill.py)",
+      "Bash(.venv/Scripts/python -c \"from running_coach_ai.garmin.client import _ensure_fresh_oauth2, get_garmin_client; from running_coach_ai.garmin.admin import verify_garmin_for_athlete; print\\('imports ok'\\)\")",
+      "Bash(.venv/Scripts/ruff check *)"
     ]
   }
 }

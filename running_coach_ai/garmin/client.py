@@ -108,6 +108,50 @@ def _token_dir(athlete_id: int) -> str:
     return os.path.join(settings.GARMIN_SESSION_DIR, str(athlete_id))
 
 
+def _ensure_fresh_oauth2(garmin: Garmin, athlete_id: int, max_attempts: int = 4) -> None:
+    """Refresh OAuth2 access token if expired, with retry on 429.
+
+    Garmin's `oauth/exchange/user/2.0` endpoint rate-limits shared cloud IPs
+    (Railway etc.). Many of those 429s are short-lived (per-minute windows),
+    so we retry with exponential backoff before giving up. Total max wait
+    is ~31s, keeping admin HTTP requests responsive.
+
+    If the OAuth2 token is still valid, returns immediately without any
+    network call. Raises on non-429 errors or after all retries exhausted.
+    """
+    from garth.auth_tokens import OAuth2Token as _OAuth2Token
+
+    tok = getattr(garmin.garth, "oauth2_token", None)
+    if isinstance(tok, _OAuth2Token) and not tok.expired:
+        return  # already fresh
+
+    delays = [3, 8, 20]
+    last_exc: Exception | None = None
+    for attempt in range(max_attempts):
+        try:
+            garmin.garth.refresh_oauth2()
+            logger.info(
+                "Garmin OAuth2 refreshed for athlete %s (attempt %d/%d)",
+                athlete_id, attempt + 1, max_attempts,
+            )
+            return
+        except Exception as e:
+            last_exc = e
+            err = str(e)
+            is_429 = "429" in err or "too many requests" in err.lower()
+            if not is_429 or attempt == max_attempts - 1:
+                break
+            wait = delays[attempt] if attempt < len(delays) else delays[-1]
+            logger.warning(
+                "Garmin oauth/exchange rate-limited (429) for athlete %s "
+                "[attempt %d/%d] — retrying in %ds",
+                athlete_id, attempt + 1, max_attempts, wait,
+            )
+            time.sleep(wait)
+    assert last_exc is not None
+    raise last_exc
+
+
 def _login_with_rate_limit_retry(garmin: Garmin, athlete_id: int, max_attempts: int = 2) -> None:
     """Call garmin.login() with a single short retry for transient failures.
 
@@ -202,6 +246,7 @@ def get_garmin_client(
             if db_tokens:
                 try:
                     garmin.garth.loads(decrypt_password(db_tokens.encode()))
+                    _ensure_fresh_oauth2(garmin, athlete_id)
                     _validate(garmin)
                     _save_tokens(garmin)  # refresh in case garth auto-renewed the OAuth2 token
                     logger.info("Garmin session loaded from DB for athlete %s", athlete_id)
@@ -210,7 +255,7 @@ def get_garmin_client(
                     if _is_rate_limited(e):
                         logger.warning(
                             "Garmin API rate limited (429) for athlete %s during DB token validation — "
-                            "skipping re-auth.",
+                            "OAuth2 refresh blocked, cannot proceed.",
                             athlete_id,
                         )
                         raise
@@ -219,6 +264,7 @@ def get_garmin_client(
         # --- 2. Filesystem tokens ---
         try:
             garmin.garth.load(token_path)
+            _ensure_fresh_oauth2(garmin, athlete_id)
             _validate(garmin)
             _save_tokens(garmin)  # migrate filesystem tokens into DB
             logger.info("Garmin session loaded from cache for athlete %s", athlete_id)
@@ -227,7 +273,7 @@ def get_garmin_client(
             if _is_rate_limited(e):
                 logger.warning(
                     "Garmin API rate limited (429) for athlete %s during session validation — "
-                    "tokens may still be valid; skipping re-auth.",
+                    "OAuth2 refresh blocked, cannot proceed.",
                     athlete_id,
                 )
                 raise
