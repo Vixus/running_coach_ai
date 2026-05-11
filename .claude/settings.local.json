@@ -85,7 +85,16 @@
       "Bash(sed -n '438,444p' running_coach_ai/coach/onboarding.py)",
       "Bash(sed -n '70,75p' running_coach_ai/scheduler/health_backfill.py)",
       "Bash(.venv/Scripts/python -c \"from running_coach_ai.garmin.client import _ensure_fresh_oauth2, get_garmin_client; from running_coach_ai.garmin.admin import verify_garmin_for_athlete; print\\('imports ok'\\)\")",
-      "Bash(.venv/Scripts/ruff check *)"
+      "Bash(.venv/Scripts/ruff check *)",
+      "Bash(where railway *)",
+      "Bash(railway --version)",
+      "Bash(railway status *)",
+      "Bash(.venv/Scripts/python *)",
+      "Bash(railway variables *)",
+      "Bash(findstr /I \"ENCRYPTION\")",
+      "Bash(tee /tmp/seed_export.txt)",
+      "Bash(railway ssh *)",
+      "Bash(railway run *)"
     ]
   }
 }

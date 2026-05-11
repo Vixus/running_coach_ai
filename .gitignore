@@ -29,3 +29,4 @@ Thumbs.db
 # Alembic
 *.db
 .coverage
+tmp_tokens/

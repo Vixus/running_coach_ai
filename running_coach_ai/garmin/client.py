@@ -254,12 +254,15 @@ def get_garmin_client(
                 except Exception as e:
                     if _is_rate_limited(e):
                         logger.warning(
-                            "Garmin API rate limited (429) for athlete %s during DB token validation — "
-                            "OAuth2 refresh blocked, cannot proceed.",
+                            "Garmin API rate limited (429) for athlete %s during DB token refresh — "
+                            "falling through to filesystem tokens (may have fresher state).",
                             athlete_id,
                         )
-                        raise
-                    logger.warning("DB tokens invalid for athlete %s (%s), trying filesystem", athlete_id, e)
+                        # Fall through to filesystem — operator may have pushed
+                        # fresher tokens there via /admin/upload-garmin-session
+                        # from an IP that isn't rate-limited.
+                    else:
+                        logger.warning("DB tokens invalid for athlete %s (%s), trying filesystem", athlete_id, e)
 
         # --- 2. Filesystem tokens ---
         try:
