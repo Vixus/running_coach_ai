@@ -127,20 +127,20 @@ function renderCalendar() {
           ? `<div class="cc-done">✓ ${data.actual_pace_mi}/mi</div>`
           : isDone ? `<div class="cc-done">✓ done</div>` : '';
         html += `<div class="${classes}" onclick="selectCalDay('${iso}')" data-iso="${iso}">
-          <div class="cc-top"><span style="display:flex;align-items:center;gap:3px;"><span style="font-size:9px;color:rgba(255,255,255,.35);">${d}</span><span class="cc-emoji">${meta.emoji}</span></span>${mi>0?`<span class="cc-mi">${mi}mi</span>`:''}</div>
-          <div class="cc-name">${data.name||data.type_label||'Run'}</div>
+          <div class="cc-date">${d}</div>
+          <div class="cc-top"><span class="cc-name-row"><span class="cc-name">${data.name||data.type_label||'Run'}</span> <span class="cc-emoji">${meta.emoji}</span></span>${mi>0?`<span class="cc-mi">${mi}mi</span>`:''}</div>
           <div class="cc-sub">${subStr}</div>
           ${data.tss>0?`<div class="cc-tss">${data.tss} Load</div>`:''}
           <div class="cc-int">${intSegs}</div>
           ${doneLine}
         </div>`;
       } else if (inRange) {
-        // Empty in-range day — light grey, day number only
-        html += `<div class="${classes}${isToday?'':' faint'}" onclick="selectCalDay('${iso}')" data-iso="${iso}" style="opacity:.4;">
-          <div class="cc-top"><span style="font-size:11px;color:rgba(255,255,255,.6);">${d}</span></div>
+        // Empty in-range day — date only
+        html += `<div class="${classes}${isToday?'':' faint'}" onclick="selectCalDay('${iso}')" data-iso="${iso}" style="opacity:.55;">
+          <div class="cc-date">${d}</div>
         </div>`;
       } else {
-        html += `<div class="${classes}" data-iso="${iso}"><div class="cc-top"><span style="font-size:10px;color:rgba(255,255,255,.35);">${d}</span></div></div>`;
+        html += `<div class="${classes}" data-iso="${iso}"><div class="cc-date">${d}</div></div>`;
       }
     });
     const wRow = document.createElement('div');
