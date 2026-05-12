@@ -937,11 +937,16 @@ async function pollNotifUnread(){
   const data = await fetchNotifUnread();
   if(!data) return;
   renderNotifBadge(data.count || 0);
-  // If a panel is open and a new notification has arrived, refresh the list.
+  // When a new notification arrives, re-hydrate the page so the morning report,
+  // featured run, etc. reflect the new state without a manual refresh.
   const panelOpen = document.getElementById('notif-panel')?.classList.contains('open');
-  if(panelOpen && data.latest_at && data.latest_at !== notifLatestSeen){
+  const advanced = data.latest_at && data.latest_at !== notifLatestSeen;
+  const firstSeen = notifLatestSeen === null;
+  if(advanced){
     notifLatestSeen = data.latest_at;
-    refreshNotifPanel();
+    if(panelOpen) refreshNotifPanel();
+    // Skip on the very first poll (page just loaded — already hydrated).
+    if(!firstSeen) hydrate().catch(()=>{});
   } else if(data.latest_at){
     notifLatestSeen = data.latest_at;
   }

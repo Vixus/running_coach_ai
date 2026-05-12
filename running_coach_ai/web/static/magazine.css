@@ -570,6 +570,9 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
     border-radius:16px;
   }
   .cp-msgs{max-height:42vh;}
+
+  /* iOS Safari auto-zooms on focus when input font-size < 16px. Force 16px on mobile. */
+  .cp-inp,.gm-inp,.adm-invite-input,.adm-input,input[type=text],input[type=email],input[type=password],input[type=search],textarea{font-size:16px;}
 }
 
 /* Touch-only — hover effects don't fire on tap, so convert to tap-toggle */
