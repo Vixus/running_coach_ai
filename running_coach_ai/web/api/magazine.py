@@ -26,6 +26,7 @@ from running_coach_ai.database.models import (
     CompletedWorkout,
     Goal,
     HealthSnapshot,
+    Notification,
     PlannedWorkout,
     TrainingPlan,
 )
@@ -696,12 +697,37 @@ def magazine():
             latest_completed_id=latest_completed_id,
             today=today,
         )
+        # Morning report: prefer today's morning_checkin notification body
+        # (an excerpt to fit the single-line serif quote on the home card),
+        # falling back to the persona's static greeting if none exists yet.
+        morning_msg = None
+        morning_msg_created_at = None
+        morning_notif = (
+            db.query(Notification)
+            .filter(
+                Notification.athlete_id == athlete_id,
+                Notification.kind == "morning_checkin",
+            )
+            .order_by(Notification.created_at.desc())
+            .first()
+        )
+        if morning_notif and athlete.last_morning_checkin_date == today:
+            body = (morning_notif.body or "").strip()
+            if body:
+                sentences = _re.split(r'(?<=[.!?])\s+', body)
+                excerpt = " ".join(sentences[:2]).strip()
+                morning_msg = excerpt or body
+                morning_msg_created_at = morning_notif.created_at.isoformat()
+        if not morning_msg:
+            morning_msg = (persona.greeting or "").strip() or None
+
         coach = {
             "key":     athlete.coach_key or "classic",
             "name":    first,
             "display": persona.name,
             "tagline": _persona_tagline(athlete.coach_key or "classic"),
-            "message": (persona.greeting or "").strip() or None,
+            "message": morning_msg,
+            "message_at": morning_msg_created_at,
             "quotes":  coach_quotes,
         }
 
