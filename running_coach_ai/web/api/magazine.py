@@ -8,8 +8,9 @@ units (miles, hours, %), since the magazine is a pure view layer.
 
 import json
 import logging
+import re as _re
 import threading
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from flask import Blueprint, jsonify, request, session
 from sqlalchemy import func
@@ -195,6 +196,63 @@ def _miles_landmark(miles: int) -> dict | None:
             return {"miles": threshold, "name": name, "sub": sub}
     first = _MILES_LANDMARKS[0]
     return {"miles": first[0], "name": first[1], "sub": first[2]}
+
+
+# Morning check-ins are surfaced on the home card for this long after they
+# fire. 24h covers timezone edges (athlete-local "today" vs server UTC "today")
+# without surfacing yesterday's report as if it were today's.
+MORNING_REPORT_FRESHNESS = timedelta(hours=24)
+
+
+def _excerpt_first_sentences(text: str, n: int = 2) -> str:
+    """Take the first `n` sentences of `text`, collapsing whitespace.
+
+    Used to fit the multi-paragraph morning check-in body into the single-line
+    serif quote slot on the home card. Falls back to the full (stripped) text
+    if no sentence terminators are present.
+    """
+    stripped = (text or "").strip()
+    if not stripped:
+        return ""
+    sentences = _re.split(r'(?<=[.!?])\s+', stripped)
+    excerpt = " ".join(sentences[:n]).strip()
+    return excerpt or stripped
+
+
+def _resolve_morning_message(
+    db,
+    athlete_id: int,
+    persona_greeting: str | None,
+    now_utc: datetime | None = None,
+) -> tuple[str | None, str | None, str]:
+    """Pick the home-card morning message.
+
+    Returns (message, created_at_iso, source) where source is "morning_checkin"
+    when today's check-in is being surfaced, or "persona_greeting" when we fell
+    back to the persona's static greeting.
+
+    The freshness gate uses `created_at` (UTC) against `now_utc` rather than a
+    date comparison, so the message survives timezone boundaries (e.g. a 7am
+    EST check-in is still 'today' at 11pm EST even though server-side UTC has
+    already rolled over).
+    """
+    cutoff = (now_utc or datetime.utcnow()) - MORNING_REPORT_FRESHNESS
+    notif = (
+        db.query(Notification)
+        .filter(
+            Notification.athlete_id == athlete_id,
+            Notification.kind == "morning_checkin",
+            Notification.created_at >= cutoff,
+        )
+        .order_by(Notification.created_at.desc())
+        .first()
+    )
+    if notif and notif.body:
+        excerpt = _excerpt_first_sentences(notif.body, n=2)
+        if excerpt:
+            return excerpt, notif.created_at.isoformat(), "morning_checkin"
+    fallback = (persona_greeting or "").strip() or None
+    return fallback, None, "persona_greeting"
 
 
 def _persona_tagline(coach_key: str) -> str:
@@ -436,7 +494,6 @@ def magazine():
         latest_completed_id = latest_completed[0] if latest_completed else None
 
         # ── Most recent completed workout (Last Run section) ──────────────────
-        import re as _re
         last_cw = (
             db.query(CompletedWorkout)
             .filter(CompletedWorkout.athlete_id == athlete_id)
@@ -697,29 +754,9 @@ def magazine():
             latest_completed_id=latest_completed_id,
             today=today,
         )
-        # Morning report: prefer today's morning_checkin notification body
-        # (an excerpt to fit the single-line serif quote on the home card),
-        # falling back to the persona's static greeting if none exists yet.
-        morning_msg = None
-        morning_msg_created_at = None
-        morning_notif = (
-            db.query(Notification)
-            .filter(
-                Notification.athlete_id == athlete_id,
-                Notification.kind == "morning_checkin",
-            )
-            .order_by(Notification.created_at.desc())
-            .first()
+        morning_msg, morning_msg_at, morning_msg_source = _resolve_morning_message(
+            db, athlete_id, persona.greeting,
         )
-        if morning_notif and athlete.last_morning_checkin_date == today:
-            body = (morning_notif.body or "").strip()
-            if body:
-                sentences = _re.split(r'(?<=[.!?])\s+', body)
-                excerpt = " ".join(sentences[:2]).strip()
-                morning_msg = excerpt or body
-                morning_msg_created_at = morning_notif.created_at.isoformat()
-        if not morning_msg:
-            morning_msg = (persona.greeting or "").strip() or None
 
         coach = {
             "key":     athlete.coach_key or "classic",
@@ -727,7 +764,8 @@ def magazine():
             "display": persona.name,
             "tagline": _persona_tagline(athlete.coach_key or "classic"),
             "message": morning_msg,
-            "message_at": morning_msg_created_at,
+            "message_at": morning_msg_at,
+            "message_source": morning_msg_source,
             "quotes":  coach_quotes,
         }
 
