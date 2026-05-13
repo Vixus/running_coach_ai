@@ -1366,10 +1366,16 @@ async function hydrate(){
     else document.getElementById('m-hrv-num').textContent = '—';
     const lbl = document.getElementById('m-hrv-lbl');
     const trend = m.health.hrv_trend;
-    if (trend != null) lbl.textContent = trend > 0 ? `ms HRV · +${trend} vs 7-day ↑ · Click to explore →`
-                          : trend < 0 ? `ms HRV · ${trend} vs 7-day ↓ · Click to explore →`
-                                      : 'ms HRV · steady · Click to explore →';
-    else lbl.textContent = 'ms HRV · Click to explore →';
+    // When the snapshot is from a previous day (Garmin 429 / fetch failure
+    // today), make that visible so the dashboard doesn't read as "today's
+    // HRV is 40 ms" when it's actually yesterday's.
+    const staleSuffix = m.health.is_stale && m.health.date_iso
+      ? ` · from ${new Date(m.health.date_iso + 'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}`
+      : '';
+    if (trend != null) lbl.textContent = trend > 0 ? `ms HRV · +${trend} vs 7-day ↑${staleSuffix} · Click to explore →`
+                          : trend < 0 ? `ms HRV · ${trend} vs 7-day ↓${staleSuffix} · Click to explore →`
+                                      : `ms HRV · steady${staleSuffix} · Click to explore →`;
+    else lbl.textContent = `ms HRV${staleSuffix} · Click to explore →`;
     if (m.health.body_battery != null) document.getElementById('m-bb').textContent = m.health.body_battery;
     else document.getElementById('m-bb').textContent = '—';
     if (m.health.sleep_hours != null) document.getElementById('m-sleep').textContent = m.health.sleep_hours;

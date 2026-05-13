@@ -24,6 +24,7 @@ from sqlalchemy.orm import sessionmaker
 from running_coach_ai.database.models import (
     Athlete,
     Base,
+    HealthSnapshot,
     Notification,
 )
 
@@ -252,6 +253,127 @@ def test_magazine_ignores_other_notification_kinds(app_and_db):
     assert data["coach"]["message_source"] == "persona_greeting"
     assert "Great run" not in (data["coach"]["message"] or "")
     assert "Week summary" not in (data["coach"]["message"] or "")
+
+
+# ── Health-snapshot fallback (Garmin 429 → no today snapshot) ───────────────
+
+
+def _today():
+    """date.today() in server-local terms, matching the magazine endpoint."""
+    from datetime import date as _d
+    return _d.today()
+
+
+def test_magazine_returns_todays_health_snapshot_when_available(app_and_db):
+    flask_app, db, athlete = app_and_db
+    today = _today()
+    db.add(
+        HealthSnapshot(
+            athlete_id=athlete.id,
+            date=today,
+            hrv_score=55,
+            hrv_status="balanced",
+            body_battery_start=80,
+            body_battery_end=70,
+            sleep_duration_seconds=7 * 3600,
+            sleep_score=82,
+            resting_hr=48,
+        )
+    )
+    db.commit()
+
+    client = _client_with_session(flask_app, athlete.id)
+    data = client.get("/api/magazine").get_json()
+
+    assert data["health"] is not None
+    assert data["health"]["hrv"] == 55
+    assert data["health"]["resting_hr"] == 48
+    assert data["health"]["date_iso"] == today.isoformat()
+    assert data["health"]["is_stale"] is False
+
+
+def test_magazine_falls_back_to_recent_health_snapshot_when_today_missing(
+    app_and_db,
+):
+    """The regression: Garmin 429s, no HealthSnapshot for today, home card
+    shows "—" everywhere even though yesterday's data is fine. We should
+    fall back to the most recent snapshot within 3 days and flag it stale."""
+    flask_app, db, athlete = app_and_db
+    today = _today()
+    yesterday = today - timedelta(days=1)
+    db.add(
+        HealthSnapshot(
+            athlete_id=athlete.id,
+            date=yesterday,
+            hrv_score=40,
+            hrv_status="balanced",
+            body_battery_end=84,
+            sleep_duration_seconds=int(7.5 * 3600),
+            resting_hr=52,
+        )
+    )
+    db.commit()
+
+    client = _client_with_session(flask_app, athlete.id)
+    data = client.get("/api/magazine").get_json()
+
+    assert data["health"] is not None, "health block must not be null"
+    assert data["health"]["hrv"] == 40
+    assert data["health"]["body_battery"] == 84
+    assert data["health"]["resting_hr"] == 52
+    assert data["health"]["sleep_hours"] == 7.5
+    assert data["health"]["date_iso"] == yesterday.isoformat()
+    assert data["health"]["is_stale"] is True
+
+
+def test_magazine_skips_snapshots_older_than_3_days(app_and_db):
+    """Anything older than 3 days is not surfaced — better to show "—" than
+    HRV from a week ago."""
+    flask_app, db, athlete = app_and_db
+    today = _today()
+    db.add(
+        HealthSnapshot(
+            athlete_id=athlete.id,
+            date=today - timedelta(days=5),
+            hrv_score=99,
+            resting_hr=99,
+        )
+    )
+    db.commit()
+
+    client = _client_with_session(flask_app, athlete.id)
+    data = client.get("/api/magazine").get_json()
+
+    assert data["health"] is None
+
+
+def test_magazine_prefers_today_over_recent_when_both_exist(app_and_db):
+    flask_app, db, athlete = app_and_db
+    today = _today()
+    db.add(
+        HealthSnapshot(
+            athlete_id=athlete.id,
+            date=today - timedelta(days=1),
+            hrv_score=40,
+            resting_hr=52,
+        )
+    )
+    db.add(
+        HealthSnapshot(
+            athlete_id=athlete.id,
+            date=today,
+            hrv_score=60,
+            resting_hr=50,
+        )
+    )
+    db.commit()
+
+    client = _client_with_session(flask_app, athlete.id)
+    data = client.get("/api/magazine").get_json()
+
+    assert data["health"]["hrv"] == 60
+    assert data["health"]["is_stale"] is False
+    assert data["health"]["date_iso"] == today.isoformat()
 
 
 def test_magazine_isolates_morning_checkin_per_athlete(app_and_db):

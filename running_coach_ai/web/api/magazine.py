@@ -328,21 +328,48 @@ def magazine():
                 .first()
             )
 
-        # Today's health snapshot
+        # Today's health snapshot — fall back to the most recent within the last
+        # 3 days when today's is missing (e.g. Garmin returned 429 and the
+        # scheduler couldn't write a snapshot). Matches coach/adapter.py's
+        # behavior so the morning check-in text and the home-card metrics agree
+        # on which day's data is being shown. Without this fallback the home
+        # card displays "—" for HRV / Body Battery / Sleep / RHR even though
+        # the coach message references the previous day's numbers — that
+        # mismatch reads as "morning report load failed."
         snap = (
             db.query(HealthSnapshot)
             .filter(HealthSnapshot.athlete_id == athlete_id, HealthSnapshot.date == today)
             .first()
         )
+        snap_is_stale = False
+        if snap is None:
+            snap = (
+                db.query(HealthSnapshot)
+                .filter(
+                    HealthSnapshot.athlete_id == athlete_id,
+                    HealthSnapshot.date >= today - timedelta(days=3),
+                    HealthSnapshot.date < today,
+                )
+                .order_by(HealthSnapshot.date.desc())
+                .first()
+            )
+            snap_is_stale = snap is not None
 
-        # 7-day HRV trend (current vs avg of prior 7 days)
-        week_ago = today - timedelta(days=7)
+        # 7-day HRV trend — compare snap.hrv_score to the 7 days preceding the
+        # snap (not the 7 days preceding "today"), so trend math stays correct
+        # when we're displaying yesterday's snapshot.
+        if snap is not None:
+            trend_window_start = snap.date - timedelta(days=7)
+            trend_window_end = snap.date
+        else:
+            trend_window_start = today - timedelta(days=7)
+            trend_window_end = today
         prior_snaps = (
             db.query(HealthSnapshot)
             .filter(
                 HealthSnapshot.athlete_id == athlete_id,
-                HealthSnapshot.date >= week_ago,
-                HealthSnapshot.date < today,
+                HealthSnapshot.date >= trend_window_start,
+                HealthSnapshot.date < trend_window_end,
             )
             .all()
         )
@@ -361,6 +388,8 @@ def magazine():
                 "body_battery": snap.body_battery_end,
                 "sleep_hours": sleep_h,
                 "resting_hr": snap.resting_hr,
+                "date_iso": snap.date.isoformat(),
+                "is_stale": snap_is_stale,
             }
 
         # This week (Mon–Sun) — planned + completed mileage
