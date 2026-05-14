@@ -1,0 +1,36 @@
+# Token refresh worker — run on a residential-IP host (Synology NAS).
+#
+# This compose file does NOT host the website. The website continues to
+# live on Railway. This service exists solely to refresh Garmin OAuth
+# tokens from an IP that Garmin doesn't rate-limit, then upload them to
+# Railway via the existing /admin/upload-garmin-session endpoint.
+#
+# Setup on Synology DSM (Container Manager → Project → Create):
+#   1. Project source: clone of this repo (Git or upload zip)
+#   2. Source: docker-compose.refresher.yml
+#   3. Populate .env with:
+#        RAILWAY_URL=https://running-coach-ai-production.up.railway.app
+#        DB_UPLOAD_TOKEN=<same value as Railway's DB_UPLOAD_TOKEN>
+#   4. Place initial garth tokens at ./data/garmin_sessions/<athlete_id>/
+#      (copy from a dev machine that already has working Garmin auth)
+#   5. Start the project. Logs visible in Container Manager → Container
+#      → Log.
+#
+# Manual run from a shell:
+#   docker compose -f docker-compose.refresher.yml up -d
+#   docker compose -f docker-compose.refresher.yml logs -f garmin-refresher
+
+services:
+  garmin-refresher:
+    build: .
+    command: python scripts/refresh_and_push_tokens.py
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # The container's mount point — overrides the relative path in .env.
+      - GARMIN_SESSION_DIR=/data/garmin_sessions/
+      # Refresh every 30 minutes. oauth2 TTL is ~1h so this leaves comfy
+      # headroom for one failed tick.
+      - REFRESH_INTERVAL_SECONDS=1800
+    volumes:
+      - ./data:/data
