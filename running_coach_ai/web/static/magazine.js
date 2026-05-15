@@ -411,7 +411,7 @@ function buildActFeed() {
   const list = document.getElementById('act-list');
   list.innerHTML = '';
   if (!ACTIVITIES_DATA.length) {
-    list.innerHTML = `<div style="text-align:center;padding:48px 24px;color:var(--mid);font-style:italic;font-family:'DM Serif Display',serif;font-size:18px;">No recent runs yet — once you sync workouts, they'll appear here.</div>`;
+    list.innerHTML = `<div style="text-align:center;padding:48px 24px;color:var(--mid);font-style:italic;font-family:'DM Serif Display',serif;font-size:18px;">Your next run will appear here — the featured run above is your most recent.</div>`;
     return;
   }
   ACTIVITIES_DATA.forEach(a => {
@@ -1553,36 +1553,32 @@ async function hydrate(){
     });
   }
 
-  // Activity feed — derive from last_run + history
-  ACTIVITIES_DATA = [];
-  if (m.last_run) {
-    const lr = m.last_run;
-    const laps = lr.laps || [];
+  // Activity feed — runs 2–6 from API (featured run is excluded server-side)
+  ACTIVITIES_DATA = (m.recent_activities || []).map((a, i) => {
+    const laps = a.laps || [];
     const ppm = laps.filter(l=>l.pace).map(l=>{const [mn,sc]=l.pace.split(':').map(Number);return mn+sc/60;});
     const hpm = laps.filter(l=>l.hr).map(l=>l.hr);
-    const cpm = laps.filter(l=>l.cadence).map(l=>l.cadence);
-    const wpm = laps.filter(l=>l.power).map(l=>l.power);
-    ACTIVITIES_DATA.push({
-      id: 1,
-      date: lr.date_pretty ? lr.date_pretty.split(',').slice(1).join(',').trim() : '—',
-      label: lr.type_label || 'Run',
-      type: lr.type || 'easy',
-      dist: lr.miles ?? 0,
+    return {
+      id: i + 2,
+      date: a.date_pretty ? a.date_pretty.split(',').slice(1).join(',').trim() : '—',
+      label: a.type_label || 'Run',
+      type: a.type || 'easy',
+      dist: a.miles ?? 0,
       time: '',
-      pace: lr.pace_mi ? lr.pace_mi + '/mi' : '',
-      hr: lr.avg_hr,
-      tss: lr.training_load,
-      cadence: lr.cadence,
-      power: lr.power_w,
-      elevation_ft: lr.elevation_ft,
-      zones: lr.hr_zones ? lr.hr_zones.map(z=>z.pct) : [0,0,0,0,0],
+      pace: a.pace_mi ? a.pace_mi + '/mi' : '',
+      hr: a.avg_hr,
+      tss: a.training_load,
+      cadence: a.cadence,
+      power: a.power_w,
+      elevation_ft: a.elevation_ft,
+      zones: a.hr_zones ? a.hr_zones.map(z=>z.pct) : [0,0,0,0,0],
       pacePerMile: ppm,
       hrPerMile: hpm,
-      cadencePerMile: cpm,
-      powerPerMile: wpm,
-      note: lr.coach_analysis ? `"${lr.coach_analysis}"` : null,
-    });
-  }
+      cadencePerMile: [],
+      powerPerMile: [],
+      note: a.coach_analysis ? `"${a.coach_analysis}"` : null,
+    };
+  });
   buildActFeed();
 
   // Story / weekly history

@@ -617,7 +617,58 @@ def magazine():
                 "elevation_pts": elevation_pts,
             }
 
-        # ── Weekly history — last 8 weeks ───────────────────���─────────────────
+        # ── Recent activities (feed: runs 2–6, featured run excluded) ──────────
+        recent_activities = []
+        if last_cw:
+            feed_cws = (
+                db.query(CompletedWorkout)
+                .filter(
+                    CompletedWorkout.athlete_id == athlete_id,
+                    CompletedWorkout.id != last_cw.id,
+                )
+                .order_by(CompletedWorkout.date.desc())
+                .limit(5)
+                .all()
+            )
+            for cw in feed_cws:
+                cw_type = (
+                    (cw.planned_workout.workout_type if cw.planned_workout else None) or "easy"
+                )
+                analysis_excerpt = None
+                if cw.coach_analysis:
+                    sentences = _re.split(r'(?<=[.!?])\s+', cw.coach_analysis.strip())
+                    analysis_excerpt = " ".join(sentences[:2])
+                t = cw.telemetry
+                laps = None
+                if t and t.laps_json:
+                    laps = [
+                        {
+                            "num": lap.get("lap_number"),
+                            "mi": round(km_to_mi((lap.get("distance_m") or 0) / 1000), 2),
+                            "pace": _format_pace_mi(lap.get("avg_pace_min_per_km")),
+                            "hr": lap.get("avg_hr"),
+                        }
+                        for lap in t.laps_json
+                    ]
+                recent_activities.append({
+                    "date_pretty": f"{cw.date.strftime('%A')}, {cw.date.strftime('%B')} {cw.date.day}",
+                    "date_iso": cw.date.isoformat(),
+                    "type": cw_type,
+                    "type_label": _TYPE_LABEL.get(cw_type, cw_type.replace("_", " ").title()),
+                    "miles": round(km_to_mi(cw.distance_km), 1) if cw.distance_km else None,
+                    "pace_mi": _format_pace_mi(cw.avg_pace_min_per_km),
+                    "avg_hr": cw.avg_hr,
+                    "max_hr": cw.max_hr,
+                    "cadence": cw.avg_cadence_spm,
+                    "power_w": round(cw.avg_power_w) if cw.avg_power_w else None,
+                    "elevation_ft": round(cw.elevation_gain_m * 3.28084) if cw.elevation_gain_m else None,
+                    "training_load": round(cw.training_load) if cw.training_load else None,
+                    "coach_analysis": analysis_excerpt,
+                    "hr_zones": None,
+                    "laps": laps,
+                })
+
+        # ── Weekly history — last 8 weeks ───────────────────────────────────────
         eight_wk_ago = monday - timedelta(weeks=8)
         hist_completed = (
             db.query(CompletedWorkout)
@@ -956,7 +1007,8 @@ def magazine():
             "health":         health,
             "race":           race,
             "coach":          coach,
-            "last_run":       last_run,
+            "last_run":         last_run,
+            "recent_activities": recent_activities,
             "weekly_history": weekly_history,
             "tempo_pace_history": tempo_pace_history,
             "flipcards":      flipcards,

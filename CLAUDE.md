@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Rules
 
-- Do not make any changes until you have 95% confidence in what you need to build. Ask follow-up questions until you reach that confidence.
+- Do not make any changes until you have 95% confidence in what you need to build. Ask clarifying questions until you reach that confidence — even for small tasks. It's better to ask one extra question than to build the wrong thing.
+- Challenge product ideas that have poor UX, unclear value, or better alternatives. You are a collaborator, not an executor — push back with reasoning before implementing.
+- Specs for features live in `specs/<NNN>-<feature-name>/` (numbered directories). Always check the relevant spec before implementing.
 
 ## Commands
 
@@ -66,6 +68,7 @@ All vars are loaded via `pydantic-settings` from `.env` (see `.env.example`):
 | `LOG_LEVEL` | no | `INFO` | Python logging level |
 | `LOG_FILE` | no | `""` | If set, also log to rotating file (10 MB × 5) |
 | `GARMIN_TIMEOUT` | no | `30` | Garmin API call timeout (seconds) |
+| `STORY_IMAGE_DIR` | no | `/data/story_images/` | Athlete story cover image uploads |
 
 ## Architecture
 
@@ -212,4 +215,8 @@ Admin operations are exposed via `/api/admin/...` endpoints, gated by `is_admin=
 - **Garmin session files**: Stored at `GARMIN_SESSION_DIR/{athlete_id}/`. Loss forces re-authentication.
 - **Encryption key**: Losing `ENCRYPTION_KEY` makes all stored Garmin passwords unreadable.
 - **DB schema**: `main.py` and `web.py` call `Base.metadata.create_all(engine)` at startup (idempotent). Alembic is used for schema migrations on existing deployments.
-- **speckit workflow**: Feature development follows `specify → clarify → plan → tasks → implement` using the slash commands in `.claude/commands/`. Specs live in `specs/001-ai-running-coach/`.
+- **speckit workflow**: Feature development follows `specify → clarify → plan → tasks → implement` using the slash commands in `.claude/commands/`. Specs live in numbered directories under `specs/` (e.g. `specs/006-magazine-features/`).
+
+### Magazine frontend (`web/static/magazine.html`, `web/static/magazine.js`)
+
+The athlete-facing UI is a single static HTML page. `magazine.js` is extracted script from the page and hydrates all sections from one `GET /api/magazine` call on load. Sections scroll into view (`SECTIONS` array drives the nav). `ACTIVITIES_DATA`, `WEEK_DATA`, and `METRIC_TS` are module-level globals populated from the API response. Charts are built lazily as sections enter the viewport via `IntersectionObserver`. There is no bundler — plain ES2020 in `<script>` tags.

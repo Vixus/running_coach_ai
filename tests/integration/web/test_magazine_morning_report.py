@@ -383,6 +383,115 @@ def test_magazine_prefers_today_over_recent_when_both_exist(app_and_db):
     assert data["health"]["date_iso"] == today.isoformat()
 
 
+# ── recent_activities feed ──────────────────────────────────────────────────
+
+
+def test_recent_activities_excludes_most_recent_run(app_and_db):
+    """recent_activities must skip the most recent run (it's the featured run)."""
+    from running_coach_ai.database.models import CompletedWorkout
+
+    flask_app, db, athlete = app_and_db
+    today = _today()
+
+    for i in range(3):
+        db.add(CompletedWorkout(
+            athlete_id=athlete.id,
+            garmin_activity_id=f"act-excl-{i}",
+            date=today - timedelta(days=i),
+            distance_km=8.0,
+            avg_pace_min_per_km=5.5,
+        ))
+    db.commit()
+
+    client = _client_with_session(flask_app, athlete.id)
+    data = client.get("/api/magazine").get_json()
+
+    assert "recent_activities" in data
+    # Most recent is in last_run, so feed has 2 entries (not 3)
+    assert len(data["recent_activities"]) == 2
+    dates = [a["date_iso"] for a in data["recent_activities"]]
+    assert today.isoformat() not in dates
+    assert (today - timedelta(days=1)).isoformat() in dates
+    assert (today - timedelta(days=2)).isoformat() in dates
+
+
+def test_recent_activities_capped_at_five(app_and_db):
+    """Feed shows at most 5 activities even when more exist."""
+    from running_coach_ai.database.models import CompletedWorkout
+
+    flask_app, db, athlete = app_and_db
+    today = _today()
+
+    for i in range(8):
+        db.add(CompletedWorkout(
+            athlete_id=athlete.id,
+            garmin_activity_id=f"act-cap-{i}",
+            date=today - timedelta(days=i),
+            distance_km=5.0,
+        ))
+    db.commit()
+
+    client = _client_with_session(flask_app, athlete.id)
+    data = client.get("/api/magazine").get_json()
+
+    assert len(data["recent_activities"]) == 5
+
+
+def test_recent_activities_empty_with_zero_runs(app_and_db):
+    """No completed workouts → recent_activities is an empty list."""
+    flask_app, db, athlete = app_and_db
+    client = _client_with_session(flask_app, athlete.id)
+    data = client.get("/api/magazine").get_json()
+    assert data["recent_activities"] == []
+
+
+def test_recent_activities_empty_with_one_run(app_and_db):
+    """Exactly one run is featured; recent_activities must be empty."""
+    from running_coach_ai.database.models import CompletedWorkout
+
+    flask_app, db, athlete = app_and_db
+    today = _today()
+    db.add(CompletedWorkout(
+        athlete_id=athlete.id,
+        garmin_activity_id="solo-run",
+        date=today,
+        distance_km=6.0,
+    ))
+    db.commit()
+
+    client = _client_with_session(flask_app, athlete.id)
+    data = client.get("/api/magazine").get_json()
+    assert data["recent_activities"] == []
+
+
+def test_recent_activities_has_expected_fields(app_and_db):
+    """Each activity in the feed carries the fields the JS needs."""
+    from running_coach_ai.database.models import CompletedWorkout
+
+    flask_app, db, athlete = app_and_db
+    today = _today()
+
+    for i in range(2):
+        db.add(CompletedWorkout(
+            athlete_id=athlete.id,
+            garmin_activity_id=f"act-fields-{i}",
+            date=today - timedelta(days=i),
+            distance_km=10.0,
+            avg_pace_min_per_km=6.0,
+            avg_hr=145,
+            training_load=65.0,
+        ))
+    db.commit()
+
+    client = _client_with_session(flask_app, athlete.id)
+    data = client.get("/api/magazine").get_json()
+
+    assert len(data["recent_activities"]) == 1
+    act = data["recent_activities"][0]
+    for field in ("date_iso", "date_pretty", "type", "type_label", "miles", "pace_mi", "avg_hr", "training_load", "coach_analysis", "laps"):
+        assert field in act, f"missing field: {field}"
+
+
 def test_magazine_isolates_morning_checkin_per_athlete(app_and_db):
     """A different athlete's morning check-in must NOT show up on this
     athlete's home card."""
