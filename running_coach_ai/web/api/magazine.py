@@ -11,6 +11,7 @@ import logging
 import re as _re
 import threading
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from flask import Blueprint, jsonify, request, session
 from sqlalchemy import func
@@ -307,12 +308,19 @@ def coach_switch():
 @login_required
 def magazine():
     athlete_id = session["athlete_id"]
-    today = date.today()
 
     with get_session() as db:
         athlete = db.get(Athlete, athlete_id)
         if not athlete:
             return jsonify({"error": "Athlete not found"}), 404
+
+        # Use the athlete's local "today" so the page header, week boundaries,
+        # and all "is this past/today/future?" comparisons agree with the
+        # athlete's calendar — not the container's UTC clock. (At 10:29pm
+        # Thursday EDT, server UTC is already Friday, which would cause the
+        # Morning Readiness section to read "Friday" a day early.)
+        tz = ZoneInfo(athlete.timezone or "America/New_York")
+        today = datetime.now(tz).date()
 
         goal = (
             db.query(Goal)

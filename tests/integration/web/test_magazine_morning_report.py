@@ -259,9 +259,16 @@ def test_magazine_ignores_other_notification_kinds(app_and_db):
 
 
 def _today():
-    """date.today() in server-local terms, matching the magazine endpoint."""
-    from datetime import date as _d
-    return _d.today()
+    """Athlete-local today, matching the magazine endpoint's tz handling.
+
+    The endpoint now computes `today` from `athlete.timezone` (falling back to
+    America/New_York) so that the page doesn't roll over to "tomorrow" the
+    moment server UTC crosses midnight. The fixture pins athlete tz to
+    America/New_York, so we mirror that here.
+    """
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo as _Z
+    return _dt.now(_Z("America/New_York")).date()
 
 
 def test_magazine_returns_todays_health_snapshot_when_available(app_and_db):
