@@ -206,6 +206,9 @@ def create_app() -> Flask:
     from running_coach_ai.web.api.magazine import bp as magazine_bp
     app.register_blueprint(magazine_bp)
 
+    from running_coach_ai.web.api.today import bp as today_bp
+    app.register_blueprint(today_bp)
+
     from running_coach_ai.web.api.notifications import bp as notifications_bp
     app.register_blueprint(notifications_bp)
 

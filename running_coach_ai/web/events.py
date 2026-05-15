@@ -7,7 +7,7 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 VALID_SEVERITIES = {"info", "warn", "error"}
-VALID_CATEGORIES = {"auth", "garmin", "claude", "scheduler", "http"}
+VALID_CATEGORIES = {"auth", "garmin", "claude", "scheduler", "http", "today"}
 
 
 class WebEventHandler(logging.Handler):

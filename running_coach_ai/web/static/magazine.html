@@ -75,27 +75,71 @@
   <div class="snd ondark" data-s="race"></div>
 </div>
 
-<section id="hero">
-  <div id="hero-glow"></div>
-  <svg class="terrain-svg" id="terrain-svg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice">
-    <path d="M-100,400 C100,375 200,315 400,305 S600,285 700,255 S900,195 1100,175 S1300,155 1400,145" stroke="white" stroke-width="1" fill="none"/>
-    <path d="M-100,435 C100,418 250,348 450,338 S650,315 780,290 S980,235 1100,215 S1250,190 1400,180" stroke="white" stroke-width="1" fill="none" opacity=".75"/>
-    <path d="M-100,468 C100,455 300,405 500,394 S700,368 850,338 S1050,288 1200,263" stroke="white" stroke-width="1" fill="none" opacity=".55"/>
-    <path d="M-100,500 C150,486 350,445 550,436 S750,412 900,378 S1100,332 1300,308" stroke="white" stroke-width="1" fill="none" opacity=".35"/>
-    <path d="M200,245 C300,234 355,195 405,185 S485,180 525,155 S584,126 644,116" stroke="white" stroke-width="1" fill="none" opacity=".45"/>
-  </svg>
-  <div id="hero-content">
-    <div class="hero-eye" id="hero-eye">Your Personal Record</div>
-    <h1 class="hero-name" id="hero-name" data-first="WELCOME" data-last="ATHLETE">WELCOME<br><em>ATHLETE</em></h1>
-    <p class="hero-tag" id="hero-tag" style="visibility:hidden;">&nbsp;</p>
-    <div class="hero-strip" id="hero-strip" style="visibility:hidden;">
-      <div><div class="hs-v"><span class="cnt" data-t="0" id="hero-days">0</span></div><div class="hs-l" id="hero-days-lbl">Days to Race</div></div>
-      <div><div class="hs-v"><span class="cnt" data-t="0" id="hero-week">0</span><em id="hero-total-weeks"></em></div><div class="hs-l">Weeks of Training</div></div>
-      <div><div class="hs-v"><span class="cnt" data-t="0" id="hero-season-mi">0</span></div><div class="hs-l">Season Miles</div></div>
-      <div><div class="hs-v"><span class="cnt" data-t="0" id="hero-hrv">0</span></div><div class="hs-l" id="hero-hrv-lbl">HRV ms</div></div>
-    </div>
+<section id="today" data-state="LOADING" style="--coach-accent:#b8ff4f">
+  <div class="td-glow" id="td-glow"></div>
+
+  <!-- Magazine masthead -->
+  <div class="td-mast">
+    <div class="td-mast-l">RUNCOACH</div>
+    <div class="td-mast-r" id="td-mast-issue">Issue · — · —</div>
   </div>
-  <div class="hero-scroll">
+
+  <!-- Cover star: athlete name (always visible) -->
+  <div class="td-cover">
+    <div class="td-eye" id="td-cover-eye">Cover · Featured Athlete</div>
+    <h1 class="td-name" id="td-name"><span class="td-name-first" id="td-name-first">WELCOME</span><br><em class="td-name-last" id="td-name-last">ATHLETE</em></h1>
+    <p class="td-tag" id="td-tag"></p>
+  </div>
+
+  <!-- Today article: workout / rest / race / no-plan / off-plan / completed -->
+  <div class="td-article">
+    <div class="td-byline" id="td-byline">Today · —</div>
+
+    <!-- Skeleton (visible while data-state="LOADING") -->
+    <div class="td-skeleton" id="td-skeleton">
+      <div class="td-sk-line td-sk-eyebrow"></div>
+      <div class="td-sk-line td-sk-title"></div>
+      <div class="td-sk-line td-sk-rationale"></div>
+      <div class="td-sk-line td-sk-rationale-2"></div>
+    </div>
+
+    <!-- Real content (visible when data-state != LOADING) -->
+    <div class="td-content" id="td-content">
+      <div class="td-ribbon" id="td-ribbon"></div>
+      <h2 class="td-headline" id="td-headline" tabindex="0" role="button" aria-label="Open coach chat about today's workout"></h2>
+      <p class="td-subtitle" id="td-subtitle"></p>
+      <blockquote class="td-rationale" id="td-rationale" tabindex="0" role="button" aria-label="Ask the coach a question about today's plan"></blockquote>
+      <div class="td-on-watch" id="td-on-watch" hidden>Ready on watch ✓</div>
+
+      <!-- CTA button (only rendered for NO_PLAN / OFF_PLAN) -->
+      <button class="td-cta" id="td-cta" hidden type="button"></button>
+    </div>
+
+    <!-- Stale indicator (only visible when latest fetch failed) -->
+    <div class="td-stale" id="td-stale" hidden>Showing cached data · refreshing…</div>
+  </div>
+
+  <!-- Cover lines (4 stats, 2x2 mobile, 4-col desktop) -->
+  <div class="td-stats" id="td-stats" hidden>
+    <button class="td-stat" data-idx="0" type="button">
+      <div class="td-stat-v" id="td-stat-v-0">—</div>
+      <div class="td-stat-l" id="td-stat-l-0">—</div>
+    </button>
+    <button class="td-stat" data-idx="1" type="button">
+      <div class="td-stat-v" id="td-stat-v-1">—</div>
+      <div class="td-stat-l" id="td-stat-l-1">—</div>
+    </button>
+    <button class="td-stat" data-idx="2" type="button">
+      <div class="td-stat-v" id="td-stat-v-2">—</div>
+      <div class="td-stat-l" id="td-stat-l-2">—</div>
+    </button>
+    <button class="td-stat" data-idx="3" type="button">
+      <div class="td-stat-v" id="td-stat-v-3">—</div>
+      <div class="td-stat-l" id="td-stat-l-3">—</div>
+    </button>
+  </div>
+
+  <div class="td-scroll">
     <svg width="14" height="18" viewBox="0 0 14 18" fill="none"><path d="M7 1v12M2 9l5 6 5-6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
     Scroll
   </div>
@@ -398,6 +442,7 @@
   <div class="fab-av" id="fab-av">A</div>
   <span class="fab-x">✕</span>
 </button>
+<div id="chat-backdrop" onclick="toggleChat()" aria-hidden="true"></div>
 <div id="chat-panel">
   <div class="cph">
     <div class="cph-av" id="cph-av">A</div>

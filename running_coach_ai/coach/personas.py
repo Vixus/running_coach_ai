@@ -10,6 +10,11 @@ class CoachPersona:
     description: str   # Athlete-facing description shown during coach selection
     persona_block: str # Full system prompt persona section
     greeting: str = "" # Short morning greeting shown on the web dashboard
+    # Today Card visual + race-morning support (spec 007). Default matches the
+    # classic persona's existing race-green accent so historical callers keep
+    # working without modification.
+    accent_color: str = "#b8ff4f"
+    race_morning_greeting: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -325,6 +330,11 @@ PERSONAS: dict[str, CoachPersona] = {
         ),
         persona_block=_ALEX_PERSONA,
         greeting="Morning. Let's see what the data says today.",
+        accent_color="#b8ff4f",
+        race_morning_greeting=(
+            "Trust the work. Execute the plan, mile by mile. "
+            "The fitness is real — go prove it."
+        ),
     ),
     "maya": CoachPersona(
         key="maya",
@@ -336,6 +346,12 @@ PERSONAS: dict[str, CoachPersona] = {
         ),
         persona_block=_MAYA_PERSONA,
         greeting="Good morning! Consistency is everything — let's check in.",
+        accent_color="#5a9a92",
+        race_morning_greeting=(
+            "You showed up for the weeks that built today. "
+            "Race the version of yourself that's standing on the line — "
+            "not yesterday's, not the perfect one. Have fun."
+        ),
     ),
     "jordan": CoachPersona(
         key="jordan",
@@ -347,6 +363,11 @@ PERSONAS: dict[str, CoachPersona] = {
         ),
         persona_block=_JORDAN_PERSONA,
         greeting="Hey! Let's see how your body is holding up.",
+        accent_color="#c4a040",
+        race_morning_greeting=(
+            "You're prepared because you stayed healthy enough to be prepared. "
+            "Run the race that protects the next one. Pace early, run free late."
+        ),
     ),
 }
 

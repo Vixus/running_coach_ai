@@ -1325,33 +1325,15 @@ async function hydrate(){
 
   try { hydrateStoryState(m); } catch(e) { console.warn('story hydrate', e); }
 
-  // Hero
-  const nameEl = document.getElementById('hero-name');
+  // Athlete name → nav brand / profile chip (the hero section is now the
+  // Today Card, which has its own /api/today hydration path).
   if (m.athlete && m.athlete.name && m.athlete.name.trim()) {
     const parts = m.athlete.name.trim().split(/\s+/);
-    nameEl.dataset.first = (parts[0] || '').toUpperCase();
-    nameEl.dataset.last  = (parts.slice(1).join(' ') || '').toUpperCase();
     document.getElementById('nav-brand').textContent = `RunCoach · ${m.athlete.name}`;
     document.getElementById('nav-profile').textContent = (parts[0]||'?').charAt(0).toUpperCase() + ((parts[1]||'').charAt(0).toUpperCase());
     document.getElementById('nav-profile').title = m.athlete.name;
   } else {
-    nameEl.dataset.first = 'WELCOME';
-    nameEl.dataset.last  = 'ATHLETE';
     document.getElementById('nav-profile').textContent = 'A';
-  }
-  if (m.today_pretty) document.getElementById('hero-eye').textContent = `Your Personal Record · ${m.today_pretty}`;
-  if (m.race && m.race.days_to_race != null) document.getElementById('hero-days').dataset.t = String(m.race.days_to_race);
-  if (m.race && m.race.name) document.getElementById('hero-days-lbl').textContent = `Days to ${m.race.name}`;
-  if (m.training && m.training.current_week) document.getElementById('hero-week').dataset.t = String(m.training.current_week);
-  if (m.training && m.training.total_weeks) document.getElementById('hero-total-weeks').textContent = `/${m.training.total_weeks}`;
-  if (m.season && m.season.miles_completed != null) document.getElementById('hero-season-mi').dataset.t = String(m.season.miles_completed);
-  if (m.health && m.health.hrv != null) document.getElementById('hero-hrv').dataset.t = String(m.health.hrv);
-  else document.getElementById('hero-hrv').textContent = '—';
-
-  // Hero tagline — keep poetic default but personalize when we have a race
-  if (m.race && m.race.name && m.athlete && m.athlete.name) {
-    const first = m.athlete.name.split(' ')[0];
-    document.getElementById('hero-tag').textContent = `"${first} is not running from something. ${first} is running toward ${m.race.name}."`;
   }
 
   // Morning
@@ -1835,6 +1817,7 @@ window.addEventListener('load', async () => {
   renderCoachPicker();
   // Run hydrate + coach-options + auth/me in parallel
   const [m, , me] = await Promise.all([hydrate(), loadCoachOptions(), fetchMe()]);
+  window.__ME = me;  // expose to other modules (Today Card uses it as cache-key scope)
   if (me && me.is_admin) {
     const el = document.getElementById('nav-admin-btn');
     if (el) el.style.display = '';
@@ -2263,7 +2246,7 @@ function setupTouchInteractions(){
   async function admLoadEvents(){
     const sec = admSel('adm-events');
     if(!sec.querySelector('.adm-event-filters')){
-      const CATS=['all','auth','garmin','claude','scheduler','http'];
+      const CATS=['all','auth','garmin','claude','scheduler','http','today'];
       const SEVS=['all','info','warn','error'];
       sec.innerHTML=`
         <div class="adm-row-hd"><button class="adm-reload-btn" onclick="_admEvReload()">↺ Refresh</button></div>
@@ -2642,3 +2625,338 @@ hydrateStoryState = function(payload){
   _origHydrateStoryState(payload);
   try { msHydrate(); } catch(e) { console.warn('msHydrate', e); }
 };
+
+// ═════════════════════════════════════════════════════════════════════════
+// ─── Today Card (spec 007) ───────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════
+
+const TODAY_CACHE_KEY_PREFIX = 'runcoach.today.';
+const TODAY_POLL_MS = 60_000;
+let _todayPollTimer = null;
+let _todayLastState = null;
+let _todayFetchFailed = false;
+
+function _todayCacheKey(){
+  const me = window.__ME || {};
+  return me.id ? (TODAY_CACHE_KEY_PREFIX + me.id) : null;
+}
+
+function _todayReadCache(){
+  try {
+    const k = _todayCacheKey();
+    if (!k) return null;
+    const raw = localStorage.getItem(k);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && parsed.payload ? parsed : null;
+  } catch { return null; }
+}
+
+function _todayWriteCache(payload){
+  try {
+    const k = _todayCacheKey();
+    if (!k) return;
+    localStorage.setItem(k, JSON.stringify({
+      fetched_at_iso: new Date().toISOString(),
+      payload,
+    }));
+  } catch (e) { /* localStorage may be full or disabled — silently ignore */ }
+}
+
+function _todayClearCache(){
+  try {
+    const k = _todayCacheKey();
+    if (k) localStorage.removeItem(k);
+  } catch {}
+}
+
+function tdRender(payload, opts){
+  opts = opts || {};
+  const stale = !!opts.stale;
+  const sec = document.getElementById('today');
+  if (!sec || !payload) return;
+
+  // Update state attribute (drives CSS variant)
+  const prevState = sec.dataset.state;
+  sec.dataset.state = payload.state || 'PRE_RUN';
+
+  // Accent color (CSS variable)
+  const accent = (payload.rationale && payload.rationale.accent_color) || '#b8ff4f';
+  sec.style.setProperty('--coach-accent', accent);
+
+  // Masthead — issue number from athlete_id, today date
+  const issueNum = (payload.athlete && payload.athlete.id) ? String(payload.athlete.id) : '—';
+  const mastR = document.getElementById('td-mast-issue');
+  if (mastR) {
+    const datePart = payload.today_pretty
+      ? payload.today_pretty.split(',').slice(0, 2).join(',')
+      : '—';
+    mastR.textContent = `Issue ${issueNum} · ${datePart}`;
+  }
+
+  // Cover star — athlete name as the largest type
+  if (payload.athlete && payload.athlete.name) {
+    const parts = payload.athlete.name.trim().split(/\s+/);
+    const first = (parts[0] || '').toUpperCase();
+    const last  = (parts.slice(1).join(' ') || '').toUpperCase() || 'ATHLETE';
+    document.getElementById('td-name-first').textContent = first;
+    document.getElementById('td-name-last').textContent  = last;
+  }
+
+  // Race tag (only meaningful in PRE_RUN/REST_DAY/RACE_DAY where the magazine
+  // also provides race context). Read from window.__MAG_DATA if available.
+  const tagEl = document.getElementById('td-tag');
+  if (tagEl) {
+    const mag = window.__MAG_DATA || {};
+    const race = mag.race;
+    if (race && race.name && payload.state !== 'NO_PLAN') {
+      const wkPart = (mag.training && mag.training.current_week && mag.training.total_weeks)
+        ? `Week ${mag.training.current_week} of ${mag.training.total_weeks}`
+        : (mag.training && mag.training.current_week ? `Week ${mag.training.current_week}` : '');
+      const daysPart = (race.days_to_race != null) ? `${race.days_to_race} days out` : '';
+      tagEl.textContent = [race.name, wkPart, daysPart].filter(Boolean).join(' · ');
+    } else {
+      tagEl.textContent = '';
+    }
+  }
+
+  // Byline
+  const coachName = (payload.rationale && payload.rationale.coach) || 'Coach';
+  const byPart = ({
+    PRE_RUN:    'Morning Briefing',
+    COMPLETED:  'Post-Run Analysis',
+    REST_DAY:   'Recovery Note',
+    RACE_DAY:   'Race-Morning Briefing',
+    NO_PLAN:    'Welcome',
+    OFF_PLAN:   'Plan Check',
+  })[payload.state] || 'Today';
+  document.getElementById('td-byline').textContent = `Today · ${coachName} · ${byPart}`;
+
+  // Eyebrow / Ribbon / Title / Subtitle
+  const eyebrow = (payload.headline && payload.headline.eyebrow) || '';
+  const ribbon  = (payload.headline && payload.headline.ribbon)  || '';
+  const title   = (payload.headline && payload.headline.title)   || '';
+  const sub     = (payload.headline && payload.headline.subtitle) || '';
+  document.getElementById('td-cover-eye').textContent = eyebrow ? `Cover · ${eyebrow}` : 'Cover · Featured Athlete';
+  document.getElementById('td-ribbon').textContent  = ribbon;
+  document.getElementById('td-headline').textContent = title;
+  document.getElementById('td-subtitle').textContent = sub;
+
+  // Rationale paragraph
+  const rationaleEl = document.getElementById('td-rationale');
+  const ratText = (payload.rationale && payload.rationale.text) || '';
+  rationaleEl.textContent = ratText;
+
+  // On-watch badge
+  const watchEl = document.getElementById('td-on-watch');
+  if (payload.modifiers && payload.modifiers.on_watch) {
+    watchEl.hidden = false;
+  } else {
+    watchEl.hidden = true;
+  }
+
+  // CTA button (NO_PLAN / OFF_PLAN)
+  const ctaEl = document.getElementById('td-cta');
+  const cta = payload.actions && payload.actions.cta;
+  if (cta) {
+    ctaEl.hidden = false;
+    ctaEl.textContent = cta.label || 'Open chat';
+    ctaEl.onclick = () => tdOpenChatWith(cta.chat_prompt || '');
+  } else {
+    ctaEl.hidden = true;
+    ctaEl.onclick = null;
+  }
+
+  // Headline + rationale tap targets (skip when state has no chat target)
+  const headlineEl = document.getElementById('td-headline');
+  const headlinePrompt = payload.actions && payload.actions.headline_chat_prompt;
+  if (headlinePrompt) {
+    headlineEl.onclick = () => tdOpenChatWith(headlinePrompt);
+    headlineEl.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tdOpenChatWith(headlinePrompt); } };
+    headlineEl.style.cursor = 'pointer';
+  } else {
+    headlineEl.onclick = null;
+    headlineEl.onkeydown = null;
+    headlineEl.style.cursor = 'default';
+  }
+
+  const rationalePrompt = payload.actions && payload.actions.rationale_chat_prompt;
+  if (rationalePrompt) {
+    rationaleEl.onclick = () => tdOpenChatWith(rationalePrompt);
+    rationaleEl.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tdOpenChatWith(rationalePrompt); } };
+    rationaleEl.style.cursor = 'pointer';
+  } else {
+    rationaleEl.onclick = null;
+    rationaleEl.onkeydown = null;
+    rationaleEl.style.cursor = 'default';
+  }
+
+  // Cover lines / stats
+  const statsEl = document.getElementById('td-stats');
+  const lines = payload.cover_lines;
+  if (Array.isArray(lines) && lines.length > 0) {
+    statsEl.hidden = false;
+    lines.slice(0, 4).forEach((line, i) => {
+      const v = document.getElementById('td-stat-v-' + i);
+      const l = document.getElementById('td-stat-l-' + i);
+      const btn = statsEl.querySelector(`.td-stat[data-idx="${i}"]`);
+      if (v) {
+        v.textContent = (line.value === undefined || line.value === null) ? '—' : line.value;
+        if (line.is_stale || stale) v.setAttribute('data-stale', '1');
+        else v.removeAttribute('data-stale');
+      }
+      if (l) l.textContent = line.label || '';
+      if (btn) {
+        if (line.drill_to) {
+          btn.style.cursor = 'pointer';
+          btn.onclick = () => tdDrillIn(line.drill_to);
+        } else {
+          btn.style.cursor = 'default';
+          btn.onclick = null;
+        }
+      }
+    });
+  } else {
+    statsEl.hidden = true;
+  }
+
+  // Stale banner
+  const staleEl = document.getElementById('td-stale');
+  if (staleEl) staleEl.hidden = !stale;
+
+  // State-transition animation (ribbon slide) only when state actually changed
+  if (prevState && prevState !== sec.dataset.state && prevState !== 'LOADING') {
+    const ribbonEl = document.getElementById('td-ribbon');
+    if (ribbonEl) {
+      ribbonEl.style.transform = 'translateX(-12px)';
+      ribbonEl.style.opacity = '0';
+      requestAnimationFrame(() => {
+        ribbonEl.style.transition = 'transform .35s ease, opacity .35s ease';
+        ribbonEl.style.transform = '';
+        ribbonEl.style.opacity = '';
+      });
+    }
+  }
+
+  _todayLastState = sec.dataset.state;
+}
+
+function tdOpenChatWith(prompt){
+  const pan = document.getElementById('chat-panel');
+  if (pan && !pan.classList.contains('open')) toggleChat();
+  setTimeout(() => {
+    const inp = document.getElementById('cp-inp');
+    if (inp) {
+      inp.value = prompt || '';
+      inp.focus();
+    }
+  }, 60);
+}
+
+function tdDrillIn(target){
+  const id = target === 'last_run' ? 'featrun' : 'morning';
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({behavior: 'smooth', block: 'start'});
+  el.classList.remove('td-highlight-pulse');
+  // Re-trigger animation by forcing a reflow
+  void el.offsetWidth;
+  el.classList.add('td-highlight-pulse');
+  setTimeout(() => el.classList.remove('td-highlight-pulse'), 1100);
+}
+
+async function hydrateToday(){
+  let payload = null;
+  try {
+    const r = await fetch('/api/today', {credentials:'same-origin'});
+    if (!r.ok) throw new Error('today HTTP ' + r.status);
+    payload = await r.json();
+    _todayFetchFailed = false;
+    _todayWriteCache(payload);
+    tdRender(payload, {stale: false});
+  } catch (e) {
+    console.warn('hydrateToday failed:', e);
+    _todayFetchFailed = true;
+    const cached = _todayReadCache();
+    if (cached && cached.payload) {
+      tdRender(cached.payload, {stale: true});
+    } else {
+      // No cache; keep skeleton visible (data-state="LOADING" sticks)
+      const sec = document.getElementById('today');
+      if (sec) sec.dataset.state = 'LOADING';
+    }
+  }
+}
+
+function _todaySchedulePoll(){
+  if (_todayPollTimer) clearTimeout(_todayPollTimer);
+  _todayPollTimer = setTimeout(async () => {
+    if (document.visibilityState === 'visible') await hydrateToday();
+    _todaySchedulePoll();
+  }, TODAY_POLL_MS);
+}
+
+// Cache-first render on boot, then network refresh within 500ms.
+(function tdBoot(){
+  const cached = _todayReadCache();
+  if (cached && cached.payload) {
+    tdRender(cached.payload, {stale: true});
+  }
+  setTimeout(() => { hydrateToday(); _todaySchedulePoll(); }, 100);
+  // Refresh on tab visibility change so background tabs catch up quickly.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') hydrateToday();
+  });
+})();
+
+// ─── Chat tap-outside / Escape dismissal (FR-025) ────────────────────────
+
+function _todaySyncChatBackdrop(){
+  const pan = document.getElementById('chat-panel');
+  const bd  = document.getElementById('chat-backdrop');
+  if (!pan || !bd) return;
+  if (pan.classList.contains('open')) bd.classList.add('open');
+  else bd.classList.remove('open');
+}
+// Watch for chat-panel class changes via a MutationObserver (no rewrite of toggleChat needed)
+(function tdWireChatBackdrop(){
+  const pan = document.getElementById('chat-panel');
+  if (!pan) return;
+  new MutationObserver(_todaySyncChatBackdrop).observe(pan, {attributes: true, attributeFilter: ['class']});
+  _todaySyncChatBackdrop();
+})();
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const pan = document.getElementById('chat-panel');
+  if (pan && pan.classList.contains('open')) toggleChat();
+});
+
+// ─── Persona-switch refetch (FR-026) ─────────────────────────────────────
+// switchCoach() at the existing call site already calls hydrate(); chain
+// hydrateToday() so the card transitions in step with the magazine.
+(function tdWireCoachSwitch(){
+  if (typeof window.switchCoach !== 'function') return;
+  const orig = window.switchCoach;
+  window.switchCoach = async function(){
+    const result = await orig.apply(this, arguments);
+    _todayClearCache();
+    try { await hydrateToday(); } catch {}
+    return result;
+  };
+})();
+
+// ─── Bell-notification refetch (FR-026) ──────────────────────────────────
+// renderNotifBadge() already triggers hydrate() when latest_at advances;
+// piggyback on it so the Today Card also refreshes when a fresh
+// morning_checkin / post_run_feedback lands.
+if (typeof window.renderNotifBadge === 'function') {
+  const _origRenderNotifBadge = window.renderNotifBadge;
+  let _todayLastNotifAt = null;
+  window.renderNotifBadge = function(count, latest_at){
+    if (latest_at && latest_at !== _todayLastNotifAt) {
+      _todayLastNotifAt = latest_at;
+      hydrateToday().catch(() => {});
+    }
+    return _origRenderNotifBadge.apply(this, arguments);
+  };
+}

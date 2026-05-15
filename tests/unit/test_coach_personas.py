@@ -208,3 +208,38 @@ def test_generate_post_run_feedback_uses_selected_persona(mock_send_dm, mock_mem
 
     mock_claude.assert_called_once()
     assert mock_claude.call_args[0][0] == get_persona("maya").persona_block
+
+
+# ── Today Card additions (spec 007) ──────────────────────────────────────────
+
+import re as _re_today
+
+
+@pytest.mark.parametrize("key", ["classic", "maya", "jordan"])
+def test_persona_has_valid_accent_color(key):
+    """Every persona MUST expose a 7-char #RRGGBB hex accent color."""
+    persona = PERSONAS[key]
+    assert isinstance(persona.accent_color, str)
+    assert _re_today.fullmatch(r"#[0-9A-Fa-f]{6}", persona.accent_color), (
+        f"{key} accent_color {persona.accent_color!r} is not a valid #RRGGBB hex"
+    )
+
+
+@pytest.mark.parametrize("key", ["classic", "maya", "jordan"])
+def test_persona_has_race_morning_greeting(key):
+    """Every persona MUST ship a non-empty race-morning greeting under 280 chars."""
+    persona = PERSONAS[key]
+    assert isinstance(persona.race_morning_greeting, str)
+    assert persona.race_morning_greeting.strip(), f"{key} race_morning_greeting is empty"
+    assert len(persona.race_morning_greeting) < 280, (
+        f"{key} race_morning_greeting exceeds 280-char mobile-cover budget "
+        f"({len(persona.race_morning_greeting)} chars)"
+    )
+
+
+def test_persona_accent_colors_are_distinct():
+    """Switching personas must produce a visible color change on the card."""
+    colors = {key: PERSONAS[key].accent_color.lower() for key in ("classic", "maya", "jordan")}
+    assert len(set(colors.values())) == 3, (
+        f"Persona accent colors must be distinct, got {colors}"
+    )

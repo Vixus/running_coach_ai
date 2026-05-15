@@ -73,20 +73,118 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
 .snd.ondark{background:rgba(255,255,255,.25);}
 .snd.ondark.active{background:var(--lime);}
 
-#hero{min-height:100vh;background:var(--ink);display:flex;flex-direction:column;justify-content:flex-end;padding:56px 64px;position:relative;overflow:hidden;}
-#hero::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E") repeat;pointer-events:none;z-index:2;}
-#hero-glow{position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(184,255,79,.06) 0%,transparent 70%);pointer-events:none;transform:translate(-50%,-50%);transition:left .7s ease,top .7s ease;z-index:1;}
-.terrain-svg{position:absolute;inset:0;pointer-events:none;opacity:.08;z-index:1;will-change:transform;}
-.hero-eye{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:20px;position:relative;z-index:3;opacity:0;animation:fadeUp .7s .2s ease forwards;}
-.hero-name{font-family:'Bebas Neue',sans-serif;font-size:clamp(72px,12vw,190px);line-height:.86;color:#fff;position:relative;z-index:3;}
-.hero-name em{color:var(--lime);font-style:normal;}
-.hero-tag{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(15px,2vw,24px);color:rgba(255,255,255,.38);margin-top:22px;max-width:460px;position:relative;z-index:3;opacity:0;animation:fadeUp .7s .95s ease forwards;}
-.hero-strip{display:flex;gap:48px;margin-top:48px;padding-top:24px;border-top:1px solid rgba(255,255,255,.1);position:relative;z-index:3;opacity:0;animation:fadeUp .7s 1.15s ease forwards;flex-wrap:wrap;}
-.hs-v{font-family:'Bebas Neue',sans-serif;font-size:34px;color:#fff;line-height:1;}
-.hs-v em{color:var(--lime);font-style:normal;}
-.hs-l{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-top:3px;}
-.hero-scroll{position:absolute;right:60px;bottom:54px;display:flex;flex-direction:column;align-items:center;gap:8px;color:rgba(255,255,255,.22);font-size:9px;letter-spacing:.14em;text-transform:uppercase;z-index:3;opacity:0;animation:fadeUp .7s 1.5s ease forwards;}
-.hero-scroll svg{animation:chatRing 2.2s ease-in-out infinite;}
+/* ─── Today Card (spec 007 — magazine cover hybrid) ──────────────────── */
+#today{
+  --coach-accent: #b8ff4f;
+  min-height: 100vh;
+  background: var(--ink);
+  display: flex;
+  flex-direction: column;
+  padding: 28px 22px 40px;
+  position: relative;
+  overflow: hidden;
+  animation: fadeUp .7s ease;
+}
+#today::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E") repeat;pointer-events:none;z-index:2;}
+.td-glow{position:absolute;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,var(--coach-accent) 0%,transparent 70%);opacity:.06;pointer-events:none;transform:translate(-50%,-50%);left:30%;top:40%;z-index:1;}
+
+/* Masthead */
+.td-mast{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid rgba(255,255,255,.18);padding-bottom:10px;margin-bottom:14px;position:relative;z-index:3;}
+.td-mast-l{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.05em;color:#fff;}
+.td-mast-r{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.4);}
+
+/* Cover star — athlete name as the largest type on the card */
+.td-cover{position:relative;z-index:3;margin-bottom:18px;}
+.td-eye{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.32);margin-bottom:10px;}
+.td-name{font-family:'Bebas Neue',sans-serif;font-size:clamp(54px,13vw,118px);line-height:.86;color:#fff;margin:0;}
+.td-name em{color:var(--coach-accent);font-style:italic;font-family:'DM Serif Display',serif;font-size:.55em;display:inline-block;margin-top:.15em;}
+.td-tag{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(14px,2vw,18px);color:rgba(255,255,255,.46);margin:14px 0 0;max-width:520px;}
+
+/* Article — workout / rest / race / no-plan / off-plan article */
+.td-article{position:relative;z-index:3;margin-top:8px;border-top:1px solid rgba(255,255,255,.14);padding-top:18px;}
+.td-byline{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:10px;}
+.td-ribbon{display:inline-block;background:var(--coach-accent);color:#111;font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:5px 10px;border-radius:3px;margin-bottom:14px;}
+.td-ribbon:empty{display:none;}
+.td-headline{font-family:'Bebas Neue',sans-serif;font-size:clamp(34px,8vw,64px);line-height:1;color:#fff;margin:0 0 8px;cursor:pointer;}
+.td-headline:hover{color:var(--coach-accent);}
+.td-headline:focus-visible{outline:2px solid var(--coach-accent);outline-offset:4px;border-radius:2px;}
+.td-subtitle{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(13px,1.8vw,17px);color:rgba(255,255,255,.6);margin:0 0 14px;max-width:560px;}
+.td-subtitle:empty{display:none;}
+.td-rationale{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(14px,1.95vw,19px);line-height:1.45;color:rgba(255,255,255,.84);margin:0 0 14px;padding:4px 0 4px 14px;border-left:2px solid var(--coach-accent);max-width:640px;cursor:pointer;}
+.td-rationale:hover{color:#fff;}
+.td-rationale:focus-visible{outline:2px solid var(--coach-accent);outline-offset:4px;border-radius:2px;}
+.td-rationale:empty{display:none;}
+.td-on-watch{display:inline-block;background:rgba(184,255,79,.12);color:var(--coach-accent);font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;padding:5px 9px;border-radius:3px;margin-top:4px;}
+
+/* CTA button (NO_PLAN / OFF_PLAN) */
+.td-cta{display:inline-block;background:var(--coach-accent);color:#111;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:12px 22px;border:none;border-radius:4px;margin-top:6px;cursor:pointer;}
+.td-cta:hover{filter:brightness(1.08);}
+.td-cta:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+
+/* Stats — cover lines (2x2 mobile, 4-col desktop) */
+.td-stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(255,255,255,.1);border-top:1px solid rgba(255,255,255,.1);margin-top:18px;position:relative;z-index:3;}
+.td-stat{background:var(--ink);border:none;color:inherit;text-align:left;padding:16px 18px;cursor:pointer;font:inherit;}
+.td-stat:hover{background:rgba(255,255,255,.04);}
+.td-stat:focus-visible{outline:2px solid var(--coach-accent);outline-offset:-2px;}
+.td-stat-v{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#fff;line-height:1;}
+.td-stat-v[data-stale="1"]::after{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.35);margin-left:6px;vertical-align:middle;}
+.td-stat-l{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-top:4px;}
+
+/* Stale banner */
+.td-stale{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:10px;}
+
+/* Skeleton (LOADING state) */
+.td-skeleton{display:none;}
+#today[data-state="LOADING"] .td-content{display:none;}
+#today[data-state="LOADING"] .td-skeleton{display:block;}
+.td-sk-line{background:rgba(255,255,255,.06);border-radius:3px;margin-bottom:10px;animation:tdSkel 1.4s ease-in-out infinite;}
+.td-sk-eyebrow{width:120px;height:9px;}
+.td-sk-title{width:80%;height:48px;}
+.td-sk-rationale{width:90%;height:14px;}
+.td-sk-rationale-2{width:70%;height:14px;}
+@keyframes tdSkel{0%,100%{opacity:.5;}50%{opacity:.85;}}
+
+/* Scroll indicator (reused from hero) */
+.td-scroll{position:absolute;right:22px;bottom:18px;display:flex;flex-direction:column;align-items:center;gap:6px;color:rgba(255,255,255,.22);font-size:9px;letter-spacing:.14em;text-transform:uppercase;z-index:3;}
+.td-scroll svg{animation:chatRing 2.2s ease-in-out infinite;}
+
+/* State-specific visibility toggles */
+#today[data-state="NO_PLAN"] .td-stats,
+#today[data-state="OFF_PLAN"] .td-stats{display:none;}
+#today[data-state="NO_PLAN"] .td-headline,
+#today[data-state="OFF_PLAN"] .td-headline{cursor:default;}
+#today[data-state="NO_PLAN"] .td-rationale,
+#today[data-state="OFF_PLAN"] .td-rationale{cursor:default;border-left-color:rgba(255,255,255,.2);}
+
+/* RACE_DAY — stats are read-only */
+#today[data-state="RACE_DAY"] .td-stat{cursor:default;}
+#today[data-state="RACE_DAY"] .td-stat:hover{background:var(--ink);}
+
+/* Tablet+ */
+@media (min-width: 768px){
+  #today{padding:36px 42px 56px;}
+  .td-stats{grid-template-columns:repeat(4,1fr);}
+  .td-stat{padding:18px 22px;}
+  .td-stat-v{font-size:32px;}
+}
+
+/* Desktop */
+@media (min-width: 1024px){
+  #today{padding:48px 64px 72px;}
+  .td-name{font-size:clamp(72px,8vw,128px);}
+}
+
+/* Chat backdrop (FR-025 — tap-outside dismissal) */
+#chat-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:998;opacity:0;pointer-events:none;transition:opacity .2s ease;}
+#chat-backdrop.open{opacity:1;pointer-events:auto;}
+
+/* Section-target highlight pulse (FR-024 — cover-line drill-in) */
+.td-highlight-pulse{animation:tdHighlight 1s ease;}
+@keyframes tdHighlight{
+  0%{box-shadow:0 0 0 0 var(--coach-accent, #b8ff4f);}
+  40%{box-shadow:0 0 0 24px rgba(184,255,79,.18);}
+  100%{box-shadow:0 0 0 0 rgba(184,255,79,0);}
+}
 
 .sec-dark{background:var(--ink);}
 .sec-paper{background:var(--paper);}
@@ -475,14 +573,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
   #snav{display:none;}
 
   /* Hero */
-  #hero{padding:36px 22px;min-height:88vh;}
-  .hero-eye{font-size:9px;letter-spacing:.2em;margin-bottom:14px;}
-  .hero-name{font-size:clamp(56px,16vw,96px);}
-  .hero-tag{font-size:14px;line-height:1.45;margin-top:18px;}
-  .hero-strip{gap:22px;margin-top:30px;padding-top:18px;}
-  .hs-v{font-size:24px;}
-  .hs-l{font-size:8px;}
-  .hero-scroll{right:22px;bottom:30px;font-size:8px;}
+  /* Today Card (#today) already styled mobile-first; no overrides needed here. */
 
   /* Morning */
   .m-left,.m-right{padding:48px 22px;}

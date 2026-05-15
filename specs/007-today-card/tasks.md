@@ -31,7 +31,7 @@ This feature follows the existing project layout per `plan.md`:
 
 **Purpose**: Confirm working state of the branch and pre-flight checks. No new project scaffolding is required — this is an additive feature in an existing repo.
 
-- [ ] T001 Confirm branch `007-today-card` is checked out and working tree is clean; run `ruff check .` and `pytest tests/unit/ -q` to verify baseline passes before any changes.
+- [X] T001 Confirm branch `007-today-card` is checked out and working tree is clean; run `ruff check .` and `pytest tests/unit/ -q` to verify baseline passes before any changes.
 
 ---
 
@@ -41,38 +41,38 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Persona dataclass + values
 
-- [ ] T002 Extend `CoachPersona` dataclass with two new fields (`accent_color: str = "#b8ff4f"`, `race_morning_greeting: str = ""`) in `running_coach_ai/coach/personas.py` per data-model.md §2.
-- [ ] T003 Populate `accent_color` and `race_morning_greeting` for the `classic`, `maya`, and `jordan` entries in the `PERSONAS` registry in `running_coach_ai/coach/personas.py` using the canonical values from research.md Decisions 4 and 5.
-- [ ] T004 [P] Update `tests/unit/test_coach_personas.py` to assert each persona has a non-empty `accent_color` matching `^#[0-9A-Fa-f]{6}$` and a non-empty `race_morning_greeting` under 280 characters.
+- [X] T002 Extend `CoachPersona` dataclass with two new fields (`accent_color: str = "#b8ff4f"`, `race_morning_greeting: str = ""`) in `running_coach_ai/coach/personas.py` per data-model.md §2.
+- [X] T003 Populate `accent_color` and `race_morning_greeting` for the `classic`, `maya`, and `jordan` entries in the `PERSONAS` registry in `running_coach_ai/coach/personas.py` using the canonical values from research.md Decisions 4 and 5.
+- [X] T004 [P] Update `tests/unit/test_coach_personas.py` to assert each persona has a non-empty `accent_color` matching `^#[0-9A-Fa-f]{6}$` and a non-empty `race_morning_greeting` under 280 characters.
 
 ### Rationale helpers module
 
-- [ ] T005 Create `running_coach_ai/coach/today_rationale.py` with `extract_rationale_paragraph(body: str) -> str` per FR-011 — pure function, strips whitespace, splits on double-newline, returns first paragraph (or first sentence if no paragraph break exists), fully unit-testable.
-- [ ] T006 Add `rule_based_morning(snap, planned, plan, goal, athlete_name) -> str` to `running_coach_ai/coach/today_rationale.py` implementing both branches per FR-008/FR-008a/FR-008b/FR-008c: with-snapshot (~6 templates keyed by HRV/sleep/body battery buckets) and no-snapshot (run-by-feel cues per workout type). Every variant references workout_type, plan.current_phase/current_week if available, goal.race_name if available, and the athlete by name.
+- [X] T005 Create `running_coach_ai/coach/today_rationale.py` with `extract_rationale_paragraph(body: str) -> str` per FR-011 — pure function, strips whitespace, splits on double-newline, returns first paragraph (or first sentence if no paragraph break exists), fully unit-testable.
+- [X] T006 Add `rule_based_morning(snap, planned, plan, goal, athlete_name) -> str` to `running_coach_ai/coach/today_rationale.py` implementing both branches per FR-008/FR-008a/FR-008b/FR-008c: with-snapshot (~6 templates keyed by HRV/sleep/body battery buckets) and no-snapshot (run-by-feel cues per workout type). Every variant references workout_type, plan.current_phase/current_week if available, goal.race_name if available, and the athlete by name.
 
 ### Athlete-centered prompt directives
 
-- [ ] T007 [P] Update `MORNING_CHECKIN_PROMPT` in `running_coach_ai/coach/adapter.py:17` to append the athlete-centered single-paragraph rationale directive from FR-009 (covers periodization arc, today's readiness, one execution cue; first-person; references continuity; 2-3 sentences; no hedging). Keep existing `{name} / {todays_session} / {health_data} / {weather}` placeholders intact.
-- [ ] T008 [P] Update `POST_RUN_FEEDBACK_PROMPT` in `running_coach_ai/coach/feedback.py:14` with the analogous athlete-centered directive from FR-010 (single conversational paragraph: how the run went vs plan, one lesson, what's next; first-person; references continuity).
+- [X] T007 [P] Update `MORNING_CHECKIN_PROMPT` in `running_coach_ai/coach/adapter.py:17` to append the athlete-centered single-paragraph rationale directive from FR-009 (covers periodization arc, today's readiness, one execution cue; first-person; references continuity; 2-3 sentences; no hedging). Keep existing `{name} / {todays_session} / {health_data} / {weather}` placeholders intact.
+- [X] T008 [P] Update `POST_RUN_FEEDBACK_PROMPT` in `running_coach_ai/coach/feedback.py:14` with the analogous athlete-centered directive from FR-010 (single conversational paragraph: how the run went vs plan, one lesson, what's next; first-person; references continuity).
 
 ### Endpoint scaffold
 
-- [ ] T009 Create `running_coach_ai/web/api/today.py` with a Flask blueprint, the `GET /api/today` route protected by `@login_required`, athlete-local timezone resolution per FR-002 (use `ZoneInfo(athlete.timezone or "America/New_York")`, NEVER `date.today()`), and a stub that returns `{"state": "PRE_RUN", ...}` so the endpoint is reachable.
-- [ ] T010 Implement the state-resolution function in `running_coach_ai/web/api/today.py` per FR-003 precedence (NO_PLAN → RACE_DAY → COMPLETED → REST_DAY → OFF_PLAN → PRE_RUN). Use `scoped_query(db_session, Model, athlete_id)` for every DB query. Return only the `state` field for now; per-state payload assembly comes in user-story phases.
-- [ ] T011 Implement the `WebEvent` emission helper in `running_coach_ai/web/api/today.py` per FR-032a/b and data-model.md §3: query the most recent `today.state_transition` event for the athlete, compare against the resolved state, INSERT a new event only when `from_state != to_state`, emit via Flask `@after_request` so the HTTP response is not blocked.
-- [ ] T012 Register the today blueprint in `running_coach_ai/web/app.py` inside `create_app()` (follow the existing pattern used for the magazine and notifications blueprints).
-- [ ] T013 [P] Add `today.state_transition` to the admin Events view filter dropdown in `running_coach_ai/web/api/admin.py` (and the corresponding frontend dropdown options in `running_coach_ai/web/static/magazine.js` if the dropdown is rendered client-side).
+- [X] T009 Create `running_coach_ai/web/api/today.py` with a Flask blueprint, the `GET /api/today` route protected by `@login_required`, athlete-local timezone resolution per FR-002 (use `ZoneInfo(athlete.timezone or "America/New_York")`, NEVER `date.today()`), and a stub that returns `{"state": "PRE_RUN", ...}` so the endpoint is reachable.
+- [X] T010 Implement the state-resolution function in `running_coach_ai/web/api/today.py` per FR-003 precedence (NO_PLAN → RACE_DAY → COMPLETED → REST_DAY → OFF_PLAN → PRE_RUN). Use `scoped_query(db_session, Model, athlete_id)` for every DB query. Return only the `state` field for now; per-state payload assembly comes in user-story phases.
+- [X] T011 Implement the `WebEvent` emission helper in `running_coach_ai/web/api/today.py` per FR-032a/b and data-model.md §3: query the most recent `today.state_transition` event for the athlete, compare against the resolved state, INSERT a new event only when `from_state != to_state`, emit via Flask `@after_request` so the HTTP response is not blocked.
+- [X] T012 Register the today blueprint in `running_coach_ai/web/app.py` inside `create_app()` (follow the existing pattern used for the magazine and notifications blueprints).
+- [X] T013 [P] Add `today.state_transition` to the admin Events view filter dropdown in `running_coach_ai/web/api/admin.py` (and the corresponding frontend dropdown options in `running_coach_ai/web/static/magazine.js` if the dropdown is rendered client-side).
 
 ### Frontend shell — markup, styles, script
 
-- [ ] T014 Replace the existing `<section id="hero">…</section>` block in `running_coach_ai/web/static/magazine.html` with a new `<section id="today">…</section>` block containing markup for all six state variants per contracts/today-api.md (use `data-state="…"` attribute selectors so CSS and JS can toggle visibility per state).
-- [ ] T015 Add `#today` CSS rules to `running_coach_ai/web/static/magazine.css` per FR-020/FR-021 and Section 5 of the design: mobile-first 2×2 cover-line grid at <768px flattening to 4-column at ≥768px, accent color driven by a CSS variable `--coach-accent` set inline from the response payload, magazine-cover typography (Bebas Neue / DM Serif Display / Inter), ribbon styling, rationale-paragraph italicized serif with 2px accent border-left.
-- [ ] T016 Remove the now-unused `#hero` CSS rules from `running_coach_ai/web/static/magazine.css` (clean deletion, no leftover decorative styles).
-- [ ] T017 Implement `hydrateToday()` in `running_coach_ai/web/static/magazine.js`: fetch `GET /api/today` on page load, render-to-DOM per `state` and `data-state` attribute selectors, persist payload to `localStorage` under `runcoach.today.{athlete_id}` per FR-028a, start the 60s polling loop with `visibilitychange` per FR-026.
-- [ ] T018 Implement the localStorage-cache-first render path and the failure-mode fallbacks in `running_coach_ai/web/static/magazine.js` per FR-028a/b/c/d: synchronous cached render on page load (background fetch within 500ms), stale-dot indicator on cover-line values when the most recent fetch failed, skeleton placeholder when no cache exists, stale dots clear on next success without animation.
-- [ ] T019 Add the dimmed backdrop element + tap-outside-to-dismiss + Escape keydown handler for the chat panel per FR-025 and research.md Decision 3. Modify `running_coach_ai/web/static/magazine.html` (add backdrop element), `magazine.css` (backdrop styling, dim opacity), and `magazine.js` (click handler on backdrop calls `toggleChat()`; new global `keydown` handler closes chat on Escape, mirroring the admin-panel pattern at `magazine.js:1973`). Discard any unsent draft text without confirmation on all three paths.
-- [ ] T020 Wire the persona-switch refetch in `running_coach_ai/web/static/magazine.js` per FR-026: after a successful `POST /api/coach`, call `hydrateToday()` and replace the localStorage cache so a subsequent first-load failure cannot render the prior coach's voice.
-- [ ] T021 Wire the notification-bell refetch in `running_coach_ai/web/static/magazine.js` per FR-026: when the notification poll registers a new notification of kind `morning_checkin` or `post_run_feedback`, trigger an immediate `hydrateToday()` call.
+- [X] T014 Replace the existing `<section id="hero">…</section>` block in `running_coach_ai/web/static/magazine.html` with a new `<section id="today">…</section>` block containing markup for all six state variants per contracts/today-api.md (use `data-state="…"` attribute selectors so CSS and JS can toggle visibility per state).
+- [X] T015 Add `#today` CSS rules to `running_coach_ai/web/static/magazine.css` per FR-020/FR-021 and Section 5 of the design: mobile-first 2×2 cover-line grid at <768px flattening to 4-column at ≥768px, accent color driven by a CSS variable `--coach-accent` set inline from the response payload, magazine-cover typography (Bebas Neue / DM Serif Display / Inter), ribbon styling, rationale-paragraph italicized serif with 2px accent border-left.
+- [X] T016 Remove the now-unused `#hero` CSS rules from `running_coach_ai/web/static/magazine.css` (clean deletion, no leftover decorative styles).
+- [X] T017 Implement `hydrateToday()` in `running_coach_ai/web/static/magazine.js`: fetch `GET /api/today` on page load, render-to-DOM per `state` and `data-state` attribute selectors, persist payload to `localStorage` under `runcoach.today.{athlete_id}` per FR-028a, start the 60s polling loop with `visibilitychange` per FR-026.
+- [X] T018 Implement the localStorage-cache-first render path and the failure-mode fallbacks in `running_coach_ai/web/static/magazine.js` per FR-028a/b/c/d: synchronous cached render on page load (background fetch within 500ms), stale-dot indicator on cover-line values when the most recent fetch failed, skeleton placeholder when no cache exists, stale dots clear on next success without animation.
+- [X] T019 Add the dimmed backdrop element + tap-outside-to-dismiss + Escape keydown handler for the chat panel per FR-025 and research.md Decision 3. Modify `running_coach_ai/web/static/magazine.html` (add backdrop element), `magazine.css` (backdrop styling, dim opacity), and `magazine.js` (click handler on backdrop calls `toggleChat()`; new global `keydown` handler closes chat on Escape, mirroring the admin-panel pattern at `magazine.js:1973`). Discard any unsent draft text without confirmation on all three paths.
+- [X] T020 Wire the persona-switch refetch in `running_coach_ai/web/static/magazine.js` per FR-026: after a successful `POST /api/coach`, call `hydrateToday()` and replace the localStorage cache so a subsequent first-load failure cannot render the prior coach's voice.
+- [X] T021 Wire the notification-bell refetch in `running_coach_ai/web/static/magazine.js` per FR-026: when the notification poll registers a new notification of kind `morning_checkin` or `post_run_feedback`, trigger an immediate `hydrateToday()` call.
 
 **Checkpoint**: Foundation ready. The endpoint resolves states, the card renders a shell, and dismissal handlers work. User story implementation can now begin in parallel for any P1/P2/P3 story.
 
@@ -86,14 +86,14 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Backend implementation
 
-- [ ] T022 [US1] Implement `_build_pre_run_payload()` in `running_coach_ai/web/api/today.py`: assemble headline (workout_type label as eyebrow/ribbon, distance/pace as title, description as subtitle), implement the rationale resolution ladder (morning_checkin → placeholder before 7am local → rule_based) per FR-005, populate `modifiers.on_watch` from `PlannedWorkout.garmin_workout_id`.
-- [ ] T023 [US1] Implement `_pre_run_cover_lines()` in `running_coach_ai/web/api/today.py`: source from today's `HealthSnapshot` (HRV, body battery, sleep hours, RHR), apply the 3-day stale fallback from `web/api/magazine.py:339-356`, set `is_stale=true` on the entries that came from a non-today snapshot, set `drill_to="morning"` on all four.
-- [ ] T024 [US1] Implement the `actions` block for PRE_RUN in `running_coach_ai/web/api/today.py`: `headline_chat_prompt="Tell me about today's workout."`, `rationale_chat_prompt="I have a question about today's plan."`, `cta=null`.
+- [X] T022 [US1] Implement `_build_pre_run_payload()` in `running_coach_ai/web/api/today.py`: assemble headline (workout_type label as eyebrow/ribbon, distance/pace as title, description as subtitle), implement the rationale resolution ladder (morning_checkin → placeholder before 7am local → rule_based) per FR-005, populate `modifiers.on_watch` from `PlannedWorkout.garmin_workout_id`.
+- [X] T023 [US1] Implement `_pre_run_cover_lines()` in `running_coach_ai/web/api/today.py`: source from today's `HealthSnapshot` (HRV, body battery, sleep hours, RHR), apply the 3-day stale fallback from `web/api/magazine.py:339-356`, set `is_stale=true` on the entries that came from a non-today snapshot, set `drill_to="morning"` on all four.
+- [X] T024 [US1] Implement the `actions` block for PRE_RUN in `running_coach_ai/web/api/today.py`: `headline_chat_prompt="Tell me about today's workout."`, `rationale_chat_prompt="I have a question about today's plan."`, `cta=null`.
 
 ### Frontend implementation
 
-- [ ] T025 [US1] Implement PRE_RUN rendering in `running_coach_ai/web/static/magazine.js`: render workout headline + rationale paragraph + four cover-line stats, wire headline tap → chat with `actions.headline_chat_prompt` pre-filled, wire rationale tap → chat with `actions.rationale_chat_prompt` pre-filled, wire cover-line tap → smooth-scroll to `#morning` section + 1-second highlight pulse class on the target section.
-- [ ] T026 [US1] Render `Ready on watch ✓` badge in PRE_RUN markup in `running_coach_ai/web/static/magazine.html` and `magazine.css` when `modifiers.on_watch === true`, styled in the active persona's accent color.
+- [X] T025 [US1] Implement PRE_RUN rendering in `running_coach_ai/web/static/magazine.js`: render workout headline + rationale paragraph + four cover-line stats, wire headline tap → chat with `actions.headline_chat_prompt` pre-filled, wire rationale tap → chat with `actions.rationale_chat_prompt` pre-filled, wire cover-line tap → smooth-scroll to `#morning` section + 1-second highlight pulse class on the target section.
+- [X] T026 [US1] Render `Ready on watch ✓` badge in PRE_RUN markup in `running_coach_ai/web/static/magazine.html` and `magazine.css` when `modifiers.on_watch === true`, styled in the active persona's accent color.
 
 ### Tests
 
@@ -117,14 +117,14 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Backend implementation
 
-- [ ] T034 [US2] Implement `_build_completed_payload()` in `running_coach_ai/web/api/today.py`: headline includes actual distance and pace from `CompletedWorkout`, ribbon = `"Completed"` (or `"Bonus Run — not on plan"` when `is_bonus`), rationale source ladder = `coach_analysis` first sentence-paragraph → rule-based completed-summary fallback per FR-006.
-- [ ] T035 [US2] Implement `_completed_cover_lines()` in `running_coach_ai/web/api/today.py`: Distance (mi), Pace (min/mi), Avg HR, Training Load; all sourced from `CompletedWorkout`; `drill_to="last_run"`.
-- [ ] T036 [US2] Implement `modifiers.is_bonus` resolution: `True` when `CompletedWorkout.planned_workout_id IS NULL`, else `False`.
-- [ ] T037 [US2] Implement the COMPLETED rule-based fallback in `running_coach_ai/coach/today_rationale.py` per FR-006: a small templated summary referencing the completed distance, pace vs target, and one observation. Used when `coach_analysis` is empty.
+- [X] T034 [US2] Implement `_build_completed_payload()` in `running_coach_ai/web/api/today.py`: headline includes actual distance and pace from `CompletedWorkout`, ribbon = `"Completed"` (or `"Bonus Run — not on plan"` when `is_bonus`), rationale source ladder = `coach_analysis` first sentence-paragraph → rule-based completed-summary fallback per FR-006.
+- [X] T035 [US2] Implement `_completed_cover_lines()` in `running_coach_ai/web/api/today.py`: Distance (mi), Pace (min/mi), Avg HR, Training Load; all sourced from `CompletedWorkout`; `drill_to="last_run"`.
+- [X] T036 [US2] Implement `modifiers.is_bonus` resolution: `True` when `CompletedWorkout.planned_workout_id IS NULL`, else `False`.
+- [X] T037 [US2] Implement the COMPLETED rule-based fallback in `running_coach_ai/coach/today_rationale.py` per FR-006: a small templated summary referencing the completed distance, pace vs target, and one observation. Used when `coach_analysis` is empty.
 
 ### Frontend implementation
 
-- [ ] T038 [US2] Render COMPLETED state in `running_coach_ai/web/static/magazine.js`: green-completion ribbon, drill-to-last_run for cover-line taps (smooth-scroll to `#featrun`), headline chat pre-fill = `"How did today's run go?"`, ribbon-swap slide animation per FR-027 only when state transitions live during the session.
+- [X] T038 [US2] Render COMPLETED state in `running_coach_ai/web/static/magazine.js`: green-completion ribbon, drill-to-last_run for cover-line taps (smooth-scroll to `#featrun`), headline chat pre-fill = `"How did today's run go?"`, ribbon-swap slide animation per FR-027 only when state transitions live during the session.
 
 ### Tests
 
@@ -145,11 +145,11 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Backend implementation
 
-- [ ] T043 [US3] Implement `_build_rest_day_payload()` in `running_coach_ai/web/api/today.py`: headline eyebrow/ribbon = `"Rest Day"`, title = `"Recovery is the workout"`, subtitle = `null`. Rationale source ladder identical to PRE_RUN (morning_checkin → placeholder → rule_based), but `rule_based_morning` is called with the rest workout type so the periodization clause frames recovery, not running.
+- [X] T043 [US3] Implement `_build_rest_day_payload()` in `running_coach_ai/web/api/today.py`: headline eyebrow/ribbon = `"Rest Day"`, title = `"Recovery is the workout"`, subtitle = `null`. Rationale source ladder identical to PRE_RUN (morning_checkin → placeholder → rule_based), but `rule_based_morning` is called with the rest workout type so the periodization clause frames recovery, not running.
 
 ### Frontend implementation
 
-- [ ] T044 [US3] Render REST_DAY state in `running_coach_ai/web/static/magazine.js`: no on_watch badge, no headline chat-target (rationale tap still opens chat with `"How should I make the most of today's recovery?"`), cover-line drill-to = `morning`.
+- [X] T044 [US3] Render REST_DAY state in `running_coach_ai/web/static/magazine.js`: no on_watch badge, no headline chat-target (rationale tap still opens chat with `"How should I make the most of today's recovery?"`), cover-line drill-to = `morning`.
 
 ### Tests
 
@@ -166,12 +166,12 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Backend implementation
 
-- [ ] T047 [US4] Implement `_build_race_day_payload()` in `running_coach_ai/web/api/today.py`: pull race_name from the active Goal, compute HR cap as `athlete.lthr_bpm * 0.92` (or null if lthr_bpm is missing), populate `rationale.text` from `get_persona(athlete.coach_key).race_morning_greeting`, `rationale.source="persona_static"`.
-- [ ] T048 [US4] Implement `_race_day_cover_lines()` in `running_coach_ai/web/api/today.py`: Distance (from PlannedWorkout.target_distance_km or fall back to Goal-implied distance), Goal Pace (PlannedWorkout.target_pace_min_per_km converted to min/mi), HR Cap, Weather="—" placeholder per FR-015. All entries have `drill_to=null`.
+- [X] T047 [US4] Implement `_build_race_day_payload()` in `running_coach_ai/web/api/today.py`: pull race_name from the active Goal, compute HR cap as `athlete.lthr_bpm * 0.92` (or null if lthr_bpm is missing), populate `rationale.text` from `get_persona(athlete.coach_key).race_morning_greeting`, `rationale.source="persona_static"`.
+- [X] T048 [US4] Implement `_race_day_cover_lines()` in `running_coach_ai/web/api/today.py`: Distance (from PlannedWorkout.target_distance_km or fall back to Goal-implied distance), Goal Pace (PlannedWorkout.target_pace_min_per_km converted to min/mi), HR Cap, Weather="—" placeholder per FR-015. All entries have `drill_to=null`.
 
 ### Frontend implementation
 
-- [ ] T049 [US4] Render RACE_DAY state in `running_coach_ai/web/static/magazine.js`: countdown widget in place of the on_watch badge (compute from PlannedWorkout.scheduled_start_time if present, else race-day banner without countdown), cover-line stats inert (cursor:default, no tap handlers wired), headline chat pre-fill = `"Walk me through race execution."`.
+- [X] T049 [US4] Render RACE_DAY state in `running_coach_ai/web/static/magazine.js`: countdown widget in place of the on_watch badge (compute from PlannedWorkout.scheduled_start_time if present, else race-day banner without countdown), cover-line stats inert (cursor:default, no tap handlers wired), headline chat pre-fill = `"Walk me through race execution."`.
 
 ### Tests
 
@@ -188,11 +188,11 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Backend implementation
 
-- [ ] T052 [US5] Implement `_build_no_plan_payload()` in `running_coach_ai/web/api/today.py`: headline title = `"Ready to train for something?"`, rationale.text = static copy from FR-007a, rationale.source = `persona_static`, cover_lines = `null`, actions.cta with label/chat_prompt per contract.
+- [X] T052 [US5] Implement `_build_no_plan_payload()` in `running_coach_ai/web/api/today.py`: headline title = `"Ready to train for something?"`, rationale.text = static copy from FR-007a, rationale.source = `persona_static`, cover_lines = `null`, actions.cta with label/chat_prompt per contract.
 
 ### Frontend implementation
 
-- [ ] T053 [US5] Render NO_PLAN state in `running_coach_ai/web/static/magazine.js` and CSS: hide the cover-lines region entirely, render a single primary CTA button in `--coach-accent` with the label from `actions.cta.label`, button tap → open chat with `actions.cta.chat_prompt` pre-filled.
+- [X] T053 [US5] Render NO_PLAN state in `running_coach_ai/web/static/magazine.js` and CSS: hide the cover-lines region entirely, render a single primary CTA button in `--coach-accent` with the label from `actions.cta.label`, button tap → open chat with `actions.cta.chat_prompt` pre-filled.
 
 ### Tests
 
@@ -208,11 +208,11 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Backend implementation
 
-- [ ] T055 [US6] Implement `_build_off_plan_payload()` in `running_coach_ai/web/api/today.py`: headline title = `"Your plan needs attention"`, rationale.text from FR-007b static copy, rationale.source = `persona_static`, cover_lines = `null`, actions.cta with `"Review my plan"` label and `"I'm between training blocks."` chat_prompt.
+- [X] T055 [US6] Implement `_build_off_plan_payload()` in `running_coach_ai/web/api/today.py`: headline title = `"Your plan needs attention"`, rationale.text from FR-007b static copy, rationale.source = `persona_static`, cover_lines = `null`, actions.cta with `"Review my plan"` label and `"I'm between training blocks."` chat_prompt.
 
 ### Frontend implementation
 
-- [ ] T056 [US6] Render OFF_PLAN state in `running_coach_ai/web/static/magazine.js` and CSS: reuse the NO_PLAN shell (same cover-lines-hidden + single-CTA-button layout) with different label and chat pre-fill driven by the response payload.
+- [X] T056 [US6] Render OFF_PLAN state in `running_coach_ai/web/static/magazine.js` and CSS: reuse the NO_PLAN shell (same cover-lines-hidden + single-CTA-button layout) with different label and chat pre-fill driven by the response payload.
 
 ### Tests
 
