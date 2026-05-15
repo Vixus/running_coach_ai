@@ -26,7 +26,7 @@ import logging
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from flask import Blueprint, g, jsonify, request, session
+from flask import Blueprint, g, jsonify, session
 from sqlalchemy import desc
 
 from running_coach_ai.coach.persona import format_pace_mi, km_to_mi

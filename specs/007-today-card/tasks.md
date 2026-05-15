@@ -97,13 +97,13 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Tests
 
-- [ ] T027 [P] [US1] Create `tests/integration/web/test_today_api.py` with the test harness (in-memory SQLite, Flask test client with session, `Athlete` fixture per `test_magazine_morning_report.py` pattern). First test: `test_pre_run_state_with_morning_checkin` — seed Goal + PlannedWorkout(tempo) + HealthSnapshot + Notification(morning_checkin); assert response state=`PRE_RUN`, rationale.source=`morning_checkin`, headline.title contains the pace, cover_lines length is 4.
-- [ ] T028 [P] [US1] Add `test_pre_run_rationale_placeholder_before_7am` and `test_pre_run_rationale_rule_based_after_7am` to `tests/integration/web/test_today_api.py` covering the fallback ladder when no morning_checkin Notification exists.
-- [ ] T029 [P] [US1] Add `test_pre_run_on_watch_badge_when_synced` to `tests/integration/web/test_today_api.py`: PlannedWorkout with non-null `garmin_workout_id` → `modifiers.on_watch=true`; null → false.
-- [ ] T030 [P] [US1] Create `tests/unit/test_today_rationale.py` with tests for `rule_based_morning()` with-snapshot branch: low HRV, normal HRV, high HRV × short sleep / normal sleep / low body battery — assert athlete name + workout_type + observed metric value appear in every output.
-- [ ] T031 [P] [US1] Add `test_rule_based_morning_no_snapshot_per_workout_type` to `tests/unit/test_today_rationale.py`: for each workout_type (easy, long_run, tempo, intervals, strides, recovery), assert the no-snapshot output explicitly acknowledges missing overnight data and provides a workout-type-specific run-by-feel cue.
-- [ ] T032 [P] [US1] Add `test_rule_based_morning_no_plan_no_goal` to `tests/unit/test_today_rationale.py`: when `plan` and `goal` are None, output still references workout_type by name and is grammatically clean (no broken sentences).
-- [ ] T033 [P] [US1] Add `test_extract_rationale_paragraph` to `tests/unit/test_today_rationale.py` covering: multi-paragraph body returns first paragraph, single-paragraph body returns it whole, empty/None returns `""`, body with trailing sign-off returns first paragraph only.
+- [X] T027 [P] [US1] Create `tests/integration/web/test_today_api.py` with the test harness (in-memory SQLite, Flask test client with session, `Athlete` fixture per `test_magazine_morning_report.py` pattern). First test: `test_pre_run_state_with_morning_checkin` — seed Goal + PlannedWorkout(tempo) + HealthSnapshot + Notification(morning_checkin); assert response state=`PRE_RUN`, rationale.source=`morning_checkin`, headline.title contains the pace, cover_lines length is 4.
+- [X] T028 [P] [US1] Add `test_pre_run_rationale_placeholder_before_7am` and `test_pre_run_rationale_rule_based_after_7am` to `tests/integration/web/test_today_api.py` covering the fallback ladder when no morning_checkin Notification exists.
+- [X] T029 [P] [US1] Add `test_pre_run_on_watch_badge_when_synced` to `tests/integration/web/test_today_api.py`: PlannedWorkout with non-null `garmin_workout_id` → `modifiers.on_watch=true`; null → false.
+- [X] T030 [P] [US1] Create `tests/unit/test_today_rationale.py` with tests for `rule_based_morning()` with-snapshot branch: low HRV, normal HRV, high HRV × short sleep / normal sleep / low body battery — assert athlete name + workout_type + observed metric value appear in every output.
+- [X] T031 [P] [US1] Add `test_rule_based_morning_no_snapshot_per_workout_type` to `tests/unit/test_today_rationale.py`: for each workout_type (easy, long_run, tempo, intervals, strides, recovery), assert the no-snapshot output explicitly acknowledges missing overnight data and provides a workout-type-specific run-by-feel cue.
+- [X] T032 [P] [US1] Add `test_rule_based_morning_no_plan_no_goal` to `tests/unit/test_today_rationale.py`: when `plan` and `goal` are None, output still references workout_type by name and is grammatically clean (no broken sentences).
+- [X] T033 [P] [US1] Add `test_extract_rationale_paragraph` to `tests/unit/test_today_rationale.py` covering: multi-paragraph body returns first paragraph, single-paragraph body returns it whole, empty/None returns `""`, body with trailing sign-off returns first paragraph only.
 
 **Checkpoint**: PRE_RUN works end-to-end. The MVP is shippable to athletes with an active plan.
 
@@ -128,10 +128,10 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Tests
 
-- [ ] T039 [P] [US2] Add `test_completed_state_with_coach_analysis` to `tests/integration/web/test_today_api.py`: seed PlannedWorkout + CompletedWorkout(planned) + coach_analysis; assert state=`COMPLETED`, rationale.source=`coach_analysis`, modifiers.is_bonus=false, cover_lines drill_to=`last_run`.
-- [ ] T040 [P] [US2] Add `test_completed_state_bonus_run` to `tests/integration/web/test_today_api.py`: CompletedWorkout with `planned_workout_id=null` → `is_bonus=true`, ribbon label changes to "Bonus Run — not on plan".
-- [ ] T041 [P] [US2] Add `test_completed_rationale_rule_based_when_coach_analysis_empty` to `tests/integration/web/test_today_api.py`.
-- [ ] T042 [P] [US2] Add `test_rule_based_completed_summary` unit test to `tests/unit/test_today_rationale.py`.
+- [X] T039 [P] [US2] Add `test_completed_state_with_coach_analysis` to `tests/integration/web/test_today_api.py`: seed PlannedWorkout + CompletedWorkout(planned) + coach_analysis; assert state=`COMPLETED`, rationale.source=`coach_analysis`, modifiers.is_bonus=false, cover_lines drill_to=`last_run`.
+- [X] T040 [P] [US2] Add `test_completed_state_bonus_run` to `tests/integration/web/test_today_api.py`: CompletedWorkout with `planned_workout_id=null` → `is_bonus=true`, ribbon label changes to "Bonus Run — not on plan".
+- [X] T041 [P] [US2] Add `test_completed_rationale_rule_based_when_coach_analysis_empty` to `tests/integration/web/test_today_api.py`.
+- [X] T042 [P] [US2] Add `test_rule_based_completed_summary` unit test to `tests/unit/test_today_rationale.py`.
 
 **Checkpoint**: COMPLETED works. The full P1 (US1 + US2) is shippable as MVP.
 
@@ -153,8 +153,8 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Tests
 
-- [ ] T045 [P] [US3] Add `test_rest_day_state` to `tests/integration/web/test_today_api.py`: seed PlannedWorkout(workout_type="rest") + morning_checkin; assert state=`REST_DAY`, rationale.source=`morning_checkin`, cover_lines drill_to=`morning`.
-- [ ] T046 [P] [US3] Add `test_rest_day_transitions_to_completed_on_bonus_run` to `tests/integration/web/test_today_api.py`: REST_DAY + CompletedWorkout(no planned_workout_id) → state=`COMPLETED`, `is_bonus=true`. Verifies the precedence ladder in FR-003.
+- [X] T045 [P] [US3] Add `test_rest_day_state` to `tests/integration/web/test_today_api.py`: seed PlannedWorkout(workout_type="rest") + morning_checkin; assert state=`REST_DAY`, rationale.source=`morning_checkin`, cover_lines drill_to=`morning`.
+- [X] T046 [P] [US3] Add `test_rest_day_transitions_to_completed_on_bonus_run` to `tests/integration/web/test_today_api.py`: REST_DAY + CompletedWorkout(no planned_workout_id) → state=`COMPLETED`, `is_bonus=true`. Verifies the precedence ladder in FR-003.
 
 ---
 
@@ -175,8 +175,8 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Tests
 
-- [ ] T050 [P] [US4] Add `test_race_day_state` to `tests/integration/web/test_today_api.py`: seed PlannedWorkout(workout_type="race") + Goal; assert state=`RACE_DAY`, rationale.text matches the persona's race_morning_greeting, cover_lines drill_to=null for all entries.
-- [ ] T051 [P] [US4] Add `test_race_day_greeting_per_persona` to `tests/integration/web/test_today_api.py`: switch athlete.coach_key to maya and jordan in turn; assert rationale.text matches each persona's race_morning_greeting from research.md Decision 5.
+- [X] T050 [P] [US4] Add `test_race_day_state` to `tests/integration/web/test_today_api.py`: seed PlannedWorkout(workout_type="race") + Goal; assert state=`RACE_DAY`, rationale.text matches the persona's race_morning_greeting, cover_lines drill_to=null for all entries.
+- [X] T051 [P] [US4] Add `test_race_day_greeting_per_persona` to `tests/integration/web/test_today_api.py`: switch athlete.coach_key to maya and jordan in turn; assert rationale.text matches each persona's race_morning_greeting from research.md Decision 5.
 
 ---
 
@@ -196,7 +196,7 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Tests
 
-- [ ] T054 [P] [US5] Add `test_no_plan_state` to `tests/integration/web/test_today_api.py`: athlete with no active Goal; assert state=`NO_PLAN`, cover_lines is `null`, actions.cta is populated.
+- [X] T054 [P] [US5] Add `test_no_plan_state` to `tests/integration/web/test_today_api.py`: athlete with no active Goal; assert state=`NO_PLAN`, cover_lines is `null`, actions.cta is populated.
 
 ---
 
@@ -216,8 +216,8 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Tests
 
-- [ ] T057 [P] [US6] Add `test_off_plan_state_regression` to `tests/integration/web/test_today_api.py`: athlete with active Goal + zero PlannedWorkout rows for today → asserts `state="OFF_PLAN"` (not REST_DAY, not NO_PLAN). This is the FR-033 regression scenario explicitly called out in the spec.
-- [ ] T058 [P] [US6] Add `test_off_plan_transitions_to_completed_on_bonus_run` to `tests/integration/web/test_today_api.py`: OFF_PLAN state + a CompletedWorkout(planned_workout_id=null) → state transitions to `COMPLETED` with `is_bonus=true`, mirroring the rest-day → bonus-run transition.
+- [X] T057 [P] [US6] Add `test_off_plan_state_regression` to `tests/integration/web/test_today_api.py`: athlete with active Goal + zero PlannedWorkout rows for today → asserts `state="OFF_PLAN"` (not REST_DAY, not NO_PLAN). This is the FR-033 regression scenario explicitly called out in the spec.
+- [X] T058 [P] [US6] Add `test_off_plan_transitions_to_completed_on_bonus_run` to `tests/integration/web/test_today_api.py`: OFF_PLAN state + a CompletedWorkout(planned_workout_id=null) → state transitions to `COMPLETED` with `is_bonus=true`, mirroring the rest-day → bonus-run transition.
 
 ---
 
@@ -227,13 +227,13 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Observability tests
 
-- [ ] T059 [P] Add `test_state_transition_emits_web_event` to `tests/integration/web/test_today_api.py` per FR-032a: call /api/today twice — first as PRE_RUN, then mutate DB to COMPLETED state and call again. Assert a new `WebEvent(kind="today.state_transition", extra={from_state: "PRE_RUN", to_state: "COMPLETED"})` row exists for the athlete after the second call. Call a third time with no state change — assert NO new WebEvent row is added.
-- [ ] T060 [P] Add `test_first_ever_state_resolution_emits_web_event` to `tests/integration/web/test_today_api.py`: athlete with no prior `today.state_transition` events; first call to /api/today emits an event with `from_state=null` and the resolved `to_state`.
+- [X] T059 [P] Add `test_state_transition_emits_web_event` to `tests/integration/web/test_today_api.py` per FR-032a: call /api/today twice — first as PRE_RUN, then mutate DB to COMPLETED state and call again. Assert a new `WebEvent(kind="today.state_transition", extra={from_state: "PRE_RUN", to_state: "COMPLETED"})` row exists for the athlete after the second call. Call a third time with no state change — assert NO new WebEvent row is added.
+- [X] T060 [P] Add `test_first_ever_state_resolution_emits_web_event` to `tests/integration/web/test_today_api.py`: athlete with no prior `today.state_transition` events; first call to /api/today emits an event with `from_state=null` and the resolved `to_state`.
 
 ### Lint and verification
 
-- [ ] T061 [P] Run `ruff check running_coach_ai/web/api/today.py running_coach_ai/coach/today_rationale.py running_coach_ai/coach/personas.py running_coach_ai/coach/adapter.py running_coach_ai/coach/feedback.py running_coach_ai/web/app.py running_coach_ai/web/api/admin.py` and fix any reported issues.
-- [ ] T062 Run the full test suite — `pytest tests/unit/ tests/integration/ -q` — and confirm all new tests pass alongside the existing baseline.
+- [X] T061 [P] Run `ruff check running_coach_ai/web/api/today.py running_coach_ai/coach/today_rationale.py running_coach_ai/coach/personas.py running_coach_ai/coach/adapter.py running_coach_ai/coach/feedback.py running_coach_ai/web/app.py running_coach_ai/web/api/admin.py` and fix any reported issues.
+- [X] T062 Run the full test suite — `pytest tests/unit/ tests/integration/ -q` — and confirm all new tests pass alongside the existing baseline.
 
 ### Manual QA
 
@@ -243,7 +243,7 @@ This feature follows the existing project layout per `plan.md`:
 
 ### Documentation
 
-- [ ] T066 [P] Update the `## Architecture` section of `CLAUDE.md` to mention the new `/api/today` endpoint, the `today.state_transition` WebEvent kind, and the new `coach/today_rationale.py` module. Keep the entry concise (one bullet under "Web dashboard").
+- [X] T066 [P] Update the `## Architecture` section of `CLAUDE.md` to mention the new `/api/today` endpoint, the `today.state_transition` WebEvent kind, and the new `coach/today_rationale.py` module. Keep the entry concise (one bullet under "Web dashboard").
 - [ ] T067 Commit final polish on branch `007-today-card`; verify branch is ready to push and open a PR draft.
 
 ---

@@ -127,7 +127,11 @@ Legacy key aliases (`sofia` → `maya`, `miles` → `jordan`) are handled by `LE
 
 **`prescription_style`** (`"time"` | `"distance"` | `None`) on `Athlete` controls how Claude structures workouts in `<plan>` JSON: `time` → use `target_duration_seconds`, omit `target_distance_km` for easy/long_run/tempo/strides; `distance` → use `target_distance_km` in whole miles, omit `target_duration_seconds`. Intervals always use `target_zones_json` regardless.
 
-Note: `coach/persona.py` is now a narrow utility module — `call_claude()` (the Anthropic API wrapper) plus unit-conversion helpers (`format_miles`, `format_pace_mi`, `km_to_mi`, `mi_to_km`, `round_to_5`). All persona text lives in `coach/personas.py`; callers use `get_persona(athlete.coach_key).persona_block`.
+Note: `coach/persona.py` is now a narrow utility module — `call_claude()` (the Anthropic API wrapper) plus unit-conversion helpers (`format_miles`, `format_pace_mi`, `km_to_mi`, `mi_to_km`, `round_to_5`). All persona text lives in `coach/personas.py`; callers use `get_persona(athlete.coach_key).persona_block`. Spec 007 adds two fields to `CoachPersona`: `accent_color` (drives the Today Card cover treatment per persona) and `race_morning_greeting` (the RACE_DAY rationale text).
+
+### Today Card (`coach/today_rationale.py`, `web/api/today.py`)
+
+The dashboard's top section is a magazine-cover Today Card driven by `GET /api/today`. Six states (`PRE_RUN`, `COMPLETED`, `REST_DAY`, `RACE_DAY`, `NO_PLAN`, `OFF_PLAN`) per FR-003 precedence. Rationale source ladder per state: `morning_checkin` notification body → `coach_analysis` (COMPLETED) → rule-based fallback in `coach/today_rationale.py` (two branches: with-snapshot ~6 templates, no-snapshot run-by-feel) → `placeholder` (PRE_RUN/REST_DAY before 7am local) → `persona_static` (RACE_DAY/NO_PLAN/OFF_PLAN). The morning_checkin and post-run prompts in `coach/adapter.py` and `coach/feedback.py` are constrained to emit an opening athlete-centered single-paragraph rationale that the Today Card extracts via `extract_rationale_paragraph()`. State transitions emit a `category="today"` WebEvent only when the state changes (compared against the prior such event for the athlete) — admin Events filter dropdown has `today` as a category.
 
 ### Notification inbox (`coach/notify.py`)
 
@@ -149,6 +153,7 @@ Flask 3.x app factory (`create_app()`) with blueprints deferred inside the facto
 | `web/api/notifications.py` | `GET /api/notifications`, unread-count, mark-read, read-all |
 | `web/api/admin.py` | Admin-only: athletes CRUD, Garmin resync/clean/verify, invites, events, story start-interview/generate/render/hard-delete/list-templates |
 | `web/api/magazine.py` | `GET /api/magazine`, `GET/POST /api/coach` |
+| `web/api/today.py` | `GET /api/today` — Today Card payload (six states: PRE_RUN, COMPLETED, REST_DAY, RACE_DAY, NO_PLAN, OFF_PLAN); emits `category="today"` WebEvent only on state transitions via an `@after_request` hook. Athlete-local timezone, zero Claude calls at request time. |
 | `web/api/stories.py` | Athlete story API — opt-in, intro-acknowledged, list/current, swap template, regenerate, publish/unpublish, soft-delete, image upload/get/patch/delete, session respond/decline |
 | `web/routes/public_story.py` | Public no-auth `GET /story/<token>` (with rate limit + noindex) and `GET /robots.txt` |
 
