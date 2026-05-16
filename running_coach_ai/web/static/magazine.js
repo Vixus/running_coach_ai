@@ -3,8 +3,8 @@
 // Hydrated from /api/magazine. Static defaults are only used as
 // fallback so the page renders even without API data.
 // ───────────────────────────────────────────────────────────────
-const SECTIONS = ['hero','morning','featrun','calendar','activities','story','miles','coachsays','race'];
-const DARK_SECS = new Set(['hero','morning','featrun','calendar','story','miles','race']);
+const SECTIONS = ['today','morning','featrun','calendar','activities','story','miles','coachsays','race'];
+const DARK_SECS = new Set(['today','morning','featrun','calendar','story','miles','race']);
 
 const TYPE_META = {
   rest:{col:'#a09080',emoji:'🛌'},easy:{col:'#5a8a62',emoji:'🏃'},tempo:{col:'#b8673e',emoji:'⚡'},
@@ -807,7 +807,7 @@ function handleScroll() {
   storyScroll(y,vh);
   featRunScroll(y,vh);
 }
-function getCurrentSection(y,vh){let cur='hero';SECTIONS.forEach(s=>{const el=document.getElementById(s);if(el&&el.getBoundingClientRect().top<=vh*.55)cur=s;});return cur;}
+function getCurrentSection(y,vh){let cur='today';SECTIONS.forEach(s=>{const el=document.getElementById(s);if(el&&el.getBoundingClientRect().top<=vh*.55)cur=s;});return cur;}
 
 function scrollToSection(id){document.getElementById(id)?.scrollIntoView({behavior:'smooth'});}
 document.querySelectorAll('.snd').forEach(d=>{d.addEventListener('click',()=>scrollToSection(d.dataset.s));});
@@ -821,8 +821,8 @@ document.querySelectorAll('.R,.Rl,.Rr').forEach(el=>io.observe(el));
   const s=document.querySelector(sec);if(s)io2.observe(s);
 });
 
-const hero=document.getElementById('hero'),glow=document.getElementById('hero-glow');
-hero.addEventListener('mousemove',e=>{const r=hero.getBoundingClientRect();glow.style.left=(e.clientX-r.left)+'px';glow.style.top=(e.clientY-r.top)+'px';});
+// Hero glow pointer-tracking has been replaced by the Today Card cover.
+// The card has its own static .td-glow element; no mousemove follow.
 
 
 // ── Floating chat (wired to /api/chat/message) ────────────────
@@ -1830,17 +1830,18 @@ window.addEventListener('load', async () => {
     if (fab && !document.getElementById('chat-panel').classList.contains('open')) fab.click();
   }
 
-  // Hero name char split — uses data attrs from hydrate; fall back to "Athlete" if hydrate failed entirely
-  const n = document.getElementById('hero-name');
-  if (!m) { n.dataset.first = 'WELCOME'; n.dataset.last = 'ATHLETE'; }
-  const first = (n.dataset.first || 'WELCOME').toUpperCase();
-  const last = (n.dataset.last || '').toUpperCase();
-  const firstHtml = first.split('').map((c,i)=>`<span class="char" style="animation-delay:${.42+i*.07}s">${c==' '?'&nbsp;':c}</span>`).join('');
-  const lastHtml  = last ? '<br><em>' + last.split('').map((c,i)=>`<span class="char" style="animation-delay:${.68+i*.08}s">${c==' '?'&nbsp;':c}</span>`).join('') + '</em>' : '';
-  n.innerHTML = firstHtml + lastHtml;
+  // Athlete-not-found / stale-session safety net: if /auth/me reports the
+  // session is dead, hard-redirect to /login so the user can sign back in
+  // rather than staring at a half-populated magazine.
+  if (me && me.authenticated === false) {
+    window.location.href = '/login';
+    return;
+  }
 
-  // Reveal elements that were hidden to avoid the flash-of-default-text
-  ['hero-tag','hero-strip','m-coach-msg','fr-hed','fr-dek','fr-analysis','fr-body'].forEach(id=>{
+  // Reveal elements that were hidden to avoid the flash-of-default-text.
+  // (Hero name char-split is gone — the Today Card renders the name itself
+  // inside tdRender() via /api/today.)
+  ['m-coach-msg','fr-hed','fr-dek','fr-analysis','fr-body'].forEach(id=>{
     const el = document.getElementById(id);
     if (el) el.style.visibility = '';
   });
