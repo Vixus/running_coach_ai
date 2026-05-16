@@ -245,10 +245,11 @@ def test_pre_run_state_with_morning_checkin(app_and_db):
     _seed_morning_notif(
         db, athlete.id,
         body=(
-            "Sam, this is the threshold workout that locks in your goal race pace before "
-            "next week's volume jump — we don't want to soften it. HRV's up 2 and you "
-            "slept solid, so you're green-lit; just run the tempo segment even and don't "
-            "get greedy in mile 4.\n\nWeather: cool, 12°C. Wind from the south."
+            "**Today.** This tempo locks in race pace before next week's volume jump — "
+            "keep the segments even and don't get greedy in mile 4.\n\n"
+            "Sam, HRV is up 2 and you slept solid, so the system is green-lit. "
+            "Threshold work like this is what holds your goal race pace under fatigue.\n\n"
+            "Weather: cool, 12°C. Wind from the south."
         ),
     )
 
@@ -258,9 +259,13 @@ def test_pre_run_state_with_morning_checkin(app_and_db):
 
     assert data["state"] == "PRE_RUN"
     assert data["rationale"]["source"] == "morning_checkin"
-    assert "threshold workout" in data["rationale"]["text"]
-    # First paragraph only — weather should not bleed in
+    # Today Card surfaces only the **Today.** tagline — short, punchy.
+    assert "tempo locks in race pace" in data["rationale"]["text"]
+    # Tagline only — the longer readiness paragraph stays in the morning report
+    assert "HRV is up 2" not in data["rationale"]["text"]
     assert "Weather" not in data["rationale"]["text"]
+    # And no leftover markdown asterisks
+    assert "**" not in data["rationale"]["text"]
     assert data["rationale"]["coach"] == "Coach Alex"
     assert data["rationale"]["accent_color"].startswith("#")
     assert data["headline"]["eyebrow"] == "Tempo"
@@ -459,7 +464,14 @@ def test_rest_day_state(app_and_db):
         description="Recovery day",
     )
     _seed_health_snapshot(db, athlete.id, today)
-    _seed_morning_notif(db, athlete.id, body="Today's the rest day. Trust it.")
+    _seed_morning_notif(
+        db, athlete.id,
+        body=(
+            "**Today.** Take the day fully off — recovery is the workout.\n\n"
+            "Sam, HRV is sitting at 62 ms and sleep was 7.4 hours; the system is "
+            "absorbing the load, not fighting it."
+        ),
+    )
 
     resp = _client(app, athlete.id).get("/api/today")
     data = resp.get_json()

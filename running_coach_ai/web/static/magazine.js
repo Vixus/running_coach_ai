@@ -1344,8 +1344,17 @@ async function hydrate(){
     document.getElementById('m-date').textContent = m.today_pretty + wkPart;
   }
   if (m.health) {
-    if (m.health.hrv != null) document.getElementById('m-hrv-num').dataset.t = String(m.health.hrv);
-    else document.getElementById('m-hrv-num').textContent = '—';
+    // Set both .dataset.t (used by the count-up animation when the morning
+    // section scrolls into view) AND .textContent (so the value is visible
+    // even if the IntersectionObserver fired before hydrate completed, or
+    // never fires — e.g. when the section is hidden behind an open modal).
+    const hrvEl = document.getElementById('m-hrv-num');
+    if (m.health.hrv != null) {
+      hrvEl.dataset.t = String(m.health.hrv);
+      hrvEl.textContent = String(m.health.hrv);
+    } else {
+      hrvEl.textContent = '—';
+    }
     const lbl = document.getElementById('m-hrv-lbl');
     const trend = m.health.hrv_trend;
     // When the snapshot is from a previous day (Garmin 429 / fetch failure
@@ -2695,13 +2704,14 @@ function tdRender(payload, opts){
     mastR.textContent = `Issue ${issueNum} · ${datePart}`;
   }
 
-  // Cover star — athlete name as the largest type
+  // Cover star — athlete FIRST NAME ONLY (Vogue-style profile cover).
+  // Surname is intentionally absent on the cover; it appears in nav-brand
+  // and the nav-profile chip for context. Intimacy by design — the coach
+  // app's product principle is "the runner is the center."
   if (payload.athlete && payload.athlete.name) {
     const parts = payload.athlete.name.trim().split(/\s+/);
-    const first = (parts[0] || '').toUpperCase();
-    const last  = (parts.slice(1).join(' ') || '').toUpperCase() || 'ATHLETE';
+    const first = (parts[0] || 'Athlete').toUpperCase();
     document.getElementById('td-name-first').textContent = first;
-    document.getElementById('td-name-last').textContent  = last;
   }
 
   // Race tag (only meaningful in PRE_RUN/REST_DAY/RACE_DAY where the magazine

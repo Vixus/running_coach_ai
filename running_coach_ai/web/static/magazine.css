@@ -96,9 +96,25 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
 /* Cover star — athlete name as the largest type on the card */
 .td-cover{position:relative;z-index:3;margin-bottom:18px;}
 .td-eye{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.32);margin-bottom:10px;}
-.td-name{font-family:'Bebas Neue',sans-serif;font-size:clamp(54px,13vw,118px);line-height:.86;color:#fff;margin:0;}
-.td-name em{color:var(--coach-accent);font-style:italic;font-family:'DM Serif Display',serif;font-size:.55em;display:inline-block;margin-top:.15em;}
-.td-tag{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(14px,2vw,18px);color:rgba(255,255,255,.46);margin:14px 0 0;max-width:520px;}
+.td-name{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(88px,22vw,200px);
+  line-height:.85;
+  letter-spacing:-.005em;
+  color:#fff;
+  margin:0;
+  word-break:break-word;
+  text-transform:uppercase;
+}
+.td-tag{
+  font-family:'DM Serif Display',serif;
+  font-style:italic;
+  font-size:clamp(13px,1.9vw,17px);
+  color:rgba(255,255,255,.5);
+  margin:10px 0 0;
+  max-width:520px;
+  letter-spacing:.01em;
+}
 
 /* Article — workout / rest / race / no-plan / off-plan article */
 .td-article{position:relative;z-index:3;margin-top:8px;border-top:1px solid rgba(255,255,255,.14);padding-top:18px;}

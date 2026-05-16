@@ -20,6 +20,7 @@ from running_coach_ai.coach.today_rationale import (
     extract_rationale_paragraph,
     rule_based_completed,
     rule_based_morning,
+    strip_today_tagline,
 )
 
 
@@ -82,6 +83,51 @@ class TestExtractRationaleParagraph:
         assert extract_rationale_paragraph(body) == (
             "Today's rationale paragraph addressed to the athlete in coach voice."
         )
+
+    def test_today_tagline_preferred_when_present(self):
+        body = (
+            "**Today.** This tempo holds race pace under fatigue.\n\n"
+            "Sam, HRV is up 2 and sleep was solid; green-light to execute."
+        )
+        assert extract_rationale_paragraph(body) == (
+            "This tempo holds race pace under fatigue."
+        )
+
+    def test_today_tagline_case_insensitive(self):
+        body = "**today.** Short cue line.\n\nLonger context."
+        assert extract_rationale_paragraph(body) == "Short cue line."
+
+    def test_today_tagline_with_extra_whitespace(self):
+        body = "  **Today.**   Tagline content.  \n\nMore content."
+        assert extract_rationale_paragraph(body) == "Tagline content."
+
+
+class TestStripTodayTagline:
+    def test_strips_leading_tagline(self):
+        body = (
+            "**Today.** Short cover line here.\n\n"
+            "Full rationale paragraph below."
+        )
+        assert strip_today_tagline(body) == "Full rationale paragraph below."
+
+    def test_no_tagline_returns_unchanged(self):
+        body = "Just regular content.\n\nSecond paragraph."
+        assert strip_today_tagline(body) == body
+
+    def test_empty_input(self):
+        assert strip_today_tagline("") == ""
+        assert strip_today_tagline(None) == ""
+
+    def test_preserves_subsequent_paragraphs(self):
+        body = (
+            "**Today.** Tagline.\n\n"
+            "Paragraph two with the details.\n\n"
+            "Paragraph three with the weather."
+        )
+        result = strip_today_tagline(body)
+        assert "Tagline" not in result
+        assert "Paragraph two" in result
+        assert "Paragraph three" in result
 
 
 # ─── rule_based_morning — with-snapshot branch (T030) ──────────────────────

@@ -249,7 +249,12 @@ def _resolve_morning_message(
         .first()
     )
     if notif and notif.body:
-        excerpt = _excerpt_first_sentences(notif.body, n=2)
+        # The Today Card surfaces the leading `**Today.**` tagline. The
+        # Morning Readiness section shows the FULL rationale below it, so
+        # the same content isn't repeated in two places on the same page.
+        from running_coach_ai.coach.today_rationale import strip_today_tagline
+        body_without_tagline = strip_today_tagline(notif.body)
+        excerpt = _excerpt_first_sentences(body_without_tagline, n=2)
         if excerpt:
             return excerpt, notif.created_at.isoformat(), "morning_checkin"
     fallback = (persona_greeting or "").strip() or None

@@ -32,27 +32,65 @@ if TYPE_CHECKING:  # pragma: no cover — type-only imports
 # ─── Paragraph extraction ──────────────────────────────────────────────────
 
 
-def extract_rationale_paragraph(body: str | None) -> str:
-    """Return the first paragraph of a coach-generated body.
+_TODAY_TAGLINE_RE = re.compile(
+    r"^\s*\*\*\s*Today\.\s*\*\*\s*(?P<tagline>.+?)(?:\n\s*\n|\Z)",
+    flags=re.IGNORECASE | re.DOTALL,
+)
 
-    A "paragraph" is whatever appears before the first blank line. If the
-    body has no blank line, the whole stripped body is returned. Empty or
-    None inputs return an empty string.
+
+def extract_rationale_paragraph(body: str | None) -> str:
+    """Return the Today-Card rationale extracted from a coach-generated body.
+
+    Preferred shape (per the updated morning_checkin prompt, FR-009):
+
+        **Today.** One-sentence tagline that names why this workout matters
+        and one execution cue.
+
+        Full 2-3 sentence rationale paragraph follows here...
+
+    When the body starts with `**Today.**`, this returns the tagline text
+    only (no markdown asterisks, no `Today.` prefix). When the body lacks
+    that marker (older notifications written before the prompt update, or a
+    model miss), falls back to the first paragraph — the previous behavior.
 
     Used for both `Notification(kind="morning_checkin").body` and
-    `CompletedWorkout.coach_analysis` per FR-011. The athlete-centered
-    prompt directive (FR-009/FR-010) instructs Claude to lead with the
-    rationale paragraph, so the first paragraph is the right unit.
+    `CompletedWorkout.coach_analysis` per FR-011. Empty / None inputs
+    return an empty string.
     """
     if not body:
         return ""
     stripped = body.strip()
     if not stripped:
         return ""
-    # Split on the first blank line (one or more newlines surrounded by
-    # optional whitespace). Take the head.
+
+    # Prefer the **Today.** tagline if present
+    m = _TODAY_TAGLINE_RE.match(stripped)
+    if m:
+        return m.group("tagline").strip()
+
+    # Fall back to the first paragraph (split on the first blank line)
     paragraphs = re.split(r"\n\s*\n", stripped, maxsplit=1)
     return paragraphs[0].strip()
+
+
+def strip_today_tagline(body: str | None) -> str:
+    """Return `body` with the leading `**Today.**` tagline removed.
+
+    Used by the magazine endpoint to render the Morning Readiness coach
+    message so the tagline (already on the Today Card cover) is not
+    duplicated below. If the body doesn't start with a tagline, returns
+    the body unchanged.
+    """
+    if not body:
+        return ""
+    stripped = body.strip()
+    if not stripped:
+        return ""
+    m = _TODAY_TAGLINE_RE.match(stripped)
+    if not m:
+        return stripped
+    # Slice past the tagline match
+    return stripped[m.end():].lstrip()
 
 
 # ─── Workout-type labels for rationale prose ───────────────────────────────
