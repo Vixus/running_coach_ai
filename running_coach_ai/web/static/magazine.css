@@ -480,7 +480,28 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
 
 #coachsays{background:var(--sage);padding:110px 64px;text-align:center;position:relative;overflow:hidden;}
 #coachsays::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");pointer-events:none;}
-.cq-text{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(22px,3.5vw,50px);line-height:1.3;color:#fff;max-width:800px;margin:0 auto 28px;position:relative;z-index:1;min-height:6.5rem;}
+.cq-text{
+  font-family:'DM Serif Display',serif;
+  font-style:italic;
+  font-size:clamp(22px,3.5vw,50px);
+  line-height:1.3;
+  color:#fff;
+  max-width:800px;
+  margin:0 auto 28px;
+  position:relative;
+  z-index:1;
+  /* Fixed height — sized for the longest expected quote (~5 lines).
+     Shorter quotes are vertically centered via flex so the section
+     doesn't reflow when quotes rotate, which keeps the race-day
+     countdown below from jumping around. */
+  height:clamp(150px,22vw,340px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  /* Long single tokens or oversize quotes wrap rather than overflow. */
+  overflow:hidden;
+}
 .cq-dash{width:32px;height:2px;background:rgba(255,255,255,.3);margin:0 auto 18px;}
 .cq-attr{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.45);}
 #cq-nav{display:flex;justify-content:center;gap:8px;margin-top:22px;}
