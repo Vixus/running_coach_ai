@@ -2172,6 +2172,10 @@ function setupTouchInteractions(){
       if(a.has_garmin){
         mkBtn('Verify','',()=>doCall('Verify',`/api/admin/athletes/${a.id}/verify-garmin`,'GET'));
         mkBtn('Refresh Garmin','primary',()=>doCall('Refresh',`/api/admin/athletes/${a.id}/refresh-garmin-data`,'POST',{days_back:7}));
+        mkBtn('Backfill 30d','',()=>{
+          if(!confirm(`Backfill last 30 days of Garmin activities for ${a.name}? Use this when recent runs aren't showing up.`)) return;
+          doCall('Backfill 30d',`/api/admin/athletes/${a.id}/refresh-garmin-data`,'POST',{days_back:30});
+        });
         mkBtn('Resync','',()=>{
           if(!confirm(`Resync Garmin for ${a.name}? Deletes app-marked workouts and re-uploads from DB.`)) return;
           doCall('Resync',`/api/admin/athletes/${a.id}/resync-garmin`);
