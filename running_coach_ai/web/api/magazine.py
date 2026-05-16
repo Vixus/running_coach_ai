@@ -622,17 +622,23 @@ def magazine():
                 "elevation_pts": elevation_pts,
             }
 
-        # ── Recent activities (feed: runs 2–6, featured run excluded) ──────────
+        # ── Recent activities (feed: featured run excluded, last ~60 days) ─────
+        # Show a meaningful slice of training history rather than just the most
+        # recent 5. A typical athlete running 4–6 times/week generates 25–40
+        # runs in 60 days; capping at 60 keeps the section bounded on the
+        # rare end of the volume distribution.
         recent_activities = []
         if last_cw:
+            sixty_days_ago = today - timedelta(days=60)
             feed_cws = (
                 db.query(CompletedWorkout)
                 .filter(
                     CompletedWorkout.athlete_id == athlete_id,
                     CompletedWorkout.id != last_cw.id,
+                    CompletedWorkout.date >= sixty_days_ago,
                 )
                 .order_by(CompletedWorkout.date.desc())
-                .limit(5)
+                .limit(60)
                 .all()
             )
             for cw in feed_cws:
