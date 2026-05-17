@@ -230,9 +230,18 @@ def refresh_garmin_data(athlete_id: int, days_back: int = 7) -> dict:
 def trigger_morning_checkin(athlete_id: int, *, force: bool = False) -> dict:
     """Manually fire the morning check-in for an athlete.
 
-    `force=True` clears `last_morning_checkin_date` so the dedup gate doesn't
-    skip it.
+    `force=True` clears `last_morning_checkin_date` (dedup) and bypasses the
+    06:00-local floor and Garmin health-data gate inside run_morning_checkin.
+
+    Returns {"ok": True/False, "error": str|None}. `ok=False` is also returned
+    when the run completed without writing a morning_checkin Notification for
+    today — usually because Claude errored after the slot was claimed and
+    released back. The admin caller can then check logs.
     """
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from running_coach_ai.database.models import Notification
     from running_coach_ai.database.session import get_session
     from running_coach_ai.scheduler.jobs import _run_morning_checkin_for_athlete
 
@@ -242,6 +251,7 @@ def trigger_morning_checkin(athlete_id: int, *, force: bool = False) -> dict:
             return {"ok": False, "error": "Athlete not found"}
         if not a.allowed or not a.onboarding_complete:
             return {"ok": False, "error": "Athlete is not active or has not completed onboarding"}
+        tz_name = a.timezone or "America/New_York"
         if force and a.last_morning_checkin_date is not None:
             a.last_morning_checkin_date = None
             db.commit()
@@ -251,4 +261,31 @@ def trigger_morning_checkin(athlete_id: int, *, force: bool = False) -> dict:
     except Exception as e:
         logger.error("Admin morning-checkin failed for athlete %d: %s", athlete_id, e)
         return {"ok": False, "error": str(e)}
+
+    # Verify the run actually produced a Notification under today's local date —
+    # otherwise the admin button silently no-ops on Claude failures or empty data.
+    tz = ZoneInfo(tz_name)
+    today_local = datetime.now(tz).date()
+    with get_session() as db:
+        produced = (
+            db.query(Notification)
+            .filter(
+                Notification.athlete_id == athlete_id,
+                Notification.kind == "morning_checkin",
+                Notification.created_at >= datetime.combine(today_local, datetime.min.time())
+                    .replace(tzinfo=tz).astimezone(ZoneInfo("UTC")).replace(tzinfo=None),
+            )
+            .order_by(Notification.created_at.desc())
+            .first()
+        )
+    if produced is None:
+        logger.warning(
+            "Admin morning-checkin for athlete %d completed without producing a notification "
+            "(likely Claude error or empty health data) — check logs",
+            athlete_id,
+        )
+        return {
+            "ok": False,
+            "error": "Check-in ran but produced no notification — check server logs.",
+        }
     return {"ok": True, "error": None}
