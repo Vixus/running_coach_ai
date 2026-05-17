@@ -2,9 +2,11 @@
 
 import logging
 from calendar import monthrange
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from flask import Blueprint, jsonify, request, session
+from sqlalchemy import desc
 
 from running_coach_ai.coach.persona import format_miles, format_pace_mi, km_to_mi
 from running_coach_ai.database.models import Athlete, CompletedWorkout, HealthSnapshot, PlannedWorkout
@@ -255,11 +257,6 @@ def workout_preview():
     if not workout_id:
         return jsonify({"error": "planned_workout_id required"}), 400
 
-    today = date.today()
-    cache_key = (workout_id, today.isoformat())
-    if cache_key in _preview_cache:
-        return jsonify(_preview_cache[cache_key])
-
     with get_session() as db:
         athlete = db.get(Athlete, athlete_id)
         if not athlete:
@@ -273,6 +270,37 @@ def workout_preview():
         if not workout:
             return jsonify({"error": "Workout not found"}), 404
 
+        # Athlete-local today, matching the Today Card pattern.
+        tz = ZoneInfo(athlete.timezone or "America/New_York")
+        today_local = datetime.now(tz).date()
+
+        # Health snapshot: prefer today's, fall back to most recent within 3 days.
+        snapshot = (
+            scoped_query(db, HealthSnapshot, athlete_id)
+            .filter(HealthSnapshot.date == today_local)
+            .first()
+        )
+        is_stale = False
+        if snapshot is None:
+            snapshot = (
+                scoped_query(db, HealthSnapshot, athlete_id)
+                .filter(
+                    HealthSnapshot.date >= today_local - timedelta(days=3),
+                    HealthSnapshot.date < today_local,
+                )
+                .order_by(desc(HealthSnapshot.date))
+                .first()
+            )
+            is_stale = snapshot is not None
+
+        # Cache key includes the workout's scheduled date and the resolved
+        # snapshot date — so the cached tip invalidates when fresh health data
+        # lands later in the day.
+        snap_key = snapshot.date.isoformat() if snapshot else "none"
+        cache_key = (workout_id, workout.scheduled_date.isoformat(), snap_key)
+        if cache_key in _preview_cache:
+            return jsonify(_preview_cache[cache_key])
+
         # Build workout summary string
         type_lbl = workout.workout_type.replace("_", " ").title()
         vol = format_miles(workout.target_distance_km) if workout.target_distance_km else (
@@ -283,13 +311,7 @@ def workout_preview():
         if workout.description:
             workout_summary += f"\nNotes: {workout.description}"
 
-        # Today's health snapshot
-        snapshot = (
-            scoped_query(db, HealthSnapshot, athlete_id)
-            .filter(HealthSnapshot.date == today)
-            .first()
-        )
-        health_ctx = "No health data available today."
+        health_ctx = "No recent health data available."
         if snapshot:
             parts = []
             if snapshot.training_readiness is not None:
@@ -301,7 +323,8 @@ def workout_preview():
             if snapshot.body_battery_start is not None:
                 parts.append(f"Body battery: {snapshot.body_battery_start}")
             if parts:
-                health_ctx = ", ".join(parts)
+                stale_prefix = f"(from {snapshot.date.isoformat()}, no fresher reading yet) " if is_stale else ""
+                health_ctx = stale_prefix + ", ".join(parts)
 
         # Recent completed workouts (last 5)
         from running_coach_ai.database.models import CompletedWorkout as CW
@@ -321,10 +344,20 @@ def workout_preview():
         from running_coach_ai.coach.personas import get_persona
         persona_block = get_persona(athlete.coach_key).persona_block
 
+        days_out = (workout.scheduled_date - today_local).days
+        if days_out == 0:
+            when_label = "TODAY'S WORKOUT"
+        elif days_out == 1:
+            when_label = f"TOMORROW'S WORKOUT ({workout.scheduled_date.strftime('%A, %b %d')})"
+        elif days_out > 1:
+            when_label = f"UPCOMING WORKOUT ({workout.scheduled_date.strftime('%A, %b %d')}, in {days_out} days)"
+        else:
+            when_label = f"WORKOUT ({workout.scheduled_date.strftime('%A, %b %d')})"
+
         prompt = (
             f"You are giving a brief pre-workout tip for {athlete.name}.\n\n"
-            f"TODAY'S WORKOUT:\n{workout_summary}\n\n"
-            f"TODAY'S HEALTH:\n{health_ctx}\n\n"
+            f"{when_label}:\n{workout_summary}\n\n"
+            f"CURRENT HEALTH:\n{health_ctx}\n\n"
             f"RECENT TRAINING:\n{recent_str}\n\n"
             "Give 3–5 concise, specific bullet-point tips for executing this session well. "
             "Consider the health data and recent training load. "
