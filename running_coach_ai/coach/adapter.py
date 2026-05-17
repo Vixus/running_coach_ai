@@ -230,6 +230,12 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, force: bool = Fal
     else:
         session_text = "No session scheduled for today (rest day)."
 
+    # Claim today's slot BEFORE the slow Claude call so a second concurrent
+    # tick (scheduled or admin-forced) sees dedup already taken and skips.
+    # Released back to None on Claude failure so the next tick can retry.
+    athlete.last_morning_checkin_date = today
+    db_session.commit()
+
     # Build prompt and call Claude
     prompt = MORNING_CHECKIN_PROMPT.format(
         name=athlete.name,
@@ -242,12 +248,14 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, force: bool = Fal
         response = call_claude(get_persona(athlete.coach_key).persona_block, [{"role": "user", "content": prompt}])
     except Exception as e:
         logger.error("Claude morning check-in failed for athlete %d: %s", athlete.id, e)
+        athlete.last_morning_checkin_date = None
+        db_session.commit()
         return
 
     # Apply any plan mutations
     response = extract_and_apply_plan(athlete.id, response, db_session)
 
-    # Persist conversation turn, in-app notification, and (transitionally) Slack DM.
+    # Persist conversation turn and in-app notification.
     try:
         from running_coach_ai.database.models import ConversationMessage
         from running_coach_ai.coach.notify import notify
@@ -263,11 +271,13 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, force: bool = Fal
             body=response,
             action_path="/#morning",
         )
-        athlete.last_morning_checkin_date = today
         db_session.commit()
         logger.info("Morning check-in delivered to athlete %d", athlete.id)
     except Exception as e:
         logger.error("Failed to deliver morning check-in to athlete %d: %s", athlete.id, e)
+        # Release the slot so a retry can re-attempt delivery
+        athlete.last_morning_checkin_date = None
+        db_session.commit()
 
 
 def adapt_next_week(athlete: Athlete, week_summary: dict, db_session: Session) -> None:

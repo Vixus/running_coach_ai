@@ -126,5 +126,6 @@ def register_athlete_morning_job(scheduler: BlockingScheduler, athlete) -> None:
         id=f"morning_checkin_{athlete.id}",
         replace_existing=True,
         misfire_grace_time=300,
+        max_instances=1,
     )
     logger.info("Registered morning check-in for newly onboarded athlete %d (%s)", athlete.id, tz)
