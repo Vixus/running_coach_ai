@@ -78,7 +78,7 @@ def _garmin_morning_data_complete(snapshot) -> bool:
     return all(getattr(snapshot, f) is not None for f in _HEALTH_KEY_FIELDS)
 
 
-def run_morning_checkin(athlete: Athlete, db_session: Session) -> None:
+def run_morning_checkin(athlete: Athlete, db_session: Session, force: bool = False) -> None:
     """Run the morning check-in for a single athlete.
 
     Fetches health data, weather, evaluates today's session, adapts if
@@ -87,20 +87,24 @@ def run_morning_checkin(athlete: Athlete, db_session: Session) -> None:
     Health-data gate (FR-030–FR-033): returns early without sending if
     Garmin has not yet processed the night's sleep/HRV/body-battery data.
     Retries are handled by the 30-minute IntervalTrigger in the scheduler.
+
+    `force=True` bypasses the dedup guard, the 06:00-local floor, and the
+    health-data gate so an admin-triggered run always delivers, even when
+    Garmin hasn't yet processed overnight metrics.
     """
     tz = ZoneInfo(athlete.timezone or "America/New_York")
     today = datetime.now(tz).date()
     today_str = today.isoformat()
 
     # Dedup guard — ensure exactly one DM per day (FR-033)
-    if athlete.last_morning_checkin_date == today:
+    if not force and athlete.last_morning_checkin_date == today:
         logger.debug("Morning check-in already sent to athlete %d today, skipping", athlete.id)
         return
 
     # Time-of-day floor: never send before 06:00 local, even if Garmin has already
     # processed a nap as a completed sleep session and the data gate would pass.
     now_local = datetime.now(tz)
-    if now_local.hour < 6:
+    if not force and now_local.hour < 6:
         logger.debug(
             "Morning check-in suppressed for athlete %d — too early (%s local)",
             athlete.id, now_local.strftime("%H:%M"),
@@ -137,7 +141,9 @@ def run_morning_checkin(athlete: Athlete, db_session: Session) -> None:
     # Health-data gate (FR-031, FR-032): wait for Garmin to finish processing all overnight metrics.
     # Skip gate if Garmin was unreachable — the fetch failure already logged an error; proceeding
     # with whatever stored data exists is better than silently skipping the day's check-in.
-    if not garmin_fetch_failed and not _garmin_morning_data_complete(snapshot) and athlete.garmin_email:
+    # `force=True` bypasses the gate entirely so an admin can deliver the check-in even when
+    # Garmin hasn't processed sleep yet (the message will use whatever stored data is available).
+    if not force and not garmin_fetch_failed and not _garmin_morning_data_complete(snapshot) and athlete.garmin_email:
         if now_local.hour < 12:
             logger.debug(
                 "No health data yet for athlete %d at %s local — will retry on next tick",

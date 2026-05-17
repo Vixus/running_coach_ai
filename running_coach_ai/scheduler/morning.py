@@ -36,21 +36,25 @@ def _next_checkin_start(tz_name: str) -> datetime:
     return today_6am + timedelta(days=1)
 
 
-def _run_morning_checkin_for_athlete(athlete_id: int) -> None:
-    """Morning check-in job for a single athlete."""
+def _run_morning_checkin_for_athlete(athlete_id: int, force: bool = False) -> None:
+    """Morning check-in job for a single athlete.
+
+    `force=True` is set by the admin "Morning" button and bypasses all
+    skip gates (dedup, 06:00 floor, health-data gate) inside run_morning_checkin.
+    """
     from running_coach_ai.database.models import Athlete
     from running_coach_ai.database.session import get_session
     from running_coach_ai.coach.adapter import run_morning_checkin
     from running_coach_ai.garmin.client import is_garmin_auth_error
 
-    logger.info("Morning check-in starting for athlete %d", athlete_id)
+    logger.info("Morning check-in starting for athlete %d (force=%s)", athlete_id, force)
     try:
         with get_session() as db_session:
             athlete = db_session.query(Athlete).get(athlete_id)
             if not athlete or not athlete.allowed or not athlete.onboarding_complete:
                 return
             try:
-                run_morning_checkin(athlete, db_session)
+                run_morning_checkin(athlete, db_session, force=force)
             except Exception as inner_e:
                 if is_garmin_auth_error(inner_e):
                     _notify_garmin_auth_error(athlete)

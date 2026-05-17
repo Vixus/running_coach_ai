@@ -247,7 +247,7 @@ def trigger_morning_checkin(athlete_id: int, *, force: bool = False) -> dict:
             db.commit()
 
     try:
-        _run_morning_checkin_for_athlete(athlete_id)
+        _run_morning_checkin_for_athlete(athlete_id, force=force)
     except Exception as e:
         logger.error("Admin morning-checkin failed for athlete %d: %s", athlete_id, e)
         return {"ok": False, "error": str(e)}
