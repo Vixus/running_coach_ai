@@ -852,6 +852,33 @@ function cpAdd(role,text){
   m.scrollTop=m.scrollHeight;
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+// Minimal markdown renderer for short coach-authored text (bullets, bold, italic, code, ## headings).
+function renderMarkdownTips(md){
+  const out = [];
+  for (const raw of String(md||'').split('\n')){
+    const line = raw.trim();
+    if (!line) continue;
+    let m;
+    if ((m = line.match(/^#{2,6}\s+(.+)$/))){
+      out.push(`<div class="tip-head">${inlineMd(m[1])}</div>`);
+      continue;
+    }
+    let body = line, isBullet = false;
+    if ((m = line.match(/^[\-\*•]\s+(.+)$/))){ body = m[1]; isBullet = true; }
+    else if ((m = line.match(/^\d+\.\s+(.+)$/))){ body = m[1]; isBullet = true; }
+    const html = inlineMd(body);
+    out.push(isBullet
+      ? `<span class="tip-bullet">• ${html}</span>`
+      : `<span class="tip-line">${html}</span>`);
+  }
+  return out.join('');
+}
+function inlineMd(s){
+  return escapeHtml(s)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>');
+}
 
 // ---------- Notifications: bell, panel, polling ----------
 const NOTIF_KIND_ICON = {
@@ -1799,8 +1826,7 @@ async function openWorkoutPreview(id){
       if (d.workout.pace)   parts.push(`@ ${d.workout.pace}/mi`);
       metaEl.textContent = parts.join(' · ');
       if (d.tips) {
-        const bullets = d.tips.split('\n').filter(l=>l.trim()).map(l=>`<span class="tip-bullet">${l.replace(/^[•\-]\s*/,'• ')}</span>`).join('');
-        tipsEl.innerHTML = `<div class="wpm-tips">${bullets}</div>`;
+        tipsEl.innerHTML = `<div class="wpm-tips">${renderMarkdownTips(d.tips)}</div>`;
       } else {
         tipsEl.textContent = 'No tips available.';
       }

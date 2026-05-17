@@ -284,9 +284,14 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
 .wpm-meta{font-size:13px;color:rgba(255,255,255,.4);margin-bottom:22px;}
 .wpm-loading{text-align:center;padding:32px 0;color:rgba(255,255,255,.3);font-size:13px;}
 .wpm-spinner{display:inline-block;width:22px;height:22px;border:2px solid rgba(184,255,79,.25);border-top-color:var(--lime,#b8ff4f);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:10px;}
-.wpm-tips{font-size:14px;color:rgba(255,255,255,.8);line-height:1.7;white-space:pre-wrap;}
-.wpm-tips .tip-bullet{display:block;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06);}
-.wpm-tips .tip-bullet:last-child{border-bottom:none;}
+.wpm-tips{font-size:14px;color:rgba(255,255,255,.8);line-height:1.7;}
+.wpm-tips .tip-bullet,.wpm-tips .tip-line{display:block;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06);}
+.wpm-tips .tip-bullet:last-child,.wpm-tips .tip-line:last-child{border-bottom:none;}
+.wpm-tips .tip-head{display:block;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(184,255,79,.85);padding:14px 0 4px;}
+.wpm-tips .tip-head:first-child{padding-top:0;}
+.wpm-tips strong{color:#fff;font-weight:600;}
+.wpm-tips em{font-style:italic;color:rgba(255,255,255,.9);}
+.wpm-tips code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .rc-card{cursor:pointer;transition:border-color .2s,transform .15s;}
 .rc-card:hover{border-color:rgba(184,255,79,.5);transform:translateY(-2px);}
