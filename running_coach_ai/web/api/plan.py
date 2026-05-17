@@ -6,10 +6,9 @@ from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from flask import Blueprint, jsonify, request, session
-from sqlalchemy import desc
 
 from running_coach_ai.coach.persona import format_miles, format_pace_mi, km_to_mi
-from running_coach_ai.database.models import Athlete, CompletedWorkout, HealthSnapshot, PlannedWorkout
+from running_coach_ai.database.models import Athlete, CompletedWorkout, PlannedWorkout
 from running_coach_ai.database.session import get_session, scoped_query
 from running_coach_ai.web.auth import login_required
 from running_coach_ai.web.events import web_event
@@ -275,23 +274,8 @@ def workout_preview():
         today_local = datetime.now(tz).date()
 
         # Health snapshot: prefer today's, fall back to most recent within 3 days.
-        snapshot = (
-            scoped_query(db, HealthSnapshot, athlete_id)
-            .filter(HealthSnapshot.date == today_local)
-            .first()
-        )
-        is_stale = False
-        if snapshot is None:
-            snapshot = (
-                scoped_query(db, HealthSnapshot, athlete_id)
-                .filter(
-                    HealthSnapshot.date >= today_local - timedelta(days=3),
-                    HealthSnapshot.date < today_local,
-                )
-                .order_by(desc(HealthSnapshot.date))
-                .first()
-            )
-            is_stale = snapshot is not None
+        from running_coach_ai.coach.health_lookup import resolve_recent_snapshot
+        snapshot, is_stale = resolve_recent_snapshot(db, athlete_id, today_local)
 
         # Cache key includes the workout's scheduled date and the resolved
         # snapshot date — so the cached tip invalidates when fresh health data

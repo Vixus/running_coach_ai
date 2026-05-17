@@ -156,22 +156,16 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, force: bool = Fal
         )
         return
 
-    # Fall back to most recent stored snapshot if live fetch failed or returned no useful data
-    if snapshot is None or all(
-        getattr(snapshot, f) is None
-        for f in ("hrv_score", "sleep_score", "resting_hr", "body_battery_start")
-    ):
-        stored = (
-            scoped_query(db_session, HealthSnapshot, athlete.id)
-            .filter(
-                HealthSnapshot.date >= today - timedelta(days=3),
+    # Fall back to the most recent stored snapshot if live fetch returned nothing at all.
+    if snapshot is None:
+        from running_coach_ai.coach.health_lookup import resolve_recent_snapshot
+        fallback, _ = resolve_recent_snapshot(db_session, athlete.id, today)
+        if fallback is not None:
+            snapshot = fallback
+            logger.info(
+                "Using stale health snapshot from %s for athlete %d (no fresh data)",
+                snapshot.date, athlete.id,
             )
-            .order_by(HealthSnapshot.date.desc())
-            .first()
-        )
-        if stored and snapshot is None:
-            snapshot = stored
-            logger.info("Using stored health snapshot from %s for athlete %d", stored.date, athlete.id)
 
     if snapshot:
         date_label = "today" if snapshot.date == today else snapshot.date.isoformat()

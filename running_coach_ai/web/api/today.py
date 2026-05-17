@@ -136,24 +136,9 @@ def _resolve_state(
 def _resolve_health_snapshot(
     db, athlete_id: int, today_local: date
 ) -> tuple[HealthSnapshot | None, bool]:
-    """Return (snap, is_stale). Snap may be from up to 3 days before today_local."""
-    snap = (
-        scoped_query(db, HealthSnapshot, athlete_id)
-        .filter(HealthSnapshot.date == today_local)
-        .first()
-    )
-    if snap is not None:
-        return snap, False
-    snap = (
-        scoped_query(db, HealthSnapshot, athlete_id)
-        .filter(
-            HealthSnapshot.date >= today_local - timedelta(days=3),
-            HealthSnapshot.date < today_local,
-        )
-        .order_by(desc(HealthSnapshot.date))
-        .first()
-    )
-    return snap, (snap is not None)
+    """Return (snap, is_stale). Thin wrapper around the shared resolver."""
+    from running_coach_ai.coach.health_lookup import resolve_recent_snapshot
+    return resolve_recent_snapshot(db, athlete_id, today_local)
 
 
 # ─── Rationale source ladder ───────────────────────────────────────────────

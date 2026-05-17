@@ -338,32 +338,11 @@ def magazine():
                 .first()
             )
 
-        # Today's health snapshot — fall back to the most recent within the last
-        # 3 days when today's is missing (e.g. Garmin returned 429 and the
-        # scheduler couldn't write a snapshot). Matches coach/adapter.py's
-        # behavior so the morning check-in text and the home-card metrics agree
-        # on which day's data is being shown. Without this fallback the home
-        # card displays "—" for HRV / Body Battery / Sleep / RHR even though
-        # the coach message references the previous day's numbers — that
-        # mismatch reads as "morning report load failed."
-        snap = (
-            db.query(HealthSnapshot)
-            .filter(HealthSnapshot.athlete_id == athlete_id, HealthSnapshot.date == today)
-            .first()
-        )
-        snap_is_stale = False
-        if snap is None:
-            snap = (
-                db.query(HealthSnapshot)
-                .filter(
-                    HealthSnapshot.athlete_id == athlete_id,
-                    HealthSnapshot.date >= today - timedelta(days=3),
-                    HealthSnapshot.date < today,
-                )
-                .order_by(HealthSnapshot.date.desc())
-                .first()
-            )
-            snap_is_stale = snap is not None
+        # Today's health snapshot, with the shared today-then-stale-fallback
+        # resolver so we stay consistent with /api/today and the morning
+        # adapter. Stale rows surface to the UI flagged as such.
+        from running_coach_ai.coach.health_lookup import resolve_recent_snapshot
+        snap, snap_is_stale = resolve_recent_snapshot(db, athlete_id, today)
 
         # 7-day HRV trend — compare snap.hrv_score to the 7 days preceding the
         # snap (not the 7 days preceding "today"), so trend math stays correct
