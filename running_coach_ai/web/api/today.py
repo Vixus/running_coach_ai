@@ -23,7 +23,7 @@ via a Flask after-request hook so the HTTP response is never blocked.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from flask import Blueprint, g, jsonify, session
@@ -162,17 +162,21 @@ def _resolve_health_snapshot(
 def _morning_checkin_paragraph(
     db, athlete_id: int, now_local: datetime
 ) -> tuple[str | None, str | None]:
-    """Return (paragraph_text, created_at_iso) for the most recent fresh morning_checkin.
+    """Return (paragraph_text, created_at_iso) for today's morning_checkin.
 
-    Fresh = within 24h of `now_local` (converted to UTC for the comparison
-    since `Notification.created_at` is stored as UTC).
+    Only notifications whose timestamp falls within the athlete's local "today"
+    (midnight-to-midnight in `now_local`'s tz) are eligible — yesterday's
+    check-in is never surfaced under today's date.
     """
-    cutoff_utc = datetime.utcnow() - timedelta(hours=24)
+    day_start_local = datetime.combine(now_local.date(), time.min, tzinfo=now_local.tzinfo)
+    day_start_utc = day_start_local.astimezone(timezone.utc).replace(tzinfo=None)
+    day_end_utc = (day_start_local + timedelta(days=1)).astimezone(timezone.utc).replace(tzinfo=None)
     notif = (
         scoped_query(db, Notification, athlete_id)
         .filter(
             Notification.kind == "morning_checkin",
-            Notification.created_at >= cutoff_utc,
+            Notification.created_at >= day_start_utc,
+            Notification.created_at < day_end_utc,
         )
         .order_by(desc(Notification.created_at))
         .first()

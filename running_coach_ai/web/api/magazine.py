@@ -10,7 +10,7 @@ import json
 import logging
 import re as _re
 import threading
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from flask import Blueprint, jsonify, request, session
@@ -199,12 +199,6 @@ def _miles_landmark(miles: int) -> dict | None:
     return {"miles": first[0], "name": first[1], "sub": first[2]}
 
 
-# Morning check-ins are surfaced on the home card for this long after they
-# fire. 24h covers timezone edges (athlete-local "today" vs server UTC "today")
-# without surfacing yesterday's report as if it were today's.
-MORNING_REPORT_FRESHNESS = timedelta(hours=24)
-
-
 def _excerpt_first_sentences(text: str, n: int = 2) -> str:
     """Take the first `n` sentences of `text`, collapsing whitespace.
 
@@ -224,7 +218,8 @@ def _resolve_morning_message(
     db,
     athlete_id: int,
     persona_greeting: str | None,
-    now_utc: datetime | None = None,
+    tz: ZoneInfo,
+    today_local: date,
 ) -> tuple[str | None, str | None, str]:
     """Pick the home-card morning message.
 
@@ -232,18 +227,20 @@ def _resolve_morning_message(
     when today's check-in is being surfaced, or "persona_greeting" when we fell
     back to the persona's static greeting.
 
-    The freshness gate uses `created_at` (UTC) against `now_utc` rather than a
-    date comparison, so the message survives timezone boundaries (e.g. a 7am
-    EST check-in is still 'today' at 11pm EST even though server-side UTC has
-    already rolled over).
+    Only morning_checkin notifications whose timestamp falls within the
+    athlete's local "today" are eligible — yesterday's check-in is never
+    surfaced under today's date, even if it was created less than 24h ago.
     """
-    cutoff = (now_utc or datetime.utcnow()) - MORNING_REPORT_FRESHNESS
+    day_start_local = datetime.combine(today_local, time.min, tzinfo=tz)
+    day_start_utc = day_start_local.astimezone(timezone.utc).replace(tzinfo=None)
+    day_end_utc = (day_start_local + timedelta(days=1)).astimezone(timezone.utc).replace(tzinfo=None)
     notif = (
         db.query(Notification)
         .filter(
             Notification.athlete_id == athlete_id,
             Notification.kind == "morning_checkin",
-            Notification.created_at >= cutoff,
+            Notification.created_at >= day_start_utc,
+            Notification.created_at < day_end_utc,
         )
         .order_by(Notification.created_at.desc())
         .first()
@@ -854,7 +851,7 @@ def magazine():
             today=today,
         )
         morning_msg, morning_msg_at, morning_msg_source = _resolve_morning_message(
-            db, athlete_id, persona.greeting,
+            db, athlete_id, persona.greeting, tz, today,
         )
 
         coach = {
