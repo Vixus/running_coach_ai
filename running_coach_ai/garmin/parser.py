@@ -46,6 +46,36 @@ def parse_health_snapshot(raw: dict, athlete_id: int, snapshot_date: date, db_se
                 or _safe_get(raw["sleep"], "sleepScore")
             )
             sleep_duration = _safe_get(dto, "sleepTimeSeconds")
+            # Garmin sometimes omits sleepTimeSeconds even when Garmin Connect
+            # itself shows last night's sleep — fall back to summing per-stage
+            # durations (deep + light + REM, excluding awake), then to the
+            # sleep-window timestamp diff as a last resort.
+            if sleep_duration is None:
+                stages = [
+                    _safe_get(dto, "deepSleepSeconds"),
+                    _safe_get(dto, "lightSleepSeconds"),
+                    _safe_get(dto, "remSleepSeconds"),
+                ]
+                stage_sum = sum(s for s in stages if isinstance(s, (int, float)))
+                if stage_sum > 0:
+                    sleep_duration = int(stage_sum)
+                    logger.info(
+                        "Sleep duration reconstructed from stage sums for athlete %d: %ds (deep+light+rem)",
+                        athlete_id, sleep_duration,
+                    )
+                else:
+                    start_ts = _safe_get(dto, "sleepStartTimestampGMT")
+                    end_ts = _safe_get(dto, "sleepEndTimestampGMT")
+                    if (
+                        isinstance(start_ts, (int, float))
+                        and isinstance(end_ts, (int, float))
+                        and end_ts > start_ts
+                    ):
+                        sleep_duration = int((end_ts - start_ts) / 1000)
+                        logger.info(
+                            "Sleep duration reconstructed from sleep-window timestamps for athlete %d: %ds",
+                            athlete_id, sleep_duration,
+                        )
         if sleep_score is None:
             logger.warning(
                 "Sleep score not found for athlete %d — dto keys: %s, raw sleep keys: %s",

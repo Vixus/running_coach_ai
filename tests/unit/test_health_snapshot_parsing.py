@@ -171,6 +171,35 @@ class TestSleepDuration:
         _parse({**_empty_raw(), "sleep": _sleep_raw(sleep_time_seconds=0)}, db)
         assert _new_snapshot(db).sleep_duration_seconds == 0
 
+    def test_null_sleep_time_falls_back_to_stage_sum(self):
+        """When Garmin omits sleepTimeSeconds but reports per-stage durations,
+        the parser reconstructs total sleep as deep + light + REM (excluding awake)."""
+        db = _db_no_existing()
+        _parse({**_empty_raw(), "sleep": {"dailySleepDTO": {
+            "sleepTimeSeconds": None,
+            "deepSleepSeconds": 3600,
+            "lightSleepSeconds": 14400,
+            "remSleepSeconds": 5400,
+            "awakeSleepSeconds": 600,
+            "sleepScores": {"totalScore": 80},
+        }}}, db)
+        # 1h + 4h + 1.5h = 6.5h = 23400s (awake excluded)
+        assert _new_snapshot(db).sleep_duration_seconds == 23400
+
+    def test_null_sleep_time_falls_back_to_window_timestamps(self):
+        """When neither sleepTimeSeconds nor stage data is present, fall back
+        to the difference between sleepStartTimestampGMT and sleepEndTimestampGMT (ms)."""
+        db = _db_no_existing()
+        start_ms = 1747454400000  # 2026-05-17 04:00:00 UTC
+        end_ms = start_ms + (7 * 3600 + 30 * 60) * 1000  # 7.5h later
+        _parse({**_empty_raw(), "sleep": {"dailySleepDTO": {
+            "sleepTimeSeconds": None,
+            "sleepStartTimestampGMT": start_ms,
+            "sleepEndTimestampGMT": end_ms,
+            "sleepScores": {"totalScore": 80},
+        }}}, db)
+        assert _new_snapshot(db).sleep_duration_seconds == 7 * 3600 + 30 * 60
+
 
 # ---------------------------------------------------------------------------
 # HRV

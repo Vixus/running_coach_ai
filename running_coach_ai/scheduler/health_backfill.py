@@ -57,7 +57,7 @@ def _run_health_backfill() -> None:
                 .first()
             )
 
-            key_fields = ("sleep_score", "hrv_score", "body_battery_start")
+            key_fields = ("sleep_score", "sleep_duration_seconds", "hrv_score", "body_battery_start")
             if existing and all(
                 getattr(existing, f) is not None for f in key_fields
             ):
