@@ -68,8 +68,8 @@ def _garmin_morning_data_complete(snapshot) -> bool:
     recalculated. It is the same gate Garmin uses to show the morning Training
     Readiness card in the app.
 
-    Fallback (devices without Training Readiness support): require all three
-    proxy fields to be present instead.
+    Fallback (devices without Training Readiness support): require the
+    finalised sleep_score (only emitted after sleep tracking ends).
     """
     if snapshot is None:
         return False
@@ -78,15 +78,30 @@ def _garmin_morning_data_complete(snapshot) -> bool:
     return all(getattr(snapshot, f) is not None for f in _HEALTH_KEY_FIELDS)
 
 
+def _should_wait_for_morning_data(snapshot, garmin_fetch_failed: bool, athlete: Athlete) -> bool:
+    """True when we should defer the check-in until Garmin processes more data.
+
+    - Athletes without Garmin credentials never wait (we have no source of data).
+    - Failed live fetch (auth/network) is treated as 'proceed with stored data'
+      rather than waiting forever — the failure has already been logged.
+    - Otherwise, wait until the morning-data signal lights up.
+    """
+    if not athlete.garmin_email:
+        return False
+    if garmin_fetch_failed:
+        return False
+    return not _garmin_morning_data_complete(snapshot)
+
+
 def run_morning_checkin(athlete: Athlete, db_session: Session, force: bool = False) -> None:
     """Run the morning check-in for a single athlete.
 
-    Fetches health data, weather, evaluates today's session, adapts if
-    needed, and sends a personalised Slack DM.
+    Fetches Garmin health data, weather, and today's session, then calls
+    Claude to generate the morning rationale and writes it as a Notification.
 
-    Health-data gate (FR-030–FR-033): returns early without sending if
-    Garmin has not yet processed the night's sleep/HRV/body-battery data.
-    Retries are handled by the 30-minute IntervalTrigger in the scheduler.
+    Health-data gate (FR-030–FR-033): returns early without sending if Garmin
+    has not yet processed overnight metrics. The 30-minute IntervalTrigger in
+    the scheduler retries until the data lands or 12:00 local passes.
 
     `force=True` bypasses the dedup guard, the 06:00-local floor, and the
     health-data gate so an admin-triggered run always delivers, even when
@@ -138,20 +153,18 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, force: bool = Fal
         if snapshot:
             logger.info("Live fetch failed; using stored snapshot from %s for athlete %d", today, athlete.id)
 
-    # Health-data gate (FR-031, FR-032): wait for Garmin to finish processing all overnight metrics.
-    # Skip gate if Garmin was unreachable — the fetch failure already logged an error; proceeding
-    # with whatever stored data exists is better than silently skipping the day's check-in.
-    # `force=True` bypasses the gate entirely so an admin can deliver the check-in even when
-    # Garmin hasn't processed sleep yet (the message will use whatever stored data is available).
-    if not force and not garmin_fetch_failed and not _garmin_morning_data_complete(snapshot) and athlete.garmin_email:
+    # Health-data gate (FR-031, FR-032). `force=True` bypasses the gate so an
+    # admin trigger always proceeds, even when Garmin hasn't finished overnight
+    # processing — the message will use whatever stored data is available.
+    if not force and _should_wait_for_morning_data(snapshot, garmin_fetch_failed, athlete):
         if now_local.hour < 12:
-            logger.debug(
-                "No health data yet for athlete %d at %s local — will retry on next tick",
+            logger.info(
+                "Morning check-in for athlete %d at %s local: deferring — Garmin overnight data not yet complete",
                 athlete.id, now_local.strftime("%H:%M"),
             )
             return
         logger.info(
-            "No health data for athlete %d by 12:00pm (%s local) — skipping morning check-in for today",
+            "Morning check-in for athlete %d: skipping today — no Garmin morning data by 12:00 local (%s)",
             athlete.id, now_local.strftime("%H:%M"),
         )
         return
