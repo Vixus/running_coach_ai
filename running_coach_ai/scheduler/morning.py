@@ -63,7 +63,8 @@ def _run_morning_checkin_for_athlete(athlete_id: int, force: bool = False) -> No
             # Story triggers: race_upcoming (7d before goal) + difficult_week + stalled-session sweep.
             # Wrapped in try/except per Constitution V — never abort the morning job for story errors.
             try:
-                from datetime import date as _date, datetime as _dt, timedelta as _td
+                from datetime import datetime as _dt, timedelta as _td
+
                 from running_coach_ai.coach.story import (
                     detect_race_upcoming, detect_difficult_week,
                     fire_trigger_if_eligible, close_session,
@@ -72,7 +73,9 @@ def _run_morning_checkin_for_athlete(athlete_id: int, force: bool = False) -> No
                     StoryInterviewSession, StoryQuestion,
                 )
 
-                today = _date.today()
+                # Athlete-local today — matches run_morning_checkin so the race-upcoming
+                # 7-day window doesn't shift by one near server UTC midnight.
+                today = _dt.now(ZoneInfo(athlete.timezone or "America/New_York")).date()
                 goal = detect_race_upcoming(athlete, today, db_session)
                 if goal is not None:
                     fire_trigger_if_eligible(
