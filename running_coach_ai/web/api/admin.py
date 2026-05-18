@@ -127,6 +127,181 @@ def admin_morning_checkin(athlete_id: int):
     return jsonify(result), (200 if result["ok"] else 400)
 
 
+@bp.route("/api/admin/morning-diagnostic")
+@admin_required
+def admin_morning_diagnostic():
+    """Return per-athlete morning-flow state plus scheduler liveness signals.
+
+    No-side-effect probe — safe to hit repeatedly from a browser. Use this
+    when morning check-ins haven't fired and the scheduler logs aren't
+    reachable.
+    """
+    from datetime import datetime, timedelta, timezone
+    from zoneinfo import ZoneInfo
+
+    from running_coach_ai.coach.adapter import (
+        _garmin_morning_data_complete,
+        _should_wait_for_morning_data,
+    )
+    from running_coach_ai.database.models import (
+        CompletedWorkout,
+        HealthSnapshot,
+        Notification,
+    )
+
+    out: dict = {"athletes": [], "scheduler_signals": {}}
+
+    with get_session() as db:
+        athletes = (
+            db.query(Athlete)
+            .filter(
+                Athlete.allowed == True,  # noqa: E712
+                Athlete.onboarding_complete == True,  # noqa: E712
+            )
+            .order_by(Athlete.id)
+            .all()
+        )
+
+        for a in athletes:
+            tz_name = a.timezone or "America/New_York"
+            tz = None
+            tz_err = None
+            try:
+                tz = ZoneInfo(tz_name)
+                now_local = datetime.now(tz)
+                today_local = now_local.date()
+            except Exception as e:
+                tz_err = str(e)
+                now_local = None
+                today_local = None
+
+            entry: dict = {
+                "athlete_id": a.id,
+                "name": a.name,
+                "timezone": tz_name,
+                "timezone_valid": tz_err is None,
+                "timezone_error": tz_err,
+                "now_local": now_local.isoformat() if now_local else None,
+                "today_local": today_local.isoformat() if today_local else None,
+                "last_morning_checkin_date": (
+                    a.last_morning_checkin_date.isoformat() if a.last_morning_checkin_date else None
+                ),
+                "dedup_would_skip": (
+                    a.last_morning_checkin_date == today_local if today_local else None
+                ),
+            }
+
+            snap = None
+            if today_local:
+                snap = (
+                    db.query(HealthSnapshot)
+                    .filter(
+                        HealthSnapshot.athlete_id == a.id,
+                        HealthSnapshot.date == today_local,
+                    )
+                    .first()
+                )
+            entry["health_snapshot_today"] = (
+                {
+                    "date": snap.date.isoformat(),
+                    "hrv_score": snap.hrv_score,
+                    "sleep_score": snap.sleep_score,
+                    "sleep_duration_seconds": snap.sleep_duration_seconds,
+                    "resting_hr": snap.resting_hr,
+                    "body_battery_start": snap.body_battery_start,
+                    "training_readiness": snap.training_readiness,
+                    "morning_data_complete": _garmin_morning_data_complete(snap),
+                }
+                if snap else None
+            )
+
+            entry["notification_today"] = None
+            if tz and today_local:
+                day_start_local = datetime.combine(today_local, datetime.min.time(), tzinfo=tz)
+                day_start_utc = day_start_local.astimezone(timezone.utc).replace(tzinfo=None)
+                day_end_utc = (
+                    (day_start_local + timedelta(days=1))
+                    .astimezone(timezone.utc)
+                    .replace(tzinfo=None)
+                )
+                n = (
+                    db.query(Notification)
+                    .filter(
+                        Notification.athlete_id == a.id,
+                        Notification.kind == "morning_checkin",
+                        Notification.created_at >= day_start_utc,
+                        Notification.created_at < day_end_utc,
+                    )
+                    .order_by(Notification.created_at.desc())
+                    .first()
+                )
+                if n:
+                    entry["notification_today"] = {
+                        "id": n.id,
+                        "created_at_utc": n.created_at.isoformat(),
+                    }
+
+            last_snap = (
+                db.query(HealthSnapshot)
+                .filter(HealthSnapshot.athlete_id == a.id)
+                .order_by(HealthSnapshot.date.desc())
+                .first()
+            )
+            entry["latest_health_snapshot_date"] = (
+                last_snap.date.isoformat() if last_snap else None
+            )
+
+            last_notif = (
+                db.query(Notification)
+                .filter(
+                    Notification.athlete_id == a.id,
+                    Notification.kind == "morning_checkin",
+                )
+                .order_by(Notification.created_at.desc())
+                .first()
+            )
+            entry["latest_morning_checkin_at_utc"] = (
+                last_notif.created_at.isoformat() if last_notif else None
+            )
+
+            entry["gate_verdict"] = (
+                "WAIT for health data"
+                if _should_wait_for_morning_data(snap, False, a)
+                else "PROCEED to Claude"
+            )
+
+            out["athletes"].append(entry)
+
+        # Scheduler liveness — does anything written by the scheduler look recent?
+        latest_event = (
+            db.query(WebEvent).order_by(WebEvent.timestamp.desc()).first()
+        )
+        out["scheduler_signals"]["latest_web_event_at"] = (
+            latest_event.timestamp.isoformat() if latest_event else None
+        )
+
+        latest_cw = (
+            db.query(CompletedWorkout).order_by(CompletedWorkout.created_at.desc()).first()
+        )
+        out["scheduler_signals"]["latest_completed_workout_created_at"] = (
+            latest_cw.created_at.isoformat() if latest_cw else None
+        )
+
+        latest_morning = (
+            db.query(Notification)
+            .filter(Notification.kind == "morning_checkin")
+            .order_by(Notification.created_at.desc())
+            .first()
+        )
+        out["scheduler_signals"]["latest_morning_checkin_at_utc"] = (
+            latest_morning.created_at.isoformat() if latest_morning else None
+        )
+
+        out["scheduler_signals"]["server_now_utc"] = datetime.utcnow().isoformat()
+
+    return jsonify(out)
+
+
 # ── Garmin admin ────────────────────────────────────────────────────────────
 
 @bp.route("/api/admin/athletes/<int:athlete_id>/resync-garmin", methods=["POST"])
