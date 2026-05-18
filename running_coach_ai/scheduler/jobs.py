@@ -108,13 +108,26 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
     # Daily Garmin OAuth2 token refresh — 05:30, just before activity_poll opens at 06:00.
     # Primes the OAuth2 access token (expired after the 22:00 -> 06:00 overnight gap)
     # so the day's first real Garmin call doesn't have to refresh under load.
-    scheduler.add_job(
-        _run_token_refresh,
-        CronTrigger(hour=5, minute=30),
-        id="garmin_token_refresh",
-        replace_existing=True,
-        misfire_grace_time=1800,
-    )
+    #
+    # Disabled when DISABLE_GARMIN_TOKEN_REFRESH is set — used in deployments
+    # where a residential-IP refresher container (see docker-compose.refresher.yml
+    # and scripts/refresh_and_push_tokens.py) handles token refresh externally
+    # and pushes fresh tokens to this host. Running both causes Garmin to 429
+    # the cloud-IP refresh attempts.
+    import os
+    if os.environ.get("DISABLE_GARMIN_TOKEN_REFRESH"):
+        logger.info(
+            "Skipping garmin_token_refresh job registration "
+            "(DISABLE_GARMIN_TOKEN_REFRESH is set — tokens expected from external refresher)"
+        )
+    else:
+        scheduler.add_job(
+            _run_token_refresh,
+            CronTrigger(hour=5, minute=30),
+            id="garmin_token_refresh",
+            replace_existing=True,
+            misfire_grace_time=1800,
+        )
 
     # Refresh athlete morning jobs every 5 minutes — picks up athletes onboarded
     # via the web after the scheduler started, without a restart.
