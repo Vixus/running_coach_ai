@@ -324,13 +324,15 @@ def _with_snapshot_paragraph(
 def _rest_low_recovery_template(
     snap: "HealthSnapshot", periodization: str, name: str
 ) -> str:
+    hrv = _hrv_bucket(snap)
     hrv_score = snap.hrv_score if snap.hrv_score is not None else "—"
     sleep_h = _sleep_hours(snap)
-    sleep_clause = (
-        f"sleep at {sleep_h} h" if sleep_h is not None else f"HRV at {hrv_score} ms"
-    )
+    if hrv == "low":
+        signal = f"HRV is at {hrv_score} ms — below baseline"
+    else:
+        signal = f"you only slept {sleep_h} hours"
     return (
-        f"{name}, {sleep_clause} — your body is asking for room today. "
+        f"{name}, {signal}. Your body is asking for room today. "
         f"{periodization} Sleep early, eat real food, stay off the legs except "
         f"for an easy walk if you're stiff. Nothing more — the work is letting "
         f"the system absorb the load."
