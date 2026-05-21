@@ -5,7 +5,7 @@
 
 ## Summary
 
-Replace the decorative `<section id="hero">` at the top of the magazine dashboard with a magazine-cover Today Card that answers the runner's single morning question — *"what am I running today, and why?"* — in the coach's voice. The card morphs through six states (`PRE_RUN`, `COMPLETED`, `REST_DAY`, `RACE_DAY`, `NO_PLAN`, `OFF_PLAN`) driven by a new `GET /api/today` endpoint that performs only reads against existing models (`Goal`, `PlannedWorkout`, `CompletedWorkout`, `HealthSnapshot`, `Notification`). The rationale is sourced in priority order from the morning_checkin notification body, the post-run `coach_analysis`, a rule-based two-branch fallback (with vs. without overnight watch data), and persona-static text for terminal states.
+Replace the decorative `<section id="hero">` at the top of the magazine dashboard with a magazine-cover Today Card that answers the runner's single morning question — *"what am I running today, and why?"* — in the coach's voice. The card morphs through five states (`PRE_RUN`, `COMPLETED`, `REST_DAY`, `RACE_DAY`, `NO_PLAN`) driven by a new `GET /api/today` endpoint that performs only reads against existing models (`Goal`, `PlannedWorkout`, `CompletedWorkout`, `HealthSnapshot`, `Notification`). A day with an active Goal but no PlannedWorkout row resolves to REST_DAY (recovery day with cues), not a separate alarm state. The rationale is sourced in priority order from the morning_checkin notification body, the post-run `coach_analysis`, a rule-based two-branch fallback (with vs. without overnight watch data), and persona-static text for terminal states.
 
 Two cross-cutting prompt updates are part of this work: the `MORNING_CHECKIN_PROMPT` in `coach/adapter.py:17` and the `POST_RUN_FEEDBACK_PROMPT` in `coach/feedback.py:14` both gain an athlete-centered single-paragraph rationale directive — the source of the coach voice the new card will display. No new database migrations, no new background jobs, no new Claude calls at request time.
 
@@ -31,7 +31,7 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 - [x] **IV. Encrypted Secrets Management**: No new secrets; no Garmin credential interaction. **PASS (N/A)** (Initial + Post-Design)
 - [x] **V. Graceful Degradation**: Endpoint never crashes — FR-005/FR-006/FR-007/FR-007a/FR-007b/FR-008 prescribe a complete fallback ladder. Frontend FR-028b/FR-028c/FR-028d prescribe stale-rendering and skeleton-fallback so transient failures self-heal silently. **PASS** (Initial + Post-Design)
 - [x] **VI. Structured Observability**: FR-032a/b prescribe a `today.state_transition` WebEvent on state changes only, scoped per athlete and integrated with the existing `WebEventHandler` dual-sink logger. **PASS** (Initial + Post-Design)
-- [x] **VII. Test-First Development**: FR-033 (integration tests covering all 6 states across 6 user stories), FR-034 (unit tests for two-branch rule-based fallback + paragraph extraction), FR-035 (in-memory SQLite, no external network). **PASS** (Initial + Post-Design)
+- [x] **VII. Test-First Development**: FR-033 (integration tests covering all 5 states across 6 user stories, including the no-planned-row → REST_DAY regression), FR-034 (unit tests for two-branch rule-based fallback + paragraph extraction), FR-035 (in-memory SQLite, no external network). **PASS** (Initial + Post-Design)
 - [x] **VIII. Configuration as Code**: No new environment variables; persona accent colors and race-morning greetings live in code on the `CoachPersona` dataclass (FR-031). **PASS** (Initial + Post-Design)
 
 **No violations to justify.** Complexity Tracking section omitted.
@@ -73,7 +73,7 @@ running_coach_ai/
 
 tests/
 ├── integration/web/
-│   └── test_today_api.py            # NEW: integration tests for all 6 states + fallback ladder + WebEvent emission
+│   └── test_today_api.py            # NEW: integration tests for all 5 states + no-planned-row regression + fallback ladder + WebEvent emission
 └── unit/
     └── test_today_rationale.py      # NEW: unit tests for two-branch fallback + paragraph extraction
 ```

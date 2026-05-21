@@ -23,7 +23,7 @@ This is the manual verification recipe. Test coverage is automated (FR-033 / FR-
 curl -s --cookie cookies.txt http://localhost:8080/api/today | python -m json.tool
 ```
 
-Expected: a JSON object with top-level keys `state`, `today_iso`, `today_pretty`, `athlete`, `headline`, `rationale`, `modifiers`, `cover_lines`, `actions`. The `state` value must be one of `PRE_RUN`, `COMPLETED`, `REST_DAY`, `RACE_DAY`, `NO_PLAN`, `OFF_PLAN`.
+Expected: a JSON object with top-level keys `state`, `today_iso`, `today_pretty`, `athlete`, `headline`, `rationale`, `modifiers`, `cover_lines`, `actions`. The `state` value must be one of `PRE_RUN`, `COMPLETED`, `REST_DAY`, `RACE_DAY`, `NO_PLAN`.
 
 If you get a 401: log in via the dashboard first to populate the session cookie.
 
@@ -40,7 +40,7 @@ For each state, ensure the DB is in the matching configuration, then hit `/api/t
 | `COMPLETED` | Add a `CompletedWorkout(date=today, planned_workout_id=<the planned id>)` with `coach_analysis="<text>"` | `state="COMPLETED"`, headline shows actuals, cover_lines from CompletedWorkout, rationale.source=`"coach_analysis"` |
 | `REST_DAY` | `PlannedWorkout(scheduled_date=today, workout_type="rest")` | `state="REST_DAY"`, headline "Recovery is the workout", cover_lines from HealthSnapshot |
 | `RACE_DAY` | `PlannedWorkout(scheduled_date=today, workout_type="race")` + `Goal.race_date=today` | `state="RACE_DAY"`, headline shows race name, cover_lines drill_to=null |
-| `OFF_PLAN` | Active Goal + zero `PlannedWorkout(scheduled_date=today)` rows | `state="OFF_PLAN"`, headline "Your plan needs attention", `actions.cta.label="Review my plan"` |
+| `REST_DAY` (no planned row) | Active Goal + zero `PlannedWorkout(scheduled_date=today)` rows | `state="REST_DAY"`, headline "Recovery is the workout", 4 cover_lines from HealthSnapshot, `cues` array with Sleep/Fuel/Move, `actions.cta=null` |
 
 To rapidly seed states without touching DB by hand, use the admin "force morning check-in" path or write a tiny seed script per state.
 
@@ -153,7 +153,7 @@ This is the "feels like a personal coach" check — the rest of the test suite v
 
 A successful implementation has:
 
-- [x] `/api/today` returns valid responses for all six states (verified via Step 2).
+- [x] `/api/today` returns valid responses for all five states, including the no-planned-row → REST_DAY variant (verified via Step 2).
 - [x] The card renders correctly on desktop and at 375px mobile (Step 4).
 - [x] All six interaction paths work (Step 5).
 - [x] Failure modes degrade gracefully (Step 6).

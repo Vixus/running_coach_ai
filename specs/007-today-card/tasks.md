@@ -14,7 +14,7 @@ description: "Task list for spec 007 — Today Card"
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Maps to spec.md user stories (US1 = PRE_RUN, US2 = COMPLETED, US3 = REST_DAY, US4 = RACE_DAY, US5 = NO_PLAN, US6 = OFF_PLAN)
+- **[Story]**: Maps to spec.md user stories (US1 = PRE_RUN, US2 = COMPLETED, US3 = REST_DAY, US4 = RACE_DAY, US5 = NO_PLAN, US6 = no-planned-row → REST_DAY)
 - Each task description includes the exact file path to modify or create.
 
 ## Path Conventions
@@ -58,14 +58,14 @@ This feature follows the existing project layout per `plan.md`:
 ### Endpoint scaffold
 
 - [X] T009 Create `running_coach_ai/web/api/today.py` with a Flask blueprint, the `GET /api/today` route protected by `@login_required`, athlete-local timezone resolution per FR-002 (use `ZoneInfo(athlete.timezone or "America/New_York")`, NEVER `date.today()`), and a stub that returns `{"state": "PRE_RUN", ...}` so the endpoint is reachable.
-- [X] T010 Implement the state-resolution function in `running_coach_ai/web/api/today.py` per FR-003 precedence (NO_PLAN → RACE_DAY → COMPLETED → REST_DAY → OFF_PLAN → PRE_RUN). Use `scoped_query(db_session, Model, athlete_id)` for every DB query. Return only the `state` field for now; per-state payload assembly comes in user-story phases.
+- [X] T010 Implement the state-resolution function in `running_coach_ai/web/api/today.py` per FR-003 precedence (NO_PLAN → RACE_DAY → COMPLETED → REST_DAY → PRE_RUN). Use `scoped_query(db_session, Model, athlete_id)` for every DB query. Return only the `state` field for now; per-state payload assembly comes in user-story phases. Note: no PlannedWorkout row → REST_DAY (treated as implicit rest, not a distinct alarm state).
 - [X] T011 Implement the `WebEvent` emission helper in `running_coach_ai/web/api/today.py` per FR-032a/b and data-model.md §3: query the most recent `today.state_transition` event for the athlete, compare against the resolved state, INSERT a new event only when `from_state != to_state`, emit via Flask `@after_request` so the HTTP response is not blocked.
 - [X] T012 Register the today blueprint in `running_coach_ai/web/app.py` inside `create_app()` (follow the existing pattern used for the magazine and notifications blueprints).
 - [X] T013 [P] Add `today.state_transition` to the admin Events view filter dropdown in `running_coach_ai/web/api/admin.py` (and the corresponding frontend dropdown options in `running_coach_ai/web/static/magazine.js` if the dropdown is rendered client-side).
 
 ### Frontend shell — markup, styles, script
 
-- [X] T014 Replace the existing `<section id="hero">…</section>` block in `running_coach_ai/web/static/magazine.html` with a new `<section id="today">…</section>` block containing markup for all six state variants per contracts/today-api.md (use `data-state="…"` attribute selectors so CSS and JS can toggle visibility per state).
+- [X] T014 Replace the existing `<section id="hero">…</section>` block in `running_coach_ai/web/static/magazine.html` with a new `<section id="today">…</section>` block containing markup for all five state variants per contracts/today-api.md (use `data-state="…"` attribute selectors so CSS and JS can toggle visibility per state).
 - [X] T015 Add `#today` CSS rules to `running_coach_ai/web/static/magazine.css` per FR-020/FR-021 and Section 5 of the design: mobile-first 2×2 cover-line grid at <768px flattening to 4-column at ≥768px, accent color driven by a CSS variable `--coach-accent` set inline from the response payload, magazine-cover typography (Bebas Neue / DM Serif Display / Inter), ribbon styling, rationale-paragraph italicized serif with 2px accent border-left.
 - [X] T016 Remove the now-unused `#hero` CSS rules from `running_coach_ai/web/static/magazine.css` (clean deletion, no leftover decorative styles).
 - [X] T017 Implement `hydrateToday()` in `running_coach_ai/web/static/magazine.js`: fetch `GET /api/today` on page load, render-to-DOM per `state` and `data-state` attribute selectors, persist payload to `localStorage` under `runcoach.today.{athlete_id}` per FR-028a, start the 60s polling loop with `visibilitychange` per FR-026.
@@ -200,24 +200,24 @@ This feature follows the existing project layout per `plan.md`:
 
 ---
 
-## Phase 8: User Story 6 — Off-Plan Day Surfaces Plan Gap (Priority: P3)
+## Phase 8: US6 — no-planned-row → REST_DAY (Priority: P3)
 
-**Goal**: Athlete with an active Goal but no `PlannedWorkout` for today sees a "Your plan needs attention" card with a "Review my plan" CTA. Distinguishes plan gaps from deliberate rest days.
+**Goal**: Athlete with an active Goal but no `PlannedWorkout` for today sees a REST_DAY card — "Recovery is the workout" — with the four health cover lines and the Sleep / Fuel / Move cues strip. No CTA button; no alarm state. The five-state model treats any no-planned-row day as implicit rest.
 
-**Independent Test**: Seed an athlete with an active Goal but zero PlannedWorkout rows for today (and explicitly no `workout_type="rest"` row). Hit `/api/today` and verify `state="OFF_PLAN"`, NOT `REST_DAY` and NOT `NO_PLAN`. Verify `actions.cta.label="Review my plan"` and `actions.cta.chat_prompt="I'm between training blocks."`.
+**Independent Test**: Seed an athlete with an active Goal but zero PlannedWorkout rows for today (and explicitly no `workout_type="rest"` row). Hit `/api/today` and verify `state="REST_DAY"`, headline "Recovery is the workout", `cover_lines` length 4 with drill_to="morning", `cues` length 3 with labels Sleep / Fuel / Move, and `actions.cta=null`.
 
 ### Backend implementation
 
-- [X] T055 [US6] Implement `_build_off_plan_payload()` in `running_coach_ai/web/api/today.py`: headline title = `"Your plan needs attention"`, rationale.text from FR-007b static copy, rationale.source = `persona_static`, cover_lines = `null`, actions.cta with `"Review my plan"` label and `"I'm between training blocks."` chat_prompt.
+- [X] T055 [US6] Confirm `_build_rest_day_payload()` in `running_coach_ai/web/api/today.py` handles the no-planned-row branch (called when no PlannedWorkout row exists for today, in addition to the explicit rest-type row branch). Ensure the `cues` field is populated with the three default entries (Sleep / Fuel / Move) on every REST_DAY response, regardless of whether the rest day is explicit or implicit.
 
 ### Frontend implementation
 
-- [X] T056 [US6] Render OFF_PLAN state in `running_coach_ai/web/static/magazine.js` and CSS: reuse the NO_PLAN shell (same cover-lines-hidden + single-CTA-button layout) with different label and chat pre-fill driven by the response payload.
+- [X] T056 [US6] Confirm the REST_DAY rendering in `running_coach_ai/web/static/magazine.js` renders the `cues` strip (three pill-style labels: Sleep, Fuel, Move) when `cues` is present in the payload — the REST_DAY template handles both explicit rest-type rows and implicit no-planned-row days.
 
 ### Tests
 
-- [X] T057 [P] [US6] Add `test_off_plan_state_regression` to `tests/integration/web/test_today_api.py`: athlete with active Goal + zero PlannedWorkout rows for today → asserts `state="OFF_PLAN"` (not REST_DAY, not NO_PLAN). This is the FR-033 regression scenario explicitly called out in the spec.
-- [X] T058 [P] [US6] Add `test_off_plan_transitions_to_completed_on_bonus_run` to `tests/integration/web/test_today_api.py`: OFF_PLAN state + a CompletedWorkout(planned_workout_id=null) → state transitions to `COMPLETED` with `is_bonus=true`, mirroring the rest-day → bonus-run transition.
+- [X] T057 [P] [US6] Add `test_no_planned_row_treated_as_rest_day` to `tests/integration/web/test_today_api.py`: athlete with active Goal + zero PlannedWorkout rows for today → asserts `state="REST_DAY"`, headline title "Recovery is the workout", `cover_lines` length 4, `cues` length 3 with labels Sleep / Fuel / Move, `actions.cta=null`. This is the FR-033 regression scenario for the five-state model.
+- [X] T058 [P] [US6] Add `test_no_planned_row_transitions_to_completed_on_bonus_run` to `tests/integration/web/test_today_api.py`: active Goal + no planned row + a CompletedWorkout(planned_workout_id=null) → state transitions to `COMPLETED` with `is_bonus=true`, mirroring the explicit rest-day → bonus-run transition.
 
 ---
 
@@ -307,7 +307,7 @@ T017 → T018 → T019 → T020 → T021 in series
 
 ## Implementation strategy
 
-**MVP scope (ship after Phase 4 checkpoint)**: User Stories 1 (PRE_RUN) and 2 (COMPLETED) — the two P1 stories together cover the daily morning briefing and the post-run reflection, which is the core daily loop. REST_DAY, RACE_DAY, NO_PLAN, OFF_PLAN can ship as fast-follow increments.
+**MVP scope (ship after Phase 4 checkpoint)**: User Stories 1 (PRE_RUN) and 2 (COMPLETED) — the two P1 stories together cover the daily morning briefing and the post-run reflection, which is the core daily loop. REST_DAY, RACE_DAY, NO_PLAN, and the no-planned-row REST_DAY variant (US6) can ship as fast-follow increments.
 
 **Sequence after MVP**:
 
@@ -329,6 +329,6 @@ T017 → T018 → T019 → T020 → T021 in series
 | US3 (REST_DAY, P2) | Seed PlannedWorkout(workout_type="rest") → returns `state="REST_DAY"` with "Recovery is the workout" headline. |
 | US4 (RACE_DAY, P2) | Seed PlannedWorkout(workout_type="race") + Goal(race_date=today) → returns `state="RACE_DAY"` with persona's race_morning_greeting. |
 | US5 (NO_PLAN, P3) | Athlete with no active Goal → returns `state="NO_PLAN"` with cover_lines=null and CTA "Pick a race". |
-| US6 (OFF_PLAN, P3) | Active Goal + zero PlannedWorkout rows for today → returns `state="OFF_PLAN"` (NOT REST_DAY, NOT NO_PLAN) with CTA "Review my plan". |
+| US6 (no-planned-row → REST_DAY, P3) | Active Goal + zero PlannedWorkout rows for today → returns `state="REST_DAY"`, headline "Recovery is the workout", 4 cover_lines, cues strip (Sleep/Fuel/Move), no CTA. |
 
 Each story is independently verifiable via its own integration test alone, with no dependency on the other stories' completion.

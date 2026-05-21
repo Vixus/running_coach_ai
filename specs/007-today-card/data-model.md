@@ -15,7 +15,7 @@ The endpoint resolves state and assembles its response payload by reading the fo
 |---|---|---|---|
 | `Athlete` | `database/models.py` | `athlete.timezone` (for athlete-local today), `athlete.coach_key` (persona resolution), `athlete.name` (cover star), `athlete.lthr_bpm` (RACE_DAY HR cap calculation) | No |
 | `Goal` | `database/models.py` | `Goal.active` (state resolution NO_PLAN vs others), `Goal.race_name` / `Goal.race_date` (RACE_DAY headline + cover lines) | No |
-| `PlannedWorkout` | `database/models.py` | `PlannedWorkout.scheduled_date == today` (state resolution PRE_RUN vs REST_DAY vs RACE_DAY vs OFF_PLAN), `workout_type`, `target_distance_km`, `target_pace_min_per_km`, `target_duration_seconds`, `workout_name`, `description`, `garmin_workout_id` (on_watch modifier), `target_zones_json` (RACE_DAY HR cap) | No |
+| `PlannedWorkout` | `database/models.py` | `PlannedWorkout.scheduled_date == today` (state resolution PRE_RUN vs REST_DAY vs RACE_DAY; absence of a row also resolves to REST_DAY), `workout_type`, `target_distance_km`, `target_pace_min_per_km`, `target_duration_seconds`, `workout_name`, `description`, `garmin_workout_id` (on_watch modifier), `target_zones_json` (RACE_DAY HR cap) | No |
 | `CompletedWorkout` | `database/models.py` | `CompletedWorkout.date == today` (state resolution COMPLETED), `distance_km`, `avg_pace_min_per_km`, `avg_hr`, `training_load`, `coach_analysis` (rationale source for COMPLETED), `planned_workout_id` (is_bonus modifier) | No |
 | `HealthSnapshot` | `database/models.py` | `HealthSnapshot.date == today` for PRE_RUN/REST_DAY cover lines (HRV, body battery, sleep, RHR), with 3-day stale fallback | No |
 | `Notification` | `database/models.py` | `Notification(kind="morning_checkin")` body, freshness window 24h, for PRE_RUN/REST_DAY rationale source | No |
@@ -72,8 +72,8 @@ level:   "info"
 component: "today_api"
 message:   "{from_state} → {to_state}"
 extra:     {
-  "from_state": "PRE_RUN" | "COMPLETED" | "REST_DAY" | "RACE_DAY" | "NO_PLAN" | "OFF_PLAN" | null,
-  "to_state":   "PRE_RUN" | "COMPLETED" | "REST_DAY" | "RACE_DAY" | "NO_PLAN" | "OFF_PLAN",
+  "from_state": "PRE_RUN" | "COMPLETED" | "REST_DAY" | "RACE_DAY" | "NO_PLAN" | null,
+  "to_state":   "PRE_RUN" | "COMPLETED" | "REST_DAY" | "RACE_DAY" | "NO_PLAN",
   "athlete_id": int,
   "timestamp":  ISO 8601 UTC string,
 }
@@ -87,7 +87,7 @@ The admin Events view filter dropdown (per CLAUDE.md, lives in the admin tab —
 
 ## 4. State machine
 
-The card has six terminal states; the endpoint computes the state per request using the precedence ladder defined in FR-003:
+The card has five terminal states; the endpoint computes the state per request using the precedence ladder defined in FR-003:
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
@@ -103,24 +103,23 @@ The card has six terminal states; the endpoint computes the state per request us
 │      ── yes ──→ COMPLETED                                    │
 │      ── no  ──→ continue                                     │
 ├──────────────────────────────────────────────────────────────┤
-│  PlannedWorkout(today).workout_type == "rest"?               │
+│  PlannedWorkout(today).workout_type == "rest"                │
+│  OR PlannedWorkout(today) row is absent?                     │
 │      ── yes ──→ REST_DAY                                     │
-│      ── no  ──→ continue                                     │
-├──────────────────────────────────────────────────────────────┤
-│  PlannedWorkout(today) is null AND Goal active?              │
-│      ── yes ──→ OFF_PLAN                                     │
 │      ── no  ──→ continue                                     │
 ├──────────────────────────────────────────────────────────────┤
 │                  ──→ PRE_RUN                                 │
 └──────────────────────────────────────────────────────────────┘
 ```
 
+A day with an active Goal but no PlannedWorkout row routes directly into REST_DAY — it is treated as a recovery day with tips (Sleep / Fuel / Move cues strip), not a distinct alarm state.
+
 **Transitions** are not stored in the DB; they emerge from the underlying data. Detection compares the resolved state against the most recent `today.state_transition` WebEvent for the athlete. Typical transition flow over a calendar day:
 
 ```text
 Midnight (athlete-local) — state re-evaluates based on tomorrow's data
 ↓
-06:30am — Athlete opens app → state = PRE_RUN (or REST_DAY / RACE_DAY / OFF_PLAN)
+06:30am — Athlete opens app → state = PRE_RUN (or REST_DAY / RACE_DAY)
 ↓
 08:00am — Activity poll detects new Garmin activity → CompletedWorkout written
          → next /api/today fetch → state transitions PRE_RUN → COMPLETED
@@ -143,7 +142,7 @@ The `rationale.source` field in the response takes one of these values, determin
 | `coach_analysis` | COMPLETED: today's `CompletedWorkout.coach_analysis` is non-empty | First paragraph of `CompletedWorkout.coach_analysis` via same extractor |
 | `rule_based` | PRE_RUN, REST_DAY, COMPLETED: no Claude content available | Template from `coach/today_rationale.py:rule_based_morning()` (two-branch, with vs. without snapshot) |
 | `placeholder` | PRE_RUN, REST_DAY: no morning_checkin AND athlete-local time before 7:00am | Static copy: `"Coach is checking in soon — pull this up after 7am for today's call."` |
-| `persona_static` | RACE_DAY (race-morning greeting), NO_PLAN (Pick a race CTA), OFF_PLAN (plan-attention message) | `CoachPersona.race_morning_greeting` (RACE_DAY) OR a static-per-state string (NO_PLAN, OFF_PLAN) |
+| `persona_static` | RACE_DAY (race-morning greeting), NO_PLAN (Pick a race CTA) | `CoachPersona.race_morning_greeting` (RACE_DAY) OR a static-per-state string (NO_PLAN) |
 
 The `coach` field in the response is always the active persona's display name (`get_persona(athlete.coach_key).name`), regardless of `rationale.source` — voice continuity is maintained even when the rationale itself is rule-based or static.
 
@@ -159,7 +158,7 @@ Each `cover_line` entry includes a `drill_to` field directing the frontend to a 
 | `"last_run"` | `<section id="featrun">` (existing Last Run / Featured Run) | COMPLETED |
 | `null` | (no drill) | RACE_DAY (cover lines are read-only) |
 
-For NO_PLAN and OFF_PLAN, `cover_lines` is omitted entirely (FR-012), so `drill_to` does not apply.
+For NO_PLAN, `cover_lines` is omitted entirely (FR-012), so `drill_to` does not apply.
 
 ---
 

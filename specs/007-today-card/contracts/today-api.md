@@ -15,7 +15,7 @@ GET /api/today
 - **Auth**: Required (`@login_required`). The endpoint reads `session["athlete_id"]`.
 - **Method**: `GET` only. No body. No query params in v1.
 - **Content-Type**: `application/json`
-- **Success status**: `200 OK` for all six states (NO_PLAN, PRE_RUN, COMPLETED, REST_DAY, RACE_DAY, OFF_PLAN).
+- **Success status**: `200 OK` for all five states (NO_PLAN, PRE_RUN, COMPLETED, REST_DAY, RACE_DAY).
 - **Error status**:
   - `401 Unauthorized` — no session athlete_id (handled by `@login_required` decorator).
   - `404 Not Found` — athlete row not found in DB (defensive; should not happen in normal operation).
@@ -28,7 +28,7 @@ GET /api/today
 
 ```json
 {
-  "state":        "PRE_RUN" | "COMPLETED" | "REST_DAY" | "RACE_DAY" | "NO_PLAN" | "OFF_PLAN",
+  "state":        "PRE_RUN" | "COMPLETED" | "REST_DAY" | "RACE_DAY" | "NO_PLAN",
   "today_iso":    "2026-05-15",
   "today_pretty": "Friday, May 15, 2026",
   "athlete":      { "id": 1, "name": "Vixus" },
@@ -174,6 +174,12 @@ GET /api/today
     { "label": "RHR",      "value": 48,  "drill_to": "morning", "is_stale": false }
   ],
 
+  "cues": [
+    { "label": "Sleep", "copy": "in bed early" },
+    { "label": "Fuel",  "copy": "carbs + protein" },
+    { "label": "Move",  "copy": "walk or mobility" }
+  ],
+
   "actions": {
     "headline_chat_prompt":  "How should I make the most of today's recovery?",
     "rationale_chat_prompt": "I have a question about today's plan.",
@@ -181,6 +187,8 @@ GET /api/today
   }
 }
 ```
+
+> **Note**: `cues` is present only on REST_DAY payloads (including days where no PlannedWorkout row exists for the athlete). All other states omit this field.
 
 ### State: `RACE_DAY`
 
@@ -271,47 +279,6 @@ GET /api/today
 
 - `cover_lines` is `null` (FR-012). Frontend hides the cover-lines region.
 - `actions.cta` is the sole tap target. Frontend renders the button in `accent_color`.
-
-### State: `OFF_PLAN`
-
-```json
-{
-  "state": "OFF_PLAN",
-  "today_iso": "2026-05-15",
-  "today_pretty": "Friday, May 15, 2026",
-  "athlete": { "id": 1, "name": "Vixus" },
-
-  "headline": {
-    "eyebrow":  null,
-    "ribbon":   null,
-    "title":    "Your plan needs attention",
-    "subtitle": null
-  },
-
-  "rationale": {
-    "text":   "Your plan doesn't have a workout scheduled for today. This usually means you're between training blocks or the plan needs a refresh — let's talk.",
-    "source": "persona_static",
-    "coach":  "Coach Alex",
-    "accent_color": "#b8ff4f"
-  },
-
-  "modifiers": {
-    "on_watch": false,
-    "is_bonus": false
-  },
-
-  "cover_lines": null,
-
-  "actions": {
-    "headline_chat_prompt":  null,
-    "rationale_chat_prompt": null,
-    "cta": {
-      "label":       "Review my plan",
-      "chat_prompt": "I'm between training blocks."
-    }
-  }
-}
-```
 
 ---
 
