@@ -77,7 +77,7 @@ class TestHealthDataPresentFirstTick:
     @patch(f"{_ADAPTER}.extract_and_apply_plan", return_value="Morning message text")
     @patch(f"{_ADAPTER}.call_claude", return_value="Morning message text")
     @patch(f"{_ADAPTER}.scoped_query")
-    @patch("running_coach_ai.coach.notify.notify")
+    @patch("running_coach_ai.coach.notify.upsert_morning_checkin")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -124,7 +124,7 @@ class TestHealthDataPresentFirstTick:
 # ---------------------------------------------------------------------------
 
 class TestNoHealthDataBefore10am:
-    @patch("running_coach_ai.coach.notify.notify")
+    @patch("running_coach_ai.coach.notify.upsert_morning_checkin")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -153,7 +153,7 @@ class TestNoHealthDataBefore10am:
         mock_send_dm.assert_not_called()
         assert athlete.last_morning_checkin_date != TODAY
 
-    @patch("running_coach_ai.coach.notify.notify")
+    @patch("running_coach_ai.coach.notify.upsert_morning_checkin")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -184,7 +184,7 @@ class TestNoHealthDataBefore10am:
     @patch(f"{_ADAPTER}.extract_and_apply_plan", return_value="Morning message text")
     @patch(f"{_ADAPTER}.call_claude", return_value="Morning message text")
     @patch(f"{_ADAPTER}.scoped_query")
-    @patch("running_coach_ai.coach.notify.notify")
+    @patch("running_coach_ai.coach.notify.upsert_morning_checkin")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -226,7 +226,7 @@ class TestNoHealthDataBefore10am:
 # ---------------------------------------------------------------------------
 
 class TestNoHealthDataCutoff:
-    @patch("running_coach_ai.coach.notify.notify")
+    @patch("running_coach_ai.coach.notify.upsert_morning_checkin")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -262,7 +262,7 @@ class TestNoHealthDataCutoff:
         mock_send_dm.assert_not_called()
         assert athlete.last_morning_checkin_date != TODAY
 
-    @patch("running_coach_ai.coach.notify.notify")
+    @patch("running_coach_ai.coach.notify.upsert_morning_checkin")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -297,7 +297,7 @@ class TestNoHealthDataCutoff:
         mock_send_dm.assert_not_called()
         assert athlete.last_morning_checkin_date != TODAY
 
-    @patch("running_coach_ai.coach.notify.notify")
+    @patch("running_coach_ai.coach.notify.upsert_morning_checkin")
     @patch("running_coach_ai.garmin.parser.parse_health_snapshot")
     @patch("running_coach_ai.garmin.client.get_health_snapshot", return_value={})
     @patch("running_coach_ai.garmin.client.get_garmin_client")
@@ -343,7 +343,7 @@ class TestDedupGuard:
 
         mock_garmin_client.assert_not_called()
 
-    @patch("running_coach_ai.coach.notify.notify")
+    @patch("running_coach_ai.coach.notify.upsert_morning_checkin")
     @patch("running_coach_ai.garmin.client.get_garmin_client")
     def test_no_dm_when_already_sent_today(self, mock_garmin_client, mock_send_dm):
         athlete = _make_athlete(last_checkin_date=TODAY)

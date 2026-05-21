@@ -182,15 +182,19 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, force: bool = Fal
         return
 
     # Fall back to the most recent stored snapshot if live fetch returned nothing at all.
+    snapshot_is_stale = False
     if snapshot is None:
         from running_coach_ai.coach.health_lookup import resolve_recent_snapshot
-        fallback, _ = resolve_recent_snapshot(db_session, athlete.id, today)
+        fallback, fallback_is_stale = resolve_recent_snapshot(db_session, athlete.id, today)
         if fallback is not None:
             snapshot = fallback
+            snapshot_is_stale = fallback_is_stale  # True by definition (today's was missing)
             logger.info(
                 "Using stale health snapshot from %s for athlete %d (no fresh data)",
                 snapshot.date, athlete.id,
             )
+    else:
+        snapshot_is_stale = (snapshot.date != today)
 
     if snapshot:
         date_label = "today" if snapshot.date == today else snapshot.date.isoformat()
@@ -263,6 +267,21 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, force: bool = Fal
         weather=weather_text,
     )
 
+    # When the snapshot we're working with is from a previous day (because
+    # Garmin hadn't synced last night's data by the noon cutoff), tell Claude
+    # explicitly so it doesn't restate yesterday's HRV as if it were today's.
+    if snapshot is not None and snapshot_is_stale:
+        stale_date_label = snapshot.date.isoformat()
+        prompt = (
+            f"IMPORTANT: Garmin has NOT synced this morning's overnight data. "
+            f"The health numbers below are from {stale_date_label}, not today. "
+            f"Open the **Today.** tagline with a clear acknowledgment that today's "
+            f"readings aren't available yet. Do not state HRV/sleep/Body Battery/RHR "
+            f"as if they were last night's. You may reference the stored numbers as "
+            f"a trend or context (e.g. 'two days ago HRV was X'), but never as "
+            f"current readings.\n\n" + prompt
+        )
+
     try:
         response = call_claude(get_persona(athlete.coach_key).persona_block, [{"role": "user", "content": prompt}])
     except Exception as e:
@@ -277,18 +296,17 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, force: bool = Fal
     # Persist conversation turn and in-app notification.
     try:
         from running_coach_ai.database.models import ConversationMessage
-        from running_coach_ai.coach.notify import notify
+        from running_coach_ai.coach.notify import upsert_morning_checkin
         db_session.add(ConversationMessage(
             athlete_id=athlete.id,
             role="assistant",
             content=response,
         ))
-        notify(
+        upsert_morning_checkin(
             db_session, athlete,
-            kind="morning_checkin",
-            title="Morning check-in",
             body=response,
-            action_path="/#morning",
+            morning_snapshot_date=(snapshot.date if snapshot else None),
+            today_local=today,
         )
         db_session.commit()
         logger.info("Morning check-in delivered to athlete %d", athlete.id)
