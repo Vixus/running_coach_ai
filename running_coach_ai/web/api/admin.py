@@ -266,7 +266,7 @@ def admin_morning_diagnostic():
 
             entry["gate_verdict"] = (
                 "WAIT for health data"
-                if _should_wait_for_morning_data(snap, False, a)
+                if now_local and _should_wait_for_morning_data(snap, False, a, now_local=now_local)
                 else "PROCEED to Claude"
             )
 

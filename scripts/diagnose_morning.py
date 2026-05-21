@@ -122,7 +122,9 @@ def main() -> None:
                 )
 
             # Gate verdict — what would the next tick decide?
-            wait = _should_wait_for_morning_data(snap, garmin_fetch_failed=False, athlete=a)
+            wait = _should_wait_for_morning_data(
+                snap, garmin_fetch_failed=False, athlete=a, now_local=now_local
+            )
             print(f"  next tick would: {'WAIT for health data' if wait else 'PROCEED to Claude'}")
             if not wait and a.last_morning_checkin_date == today_local:
                 print("    (…but dedup-skipped before reaching the gate)")

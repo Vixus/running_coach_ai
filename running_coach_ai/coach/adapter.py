@@ -78,18 +78,28 @@ def _garmin_morning_data_complete(snapshot) -> bool:
     return all(getattr(snapshot, f) is not None for f in _HEALTH_KEY_FIELDS)
 
 
-def _should_wait_for_morning_data(snapshot, garmin_fetch_failed: bool, athlete: Athlete) -> bool:
+def _should_wait_for_morning_data(
+    snapshot,
+    garmin_fetch_failed: bool,
+    athlete: Athlete,
+    *,
+    now_local: datetime,
+) -> bool:
     """True when we should defer the check-in until Garmin processes more data.
 
     - Athletes without Garmin credentials never wait (we have no source of data).
-    - Failed live fetch (auth/network) is treated as 'proceed with stored data'
-      rather than waiting forever — the failure has already been logged.
-    - Otherwise, wait until the morning-data signal lights up.
+    - A failed live Garmin fetch *before noon local* still defers, so the
+      30-minute IntervalTrigger gets another shot at Garmin. Past noon we fall
+      through with whatever stored snapshot exists (prefer stale over silence
+      at the noon cutoff).
+    - With Garmin credentials and a successful (or no-op) fetch: wait until
+      either Training Readiness is published OR sleep_score is captured.
     """
     if not athlete.garmin_email:
         return False
+    past_noon = now_local.hour >= 12
     if garmin_fetch_failed:
-        return False
+        return not past_noon
     return not _garmin_morning_data_complete(snapshot)
 
 
@@ -156,7 +166,9 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, force: bool = Fal
     # Health-data gate (FR-031, FR-032). `force=True` bypasses the gate so an
     # admin trigger always proceeds, even when Garmin hasn't finished overnight
     # processing — the message will use whatever stored data is available.
-    if not force and _should_wait_for_morning_data(snapshot, garmin_fetch_failed, athlete):
+    if not force and _should_wait_for_morning_data(
+        snapshot, garmin_fetch_failed, athlete, now_local=now_local
+    ):
         if now_local.hour < 12:
             logger.info(
                 "Morning check-in for athlete %d at %s local: deferring — Garmin overnight data not yet complete",
