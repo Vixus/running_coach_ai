@@ -131,6 +131,8 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
 .td-rationale:focus-visible{outline:2px solid var(--coach-accent);outline-offset:4px;border-radius:2px;}
 .td-rationale:empty{display:none;}
 .td-on-watch{display:inline-block;background:rgba(184,255,79,.12);color:var(--coach-accent);font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;padding:5px 9px;border-radius:3px;margin-top:4px;}
+/* Intentionally lime (not var(--coach-accent)) — per Option D, the cues strip
+   stays a fixed recovery-green regardless of persona accent. */
 .td-cues{
   display:flex;gap:16px;flex-wrap:wrap;
   font-size:10px;color:rgba(255,255,255,.65);

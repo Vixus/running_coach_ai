@@ -2834,24 +2834,19 @@ function tdRender(payload, opts){
   // Recovery cues strip (REST_DAY only — hidden otherwise)
   const cuesEl = document.getElementById('td-cues');
   const cues = Array.isArray(payload.cues) ? payload.cues : [];
-  if (cuesEl) {
-    if (cues.length > 0) {
-      cuesEl.hidden = false;
-      const spans = cuesEl.querySelectorAll('span');
-      cues.slice(0, spans.length).forEach((cue, i) => {
-        const span = spans[i];
-        const strong = span.querySelector('strong');
-        if (strong) strong.textContent = (cue.label || '').toUpperCase();
-        // Append the copy after the <strong>, replacing any prior text node
-        // (clear then re-append keeps the markup deterministic across renders)
-        while (span.childNodes.length > 1) span.removeChild(span.lastChild);
-        span.appendChild(document.createTextNode(cue.copy || ''));
-      });
-      // Hide any leftover spans if fewer cues than slots
-      spans.forEach((s, i) => { s.hidden = i >= cues.length; });
-    } else {
-      cuesEl.hidden = true;
-    }
+  if (cues.length > 0) {
+    cuesEl.hidden = false;
+    const spans = cuesEl.querySelectorAll('span');
+    cues.slice(0, spans.length).forEach((cue, i) => {
+      const span = spans[i];
+      span.querySelector('strong').textContent = (cue.label || '').toUpperCase();
+      // Clear prior text nodes before re-appending so re-renders are deterministic.
+      while (span.childNodes.length > 1) span.removeChild(span.lastChild);
+      span.appendChild(document.createTextNode(cue.copy || ''));
+    });
+    spans.forEach((s, i) => { s.hidden = i >= cues.length; });
+  } else {
+    cuesEl.hidden = true;
   }
 
   // Cover lines / stats
