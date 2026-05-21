@@ -374,6 +374,7 @@ class Notification(Base):
     related_id = Column(Integer, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     read_at = Column(DateTime, nullable=True)
+    morning_snapshot_date = Column(Date, nullable=True)
 
     athlete = relationship("Athlete", back_populates="notifications")
 
