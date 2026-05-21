@@ -1,19 +1,19 @@
 """GET /api/today — Today Card data for the magazine dashboard.
 
 Returns a single JSON object whose `state` field drives the cover treatment.
-Six states are supported (per spec 007 FR-003):
+Five states are supported (per spec 007 FR-003):
 
     NO_PLAN   →  athlete has no active Goal
     RACE_DAY  →  today's PlannedWorkout.workout_type == "race"
     COMPLETED →  today's CompletedWorkout exists
-    REST_DAY  →  today's PlannedWorkout.workout_type == "rest"
-    OFF_PLAN  →  active Goal but no PlannedWorkout row for today
+    REST_DAY  →  today's PlannedWorkout.workout_type == "rest", OR
+                 active Goal exists but no PlannedWorkout row for today
     PRE_RUN   →  default — there's a workout today and it hasn't been completed
 
 Rationale text resolution ladder per FR-005/FR-006/FR-007:
 
     morning_checkin → coach_analysis → rule_based → placeholder (before 7am)
-                                                  → persona_static (race/no-plan/off-plan)
+                                                  → persona_static (race/no-plan)
 
 All "today" computation uses `athlete.timezone` (FR-002). Zero Claude calls
 at request time (FR-004). State-transition WebEvents (FR-032a/b) are emitted
@@ -35,6 +35,7 @@ from running_coach_ai.coach.today_rationale import (
     extract_rationale_paragraph,
     rule_based_completed,
     rule_based_morning,
+    rule_based_rest,
 )
 from running_coach_ai.database.models import (
     Athlete,
@@ -71,6 +72,15 @@ _TYPE_LABEL = {
     "strength": "Strength",
     "workout": "Workout",
 }
+
+# Static cues rendered in the rest-day cover strip (spec 007 rest-day spec
+# 2026-05-19). Same three for every rest day in v1; can be made dynamic
+# later without a contract change.
+_REST_DAY_CUES = [
+    {"label": "Sleep", "copy": "in bed early"},
+    {"label": "Fuel",  "copy": "carbs + protein"},
+    {"label": "Move",  "copy": "walk or mobility"},
+]
 
 
 def _athlete_today(athlete: Athlete) -> tuple[date, datetime]:
@@ -123,10 +133,8 @@ def _resolve_state(
         return "RACE_DAY", goal, planned, completed
     if completed is not None:
         return "COMPLETED", goal, planned, completed
-    if planned is not None and planned.workout_type == "rest":
+    if planned is None or planned.workout_type == "rest":
         return "REST_DAY", goal, planned, completed
-    if planned is None:
-        return "OFF_PLAN", goal, None, None
     return "PRE_RUN", goal, planned, completed
 
 
@@ -359,12 +367,18 @@ def _build_completed(
 def _build_rest_day(
     db,
     athlete: Athlete,
-    planned: PlannedWorkout,
     goal: Goal,
     today_local: date,
     now_local: datetime,
 ) -> dict:
-    """REST_DAY payload — FR-005 rationale ladder reused, FR-013 cover lines reused."""
+    """REST_DAY payload — fires for both explicit rest rows and zero-row days.
+
+    Reuses the FR-005 rationale ladder (morning_checkin → placeholder before 7am
+    → rule-based) but the rule-based fallback is rest-specific via
+    `rule_based_rest` — never "run it as written" framing on a rest day.
+    Cover lines are the 4-up morning readiness grid (FR-013) and the new
+    `cues` field exposes a static recovery-tip strip.
+    """
     snap, is_stale = _resolve_health_snapshot(db, athlete.id, today_local)
     plan = _current_training_plan(db, goal)
     plan_view = _plan_with_current_week(plan, today_local)
@@ -379,7 +393,7 @@ def _build_rest_day(
         )
         rationale_source = "placeholder"
     else:
-        rationale_text = rule_based_morning(snap, planned, plan_view, goal, athlete.name)
+        rationale_text = rule_based_rest(snap, plan_view, goal, athlete.name)
         rationale_source = "rule_based"
 
     return {
@@ -401,6 +415,7 @@ def _build_rest_day(
             "is_bonus": False,
         },
         "cover_lines": _morning_cover_lines(snap, is_stale),
+        "cues": list(_REST_DAY_CUES),
         "actions": {
             "headline_chat_prompt":  "How should I make the most of today's recovery?",
             "rationale_chat_prompt": "I have a question about today's plan.",
@@ -510,42 +525,6 @@ def _build_no_plan(athlete: Athlete) -> dict:
         },
     }
 
-
-def _build_off_plan(athlete: Athlete) -> dict:
-    """OFF_PLAN payload — FR-007b + FR-012."""
-    persona = get_persona(athlete.coach_key)
-    return {
-        "state": "OFF_PLAN",
-        "headline": {
-            "eyebrow":  None,
-            "ribbon":   None,
-            "title":    "Your plan needs attention",
-            "subtitle": None,
-        },
-        "rationale": {
-            "text": (
-                "Your plan doesn't have a workout scheduled for today. "
-                "This usually means you're between training blocks or the "
-                "plan needs a refresh — let's talk."
-            ),
-            "source":       "persona_static",
-            "coach":        persona.name,
-            "accent_color": persona.accent_color,
-        },
-        "modifiers": {
-            "on_watch": False,
-            "is_bonus": False,
-        },
-        "cover_lines": None,
-        "actions": {
-            "headline_chat_prompt":  None,
-            "rationale_chat_prompt": None,
-            "cta": {
-                "label":       "Review my plan",
-                "chat_prompt": "I'm between training blocks.",
-            },
-        },
-    }
 
 
 # ─── Cover line builders ───────────────────────────────────────────────────
@@ -693,9 +672,7 @@ def today():
         elif state == "COMPLETED":
             payload = _build_completed(db, athlete, planned, completed, goal, today_local)
         elif state == "REST_DAY":
-            payload = _build_rest_day(db, athlete, planned, goal, today_local, now_local)
-        elif state == "OFF_PLAN":
-            payload = _build_off_plan(athlete)
+            payload = _build_rest_day(db, athlete, goal, today_local, now_local)
         else:  # PRE_RUN
             payload = _build_pre_run(db, athlete, planned, goal, today_local, now_local)
 

@@ -1,4 +1,4 @@
-"""Integration tests for GET /api/today across all 6 states.
+"""Integration tests for GET /api/today across all 5 states.
 
 Per spec 007:
   - US1 (PRE_RUN, P1) — T027–T033
@@ -6,7 +6,7 @@ Per spec 007:
   - US3 (REST_DAY, P2) — T045–T046
   - US4 (RACE_DAY, P2) — T050–T051
   - US5 (NO_PLAN, P3) — T054
-  - US6 (OFF_PLAN, P3) — T057–T058
+  - US6 (no-planned-row → REST_DAY, P3) — T057–T058
   - Polish (observability) — T059–T060
 
 Tests run against in-memory SQLite (FR-035). No Claude/Garmin calls.
@@ -502,6 +502,72 @@ def test_rest_day_transitions_to_completed_on_bonus_run(app_and_db):
     assert data["modifiers"]["is_bonus"] is True
 
 
+def test_rest_day_rationale_avoids_run_framing(app_and_db):
+    """REST_DAY rationale must not tell the athlete to 'run it' — rest is rest.
+
+    Guards against the latent bug where REST_DAY routed through
+    rule_based_morning and produced 'Run it as written' on a rest day."""
+    app, db, athlete = app_and_db
+    today = _athlete_today(athlete)
+    goal = _seed_goal(db, athlete.id)
+    plan = _seed_plan(db, athlete.id, goal.id)
+    _seed_planned_workout(db, athlete.id, plan.id, today, workout_type="rest")
+    # High readiness — most likely to trip the bug since 'recharged' templates
+    # in rule_based_morning all say 'run it as written'.
+    _seed_health_snapshot(
+        db, athlete.id, today, hrv=92, hrv_status="high", sleep_h=7.8, bb=85, rhr=46
+    )
+
+    # Force "after 7am local" so the rationale ladder reaches rule_based.
+    import running_coach_ai.web.api.today as today_mod
+    real_datetime = today_mod.datetime
+
+    class _FakeDatetime(real_datetime):
+        @classmethod
+        def now(cls, tz=None):
+            base = real_datetime(today.year, today.month, today.day, 10, 0, 0)
+            return base.replace(tzinfo=tz) if tz else base
+
+    with patch.object(today_mod, "datetime", _FakeDatetime):
+        resp = _client(app, athlete.id).get("/api/today")
+    data = resp.get_json()
+    assert data["state"] == "REST_DAY"
+    assert data["rationale"]["source"] == "rule_based"
+    text = data["rationale"]["text"].lower()
+    assert "run it" not in text
+    assert "as written" not in text
+    assert "target pace" not in text
+    assert "easy end" not in text
+
+
+def test_rest_day_low_recovery_template(app_and_db):
+    """Low HRV + short sleep on a rest day → low-recovery template."""
+    app, db, athlete = app_and_db
+    today = _athlete_today(athlete)
+    goal = _seed_goal(db, athlete.id)
+    plan = _seed_plan(db, athlete.id, goal.id)
+    _seed_planned_workout(db, athlete.id, plan.id, today, workout_type="rest")
+    _seed_health_snapshot(
+        db, athlete.id, today, hrv=38, hrv_status="low", sleep_h=5.5, bb=35, rhr=58
+    )
+
+    import running_coach_ai.web.api.today as today_mod
+    real_datetime = today_mod.datetime
+
+    class _FakeDatetime(real_datetime):
+        @classmethod
+        def now(cls, tz=None):
+            base = real_datetime(today.year, today.month, today.day, 10, 0, 0)
+            return base.replace(tzinfo=tz) if tz else base
+
+    with patch.object(today_mod, "datetime", _FakeDatetime):
+        resp = _client(app, athlete.id).get("/api/today")
+    data = resp.get_json()
+    assert data["state"] == "REST_DAY"
+    assert data["rationale"]["source"] == "rule_based"
+    assert "asking for room" in data["rationale"]["text"].lower()
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # US4 — RACE_DAY  (T050–T051)
 # ═══════════════════════════════════════════════════════════════════════════
@@ -574,29 +640,38 @@ def test_no_plan_state(app_and_db):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# US6 — OFF_PLAN  (T057–T058)
+# US6 — no-planned-row → REST_DAY  (T057–T058)
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-def test_off_plan_state_regression(app_and_db):
-    """T057 — Active Goal + zero PlannedWorkout rows for today → OFF_PLAN
-    (NOT REST_DAY, NOT NO_PLAN). The explicit regression scenario from FR-033."""
+def test_no_planned_row_treated_as_rest_day(app_and_db):
+    """T057 — Active Goal + zero PlannedWorkout rows for today → REST_DAY.
+
+    Reframed from OFF_PLAN: a "between training blocks" day is just a rest
+    day with recovery tips, not an alarming 'plan needs attention' state.
+    Regression for the spec-007 zero-row scenario (FR-033)."""
     app, db, athlete = app_and_db
     _seed_goal(db, athlete.id)
     # No PlannedWorkout for today
 
     resp = _client(app, athlete.id).get("/api/today")
     data = resp.get_json()
-    assert data["state"] == "OFF_PLAN"
-    assert data["headline"]["title"] == "Your plan needs attention"
-    assert data["cover_lines"] is None
-    assert data["actions"]["cta"]["label"] == "Review my plan"
-    assert data["actions"]["cta"]["chat_prompt"] == "I'm between training blocks."
+    assert data["state"] == "REST_DAY"
+    assert data["headline"]["title"] == "Recovery is the workout"
+    assert data["actions"]["cta"] is None
+    # Cover lines are the 4-up morning grid (HRV / Body Battery / Sleep / RHR)
+    assert isinstance(data["cover_lines"], list)
+    assert len(data["cover_lines"]) == 4
+    # Static cues strip
+    assert isinstance(data["cues"], list)
+    assert len(data["cues"]) == 3
+    labels = [c["label"] for c in data["cues"]]
+    assert labels == ["Sleep", "Fuel", "Move"]
 
 
-def test_off_plan_transitions_to_completed_on_bonus_run(app_and_db):
-    """T058 — OFF_PLAN + CompletedWorkout(planned_workout_id=null) → COMPLETED
-    with is_bonus=true. Same precedence rule as REST_DAY."""
+def test_no_planned_row_transitions_to_completed_on_bonus_run(app_and_db):
+    """T058 — Active Goal + no PlannedWorkout + bonus CompletedWorkout → COMPLETED
+    with is_bonus=true. State precedence (FR-003): COMPLETED beats REST_DAY."""
     app, db, athlete = app_and_db
     _seed_goal(db, athlete.id)
     today = _athlete_today(athlete)
