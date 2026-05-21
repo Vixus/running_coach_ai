@@ -318,6 +318,90 @@ def _with_snapshot_paragraph(
     )
 
 
+# ─── Rest-day templates ────────────────────────────────────────────────────
+
+
+def _rest_low_recovery_template(
+    snap: "HealthSnapshot", periodization: str, name: str
+) -> str:
+    hrv_score = snap.hrv_score if snap.hrv_score is not None else "—"
+    sleep_h = _sleep_hours(snap)
+    sleep_clause = (
+        f"sleep at {sleep_h} h" if sleep_h is not None else f"HRV at {hrv_score} ms"
+    )
+    return (
+        f"{name}, {sleep_clause} — your body is asking for room today. "
+        f"{periodization} Sleep early, eat real food, stay off the legs except "
+        f"for an easy walk if you're stiff. Nothing more — the work is letting "
+        f"the system absorb the load."
+    )
+
+
+def _rest_recharged_template(
+    snap: "HealthSnapshot", periodization: str, name: str
+) -> str:
+    hrv_score = snap.hrv_score if snap.hrv_score is not None else "—"
+    sleep_h = _sleep_hours(snap)
+    sleep_clause = (
+        f"slept {sleep_h} hours and HRV is up at {hrv_score} ms"
+        if sleep_h is not None
+        else f"HRV is up at {hrv_score} ms"
+    )
+    return (
+        f"{name}, you {sleep_clause}. That's last week's work landing. "
+        f"{periodization} Don't rush the next session — sleep, fuel, walk if "
+        f"you want to move. The fitness shows up after rest, not in spite of it."
+    )
+
+
+def _rest_steady_template(
+    snap: "HealthSnapshot | None", periodization: str, name: str
+) -> str:
+    return (
+        f"{name}, today isn't about doing less — it's about doing the right "
+        f"less. {periodization} Sleep early, hydrate to clear-pale-yellow, and "
+        f"give the hips and ankles 10 minutes of mobility. Walk if you want; "
+        f"don't run."
+    )
+
+
+def rule_based_rest(
+    snap: "HealthSnapshot | None",
+    plan: "TrainingPlan | None",
+    goal: "Goal | None",
+    athlete_name: str,
+) -> str:
+    """Return a single coach-voice rest-day paragraph for the Today Card.
+
+    Picks one of three templates by snapshot bucket:
+    - low-recovery: HRV `low` OR sleep < 6.5 h
+    - recharged:    HRV `high` AND sleep ≥ 7.0 h
+    - steady:       everything else, including missing snapshot
+
+    None of the templates use "run it" framing — rest day means rest. The
+    periodization clause ("week N of the base block on the road to Berlin")
+    is appended when plan+goal are available, same shape as the morning
+    helper (FR-008c).
+    """
+    first_name = (athlete_name or "Athlete").split()[0]
+    periodization = _periodization_clause(plan, goal, "rest day")
+
+    if snap is not None:
+        hrv = _hrv_bucket(snap)
+        sleep_h = _sleep_hours(snap)
+
+        # low-recovery: HRV low OR short sleep
+        if hrv == "low" or (sleep_h is not None and sleep_h < 6.5):
+            return _rest_low_recovery_template(snap, periodization, first_name)
+
+        # recharged: high HRV AND solid sleep
+        if hrv == "high" and sleep_h is not None and sleep_h >= 7.0:
+            return _rest_recharged_template(snap, periodization, first_name)
+
+    # steady fallback (covers normal bucket + missing snapshot)
+    return _rest_steady_template(snap, periodization, first_name)
+
+
 # ─── Public API ────────────────────────────────────────────────────────────
 
 

@@ -20,6 +20,7 @@ from running_coach_ai.coach.today_rationale import (
     extract_rationale_paragraph,
     rule_based_completed,
     rule_based_morning,
+    rule_based_rest,
     strip_today_tagline,
 )
 
@@ -324,3 +325,80 @@ class TestRuleBasedCompleted:
         )
         assert "Sam" in text
         assert "recovery" in text.lower()
+
+
+# ─── rule_based_rest (Task 1 additions) ────────────────────────────────────
+
+
+def _snap_rest(hrv_score=None, hrv_status=None, sleep_h=None, body_battery_start=None):
+    return SimpleNamespace(
+        hrv_score=hrv_score,
+        hrv_status=hrv_status,
+        sleep_duration_seconds=(int(sleep_h * 3600) if sleep_h is not None else None),
+        body_battery_start=body_battery_start,
+        body_battery_end=body_battery_start,
+        resting_hr=48,
+    )
+
+
+def _plan_rest(phase="base", week=4):
+    return SimpleNamespace(current_phase=phase, current_week=week)
+
+
+def _goal_rest(race_name="Berlin Marathon"):
+    return SimpleNamespace(race_name=race_name)
+
+
+def test_rest_low_recovery_low_hrv():
+    """Low HRV → low-recovery template — names rest framing, never 'run it'."""
+    snap = _snap_rest(hrv_score=42, hrv_status="low", sleep_h=7.2)
+    text = rule_based_rest(snap, _plan_rest(), _goal_rest(), "Sam Runner")
+    assert "Sam" in text
+    assert "run it" not in text.lower()
+    assert "as written" not in text.lower()
+    assert "asking for room" in text.lower()
+
+
+def test_rest_low_recovery_short_sleep():
+    """Short sleep (< 6.5 h) → low-recovery template even when HRV is fine."""
+    snap = _snap_rest(hrv_score=72, hrv_status="balanced", sleep_h=5.5)
+    text = rule_based_rest(snap, _plan_rest(), _goal_rest(), "Sam Runner")
+    assert "asking for room" in text.lower()
+    assert "5.5" in text  # references the observed sleep hours
+
+
+def test_rest_recharged_high_hrv_solid_sleep():
+    """High HRV + ≥ 7 h sleep → recharged template."""
+    snap = _snap_rest(hrv_score=92, hrv_status="high", sleep_h=7.8)
+    text = rule_based_rest(snap, _plan_rest(), _goal_rest(), "Sam Runner")
+    assert "Sam" in text
+    assert "run it" not in text.lower()
+    assert "after rest" in text.lower()
+
+
+def test_rest_steady_no_snapshot():
+    """Missing snapshot → steady template; still names rest framing and tips."""
+    text = rule_based_rest(None, _plan_rest(), _goal_rest(), "Sam Runner")
+    assert "Sam" in text
+    assert "right less" in text.lower()
+    assert "run it" not in text.lower()
+
+
+def test_rest_periodization_clause_when_plan_present():
+    """When plan + goal present, weave 'week N of phase on the road to race' in."""
+    snap = _snap_rest(hrv_score=92, hrv_status="high", sleep_h=7.8)
+    text = rule_based_rest(
+        snap, _plan_rest(phase="build", week=6), _goal_rest("Chicago Marathon"), "Sam Runner"
+    )
+    assert "week 6" in text.lower()
+    assert "build block" in text.lower()
+    assert "Chicago Marathon" in text
+
+
+def test_rest_no_plan_omits_periodization_cleanly():
+    """No plan/goal → no orphaned 'week N' fragments; sentence still reads."""
+    snap = _snap_rest(hrv_score=92, hrv_status="high", sleep_h=7.8)
+    text = rule_based_rest(snap, None, None, "Sam Runner")
+    assert "Sam" in text
+    assert "week " not in text.lower()
+    assert "road to" not in text.lower()
