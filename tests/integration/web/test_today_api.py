@@ -282,6 +282,42 @@ def test_pre_run_state_with_morning_checkin(app_and_db):
     assert data["actions"]["cta"] is None
 
 
+def test_stale_health_snapshot_marks_cover_lines_with_stale_date(app_and_db):
+    """When today's snapshot is missing but a 3-day-old one exists, the cover
+    stats render with a stale_date label like 'May 20'."""
+    from datetime import timedelta
+    app, db, athlete = app_and_db
+    today = _athlete_today(athlete)
+    goal = _seed_goal(db, athlete.id)
+    plan = _seed_plan(db, athlete.id, goal.id)
+    _seed_planned_workout(db, athlete.id, plan.id, today, workout_type="tempo")
+    # Seed yesterday's snapshot only — today's is missing
+    yesterday = today - timedelta(days=1)
+    _seed_health_snapshot(db, athlete.id, yesterday, hrv=40, hrv_status="balanced")
+
+    import running_coach_ai.web.api.today as today_mod
+    real_datetime = today_mod.datetime
+
+    class _FakeDatetime(real_datetime):
+        @classmethod
+        def now(cls, tz=None):
+            base = real_datetime(today.year, today.month, today.day, 10, 0, 0)
+            return base.replace(tzinfo=tz) if tz else base
+
+    with patch.object(today_mod, "datetime", _FakeDatetime):
+        resp = _client(app, athlete.id).get("/api/today")
+    data = resp.get_json()
+
+    assert data["state"] == "PRE_RUN"
+    # Every cover line should carry the stale_date label
+    expected_label = f"{yesterday.strftime('%b')} {yesterday.day}"
+    for line in data["cover_lines"]:
+        assert line["is_stale"] is True
+        assert line["stale_date"] == expected_label, (
+            f"unexpected stale_date label: {line['stale_date']!r} (expected {expected_label!r})"
+        )
+
+
 def test_pre_run_rationale_rule_based_when_no_notification(app_and_db):
     """T028 — No morning_checkin Notification + after-7am-local → rationale.source=rule_based.
 

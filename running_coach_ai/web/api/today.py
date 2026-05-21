@@ -95,6 +95,16 @@ def _format_today_pretty(today_local: date) -> str:
     return f"{today_local.strftime('%A, %B')} {today_local.day}, {today_local.year}"
 
 
+def _format_stale_date(snap_date: date | None) -> str | None:
+    """Return 'May 20'-style label for a stale snapshot's date, or None.
+
+    Windows-safe (no %-d) — uses `snap_date.day` to drop the leading zero.
+    """
+    if snap_date is None:
+        return None
+    return f"{snap_date.strftime('%b')} {snap_date.day}"
+
+
 # ─── State resolver ────────────────────────────────────────────────────────
 
 
@@ -538,12 +548,13 @@ def _morning_cover_lines(snap: HealthSnapshot | None, is_stale: bool) -> list[di
     )
     sleep_h = round(snap.sleep_duration_seconds / 3600.0, 1) if (snap and snap.sleep_duration_seconds) else "—"
     rhr = snap.resting_hr if (snap and snap.resting_hr is not None) else "—"
+    stale_date = _format_stale_date(snap.date) if (snap is not None and is_stale) else None
 
     return [
-        {"label": "HRV ms",   "value": hrv,     "drill_to": "morning", "is_stale": is_stale},
-        {"label": "Body Bat", "value": bb,      "drill_to": "morning", "is_stale": is_stale},
-        {"label": "Sleep h",  "value": sleep_h, "drill_to": "morning", "is_stale": is_stale},
-        {"label": "RHR",      "value": rhr,     "drill_to": "morning", "is_stale": is_stale},
+        {"label": "HRV ms",   "value": hrv,     "drill_to": "morning", "is_stale": is_stale, "stale_date": stale_date},
+        {"label": "Body Bat", "value": bb,      "drill_to": "morning", "is_stale": is_stale, "stale_date": stale_date},
+        {"label": "Sleep h",  "value": sleep_h, "drill_to": "morning", "is_stale": is_stale, "stale_date": stale_date},
+        {"label": "RHR",      "value": rhr,     "drill_to": "morning", "is_stale": is_stale, "stale_date": stale_date},
     ]
 
 

@@ -379,6 +379,10 @@ def magazine():
                 "resting_hr": snap.resting_hr,
                 "date_iso": snap.date.isoformat(),
                 "is_stale": snap_is_stale,
+                "stale_date": (
+                    f"{snap.date.strftime('%b')} {snap.date.day}"
+                    if snap_is_stale else None
+                ),
             }
 
         # This week (Mon–Sun) — planned + completed mileage
