@@ -7,8 +7,16 @@ clobbering otherwise-good rows.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
+
+from sqlalchemy import or_
+
+from running_coach_ai.coach.adapter import run_morning_checkin
+from running_coach_ai.database.models import Athlete, HealthSnapshot, Notification
+from running_coach_ai.database.session import get_session
+from running_coach_ai.garmin.client import get_garmin_client, get_health_snapshot, is_garmin_auth_error
+from running_coach_ai.garmin.parser import parse_health_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -22,19 +30,14 @@ def _run_health_backfill() -> None:
     guarantees a complete health history for coaching context even when the
     morning check-in window was missed.
     """
-    from running_coach_ai.database.models import Athlete, HealthSnapshot
-    from running_coach_ai.database.session import get_session
-    from running_coach_ai.garmin.client import get_garmin_client, get_health_snapshot
-    from running_coach_ai.garmin.parser import parse_health_snapshot
-
     logger.info("Health data backfill starting")
 
     with get_session() as db_session:
         athletes = (
             db_session.query(Athlete)
             .filter(
-                Athlete.allowed == True,
-                Athlete.onboarding_complete == True,
+                Athlete.allowed.is_(True),
+                Athlete.onboarding_complete.is_(True),
             )
             .all()
         )
@@ -74,8 +77,43 @@ def _run_health_backfill() -> None:
                 raw = get_health_snapshot(garmin, today_str)
                 parse_health_snapshot(raw, athlete.id, today, db_session)
                 logger.info("Health backfill: updated snapshot for athlete %d on %s", athlete.id, today_str)
+
+                # If a morning_checkin notification already fired today with
+                # stale or null morning_snapshot_date, re-fire so the rationale
+                # text matches the now-fresh snapshot. Upsert in coach/notify.py
+                # updates the same row in place.
+                day_start_local = datetime.combine(today, time.min, tzinfo=tz)
+                day_start_utc = day_start_local.astimezone(timezone.utc).replace(tzinfo=None)
+                day_end_utc = (day_start_local + timedelta(days=1)).astimezone(timezone.utc).replace(tzinfo=None)
+
+                stale_morning = (
+                    db_session.query(Notification)
+                    .filter(
+                        Notification.athlete_id == athlete.id,
+                        Notification.kind == "morning_checkin",
+                        Notification.created_at >= day_start_utc,
+                        Notification.created_at < day_end_utc,
+                        or_(
+                            Notification.morning_snapshot_date.is_(None),
+                            Notification.morning_snapshot_date != today,
+                        ),
+                    )
+                    .first()
+                )
+                if stale_morning is not None:
+                    logger.info(
+                        "Health backfill: re-firing morning check-in for athlete %d (stale notif id=%d)",
+                        athlete.id, stale_morning.id,
+                    )
+                    try:
+                        run_morning_checkin(athlete, db_session, force=True)
+                    except Exception as refire_err:
+                        logger.error(
+                            "Re-fire of morning_checkin failed for athlete %d: %s",
+                            athlete.id, refire_err,
+                        )
+
             except Exception as e:
-                from running_coach_ai.garmin.client import is_garmin_auth_error
                 if is_garmin_auth_error(e):
                     logger.warning("Health backfill: Garmin auth error for athlete %d — skipping", athlete.id)
                 else:
