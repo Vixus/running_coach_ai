@@ -2769,7 +2769,6 @@ function tdRender(payload, opts){
     REST_DAY:   'Recovery Note',
     RACE_DAY:   'Race-Morning Briefing',
     NO_PLAN:    'Welcome',
-    OFF_PLAN:   'Plan Check',
   })[payload.state] || 'Today';
   document.getElementById('td-byline').textContent = `Today · ${coachName} · ${byPart}`;
 
@@ -2796,7 +2795,7 @@ function tdRender(payload, opts){
     watchEl.hidden = true;
   }
 
-  // CTA button (NO_PLAN / OFF_PLAN)
+  // CTA button (NO_PLAN only)
   const ctaEl = document.getElementById('td-cta');
   const cta = payload.actions && payload.actions.cta;
   if (cta) {
@@ -2830,6 +2829,29 @@ function tdRender(payload, opts){
     rationaleEl.onclick = null;
     rationaleEl.onkeydown = null;
     rationaleEl.style.cursor = 'default';
+  }
+
+  // Recovery cues strip (REST_DAY only — hidden otherwise)
+  const cuesEl = document.getElementById('td-cues');
+  const cues = Array.isArray(payload.cues) ? payload.cues : [];
+  if (cuesEl) {
+    if (cues.length > 0) {
+      cuesEl.hidden = false;
+      const spans = cuesEl.querySelectorAll('span');
+      cues.slice(0, spans.length).forEach((cue, i) => {
+        const span = spans[i];
+        const strong = span.querySelector('strong');
+        if (strong) strong.textContent = (cue.label || '').toUpperCase();
+        // Append the copy after the <strong>, replacing any prior text node
+        // (clear then re-append keeps the markup deterministic across renders)
+        while (span.childNodes.length > 1) span.removeChild(span.lastChild);
+        span.appendChild(document.createTextNode(cue.copy || ''));
+      });
+      // Hide any leftover spans if fewer cues than slots
+      spans.forEach((s, i) => { s.hidden = i >= cues.length; });
+    } else {
+      cuesEl.hidden = true;
+    }
   }
 
   // Cover lines / stats

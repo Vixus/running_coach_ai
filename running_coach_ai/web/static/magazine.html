@@ -91,7 +91,7 @@
     <p class="td-tag" id="td-tag"></p>
   </div>
 
-  <!-- Today article: workout / rest / race / no-plan / off-plan / completed -->
+  <!-- Today article: workout / rest / race / no-plan / completed -->
   <div class="td-article">
     <div class="td-byline" id="td-byline">Today · —</div>
 
@@ -111,7 +111,12 @@
       <blockquote class="td-rationale" id="td-rationale" tabindex="0" role="button" aria-label="Ask the coach a question about today's plan"></blockquote>
       <div class="td-on-watch" id="td-on-watch" hidden>Ready on watch ✓</div>
 
-      <!-- CTA button (only rendered for NO_PLAN / OFF_PLAN) -->
+      <!-- Recovery cues strip (REST_DAY only, hydrated from payload.cues) -->
+      <div class="td-cues" id="td-cues" hidden>
+        <span><strong></strong></span><span><strong></strong></span><span><strong></strong></span>
+      </div>
+
+      <!-- CTA button (only rendered for NO_PLAN) -->
       <button class="td-cta" id="td-cta" hidden type="button"></button>
     </div>
 

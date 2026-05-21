@@ -116,7 +116,7 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
   letter-spacing:.01em;
 }
 
-/* Article — workout / rest / race / no-plan / off-plan article */
+/* Article — workout / rest / race / no-plan / completed article */
 .td-article{position:relative;z-index:3;margin-top:8px;border-top:1px solid rgba(255,255,255,.14);padding-top:18px;}
 .td-byline{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:10px;}
 .td-ribbon{display:inline-block;background:var(--coach-accent);color:#111;font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:5px 10px;border-radius:3px;margin-bottom:14px;}
@@ -131,8 +131,22 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
 .td-rationale:focus-visible{outline:2px solid var(--coach-accent);outline-offset:4px;border-radius:2px;}
 .td-rationale:empty{display:none;}
 .td-on-watch{display:inline-block;background:rgba(184,255,79,.12);color:var(--coach-accent);font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;padding:5px 9px;border-radius:3px;margin-top:4px;}
+.td-cues{
+  display:flex;gap:16px;flex-wrap:wrap;
+  font-size:10px;color:rgba(255,255,255,.65);
+  margin:10px 0 14px;padding:8px 12px;
+  background:rgba(184,255,79,.06);
+  border-left:1px solid rgba(184,255,79,.4);
+  border-radius:0 3px 3px 0;
+  position:relative;z-index:3;
+}
+.td-cues span strong{
+  color:rgba(184,255,79,.85);font-weight:600;
+  margin-right:4px;letter-spacing:.08em;
+  text-transform:uppercase;font-size:9px;
+}
 
-/* CTA button (NO_PLAN / OFF_PLAN) */
+/* CTA button (NO_PLAN only) */
 .td-cta{display:inline-block;background:var(--coach-accent);color:#111;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:12px 22px;border:none;border-radius:4px;margin-top:6px;cursor:pointer;}
 .td-cta:hover{filter:brightness(1.08);}
 .td-cta:focus-visible{outline:2px solid #fff;outline-offset:2px;}
@@ -165,12 +179,9 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
 .td-scroll svg{animation:chatRing 2.2s ease-in-out infinite;}
 
 /* State-specific visibility toggles */
-#today[data-state="NO_PLAN"] .td-stats,
-#today[data-state="OFF_PLAN"] .td-stats{display:none;}
-#today[data-state="NO_PLAN"] .td-headline,
-#today[data-state="OFF_PLAN"] .td-headline{cursor:default;}
-#today[data-state="NO_PLAN"] .td-rationale,
-#today[data-state="OFF_PLAN"] .td-rationale{cursor:default;border-left-color:rgba(255,255,255,.2);}
+#today[data-state="NO_PLAN"] .td-stats{display:none;}
+#today[data-state="NO_PLAN"] .td-headline{cursor:default;}
+#today[data-state="NO_PLAN"] .td-rationale{cursor:default;border-left-color:rgba(255,255,255,.2);}
 
 /* RACE_DAY — stats are read-only */
 #today[data-state="RACE_DAY"] .td-stat{cursor:default;}
