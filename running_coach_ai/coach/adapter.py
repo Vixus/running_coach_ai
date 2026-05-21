@@ -211,6 +211,29 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, force: bool = Fal
         if snapshot.date != today:
             health_text += f" (data from {date_label})"
 
+    # If we've reached noon with no snapshot at all (no fresh fetch, no stored
+    # today's row, no recent fallback), surface that explicitly rather than
+    # silently going dark for the day. The next health-backfill / morning tick
+    # that gets data will overwrite this row in place via upsert_morning_checkin.
+    if snapshot is None and now_local.hour >= 12:
+        from running_coach_ai.coach.notify import upsert_morning_checkin
+        no_data_body = (
+            "**Today.** No morning report yet — Garmin hasn't synced your overnight data.\n\n"
+            "Check that your watch is paired, the battery is alive, and you've recorded "
+            "a sleep session. I'll refresh this report automatically as soon as your data "
+            "comes through."
+        )
+        athlete.last_morning_checkin_date = today
+        upsert_morning_checkin(
+            db_session, athlete,
+            body=no_data_body,
+            morning_snapshot_date=None,
+            today_local=today,
+        )
+        db_session.commit()
+        logger.info("Morning check-in for athlete %d: no-data notification written", athlete.id)
+        return
+
     # Fetch weather
     weather_text = "Weather data unavailable."
     if athlete.home_lat and athlete.home_lon:

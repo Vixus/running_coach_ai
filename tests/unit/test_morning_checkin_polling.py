@@ -402,3 +402,62 @@ def test_should_not_wait_when_no_garmin_email_regardless_of_clock():
     assert _should_wait_for_morning_data(
         snapshot, garmin_fetch_failed=False, athlete=athlete, now_local=now_local
     ) is False
+
+
+def test_noon_no_data_writes_no_report_notification(monkeypatch):
+    """After noon, with NO snapshot at all, fire a 'no morning report today'
+    notification with morning_snapshot_date=None."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from unittest.mock import patch
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from werkzeug.security import generate_password_hash
+
+    from running_coach_ai.coach.adapter import run_morning_checkin
+    from running_coach_ai.database.models import Athlete, Base, Notification
+
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+    athlete = Athlete(
+        name="Sam Runner",
+        web_username="sam",
+        web_password_hash=generate_password_hash("pw"),
+        is_admin=False,
+        onboarding_complete=True,
+        allowed=True,
+        coach_key="classic",
+        timezone="America/New_York",
+        garmin_email=None,  # no credentials → gate returns False, falls through
+    )
+    db.add(athlete)
+    db.commit()
+    db.refresh(athlete)
+
+    fake_now = datetime(2026, 5, 21, 12, 30, tzinfo=ZoneInfo("America/New_York"))
+
+    import running_coach_ai.coach.adapter as adapter_mod
+    real_datetime = adapter_mod.datetime
+
+    class _FakeDatetime(real_datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fake_now if tz else fake_now.replace(tzinfo=None)
+
+    try:
+        with patch.object(adapter_mod, "datetime", _FakeDatetime):
+            run_morning_checkin(athlete, db)
+    finally:
+        notif = db.query(Notification).filter(
+            Notification.athlete_id == athlete.id,
+            Notification.kind == "morning_checkin",
+        ).first()
+        db.close()
+        engine.dispose()
+
+    assert notif is not None
+    assert notif.morning_snapshot_date is None
+    assert "No morning report" in notif.body
