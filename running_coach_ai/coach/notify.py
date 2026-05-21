@@ -60,7 +60,7 @@ def upsert_morning_checkin(
 
     "Today" is athlete-local. If a `morning_checkin` row already exists with
     created_at on `today_local`, update its body / morning_snapshot_date /
-    updated_at fields and return it. Otherwise insert a new row.
+    read_at fields and return it. Otherwise insert a new row.
 
     The two-row-per-day case (yesterday's row + today's upsert) is guarded
     against by filtering created_at to today_local's bounds.
