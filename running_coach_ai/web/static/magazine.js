@@ -2860,10 +2860,19 @@ function tdRender(payload, opts){
       const btn = statsEl.querySelector(`.td-stat[data-idx="${i}"]`);
       if (v) {
         v.textContent = (line.value === undefined || line.value === null) ? '—' : line.value;
-        if (line.is_stale || stale) v.setAttribute('data-stale', '1');
-        else v.removeAttribute('data-stale');
       }
       if (l) l.textContent = line.label || '';
+      // Stale sub-label ("FROM MAY 20") — present only when payload includes stale_date
+      const sub = document.getElementById('td-stat-l-sub-' + i);
+      if (sub) {
+        if (line.stale_date) {
+          sub.textContent = ('FROM ' + String(line.stale_date)).toUpperCase();
+          sub.hidden = false;
+        } else {
+          sub.textContent = '';
+          sub.hidden = true;
+        }
+      }
       if (btn) {
         if (line.drill_to) {
           btn.style.cursor = 'pointer';

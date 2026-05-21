@@ -159,8 +159,8 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);ove
 .td-stat:hover{background:rgba(255,255,255,.04);}
 .td-stat:focus-visible{outline:2px solid var(--coach-accent);outline-offset:-2px;}
 .td-stat-v{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#fff;line-height:1;}
-.td-stat-v[data-stale="1"]::after{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.35);margin-left:6px;vertical-align:middle;}
 .td-stat-l{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-top:4px;}
+.td-stat-l-sub{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,159,79,.85);margin-top:2px;}
 
 /* Stale banner */
 .td-stale{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:10px;}
