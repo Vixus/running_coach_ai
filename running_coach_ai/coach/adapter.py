@@ -215,7 +215,7 @@ def run_morning_checkin(athlete: Athlete, db_session: Session, force: bool = Fal
     # today's row, no recent fallback), surface that explicitly rather than
     # silently going dark for the day. The next health-backfill / morning tick
     # that gets data will overwrite this row in place via upsert_morning_checkin.
-    if snapshot is None and now_local.hour >= 12:
+    if athlete.garmin_email and snapshot is None and now_local.hour >= 12:
         from running_coach_ai.coach.notify import upsert_morning_checkin
         no_data_body = (
             "**Today.** No morning report yet — Garmin hasn't synced your overnight data.\n\n"

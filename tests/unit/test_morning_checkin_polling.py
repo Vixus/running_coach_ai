@@ -431,7 +431,9 @@ def test_noon_no_data_writes_no_report_notification(monkeypatch):
         allowed=True,
         coach_key="classic",
         timezone="America/New_York",
-        garmin_email=None,  # no credentials → gate returns False, falls through
+        # Garmin athlete whose live fetch fails AND has no stored snapshot at all.
+        garmin_email="sam@example.com",
+        garmin_password_encrypted=b"enc",
     )
     db.add(athlete)
     db.commit()
@@ -448,7 +450,10 @@ def test_noon_no_data_writes_no_report_notification(monkeypatch):
             return fake_now if tz else fake_now.replace(tzinfo=None)
 
     try:
-        with patch.object(adapter_mod, "datetime", _FakeDatetime):
+        with patch.object(adapter_mod, "datetime", _FakeDatetime), patch(
+            "running_coach_ai.garmin.client.get_garmin_client",
+            side_effect=Exception("simulated Garmin outage"),
+        ):
             run_morning_checkin(athlete, db)
     finally:
         notif = db.query(Notification).filter(
