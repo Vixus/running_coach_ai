@@ -39,6 +39,13 @@ services:
       - -c
       - "pip install --no-cache-dir 'garth==0.6.3' 'requests>=2.32.0' && python /app/refresh_and_push_tokens.py"
     restart: unless-stopped
+    # Synology's default docker bridge sometimes ships with no usable
+    # resolver, producing "Temporary failure in name resolution" on every
+    # outbound call. Pin Cloudflare + Google so DNS works regardless of
+    # what the host has configured.
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     env_file: .env
     environment:
       # Container-side path; overrides any value from .env.
