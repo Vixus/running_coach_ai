@@ -2329,7 +2329,9 @@ function setupTouchInteractions(){
       const sev = ev.severity||'info';
       const d = document.createElement('div');
       d.className='adm-ev';
-      d.innerHTML=`<div><span class="adm-ev-ts">${ev.timestamp.replace('T',' ').slice(0,19)}</span><span class="adm-ev-sev ${sev}">${sev}</span><span style="font-size:10px;color:rgba(255,255,255,.3);margin-left:6px;">${ev.category||''}</span></div>
+      const _ts = new Date(ev.timestamp);
+      const _tsEt = isNaN(_ts) ? (ev.timestamp||'') : _ts.toLocaleString('sv-SE',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+      d.innerHTML=`<div><span class="adm-ev-ts">${_tsEt} ET</span><span class="adm-ev-sev ${sev}">${sev}</span><span style="font-size:10px;color:rgba(255,255,255,.3);margin-left:6px;">${ev.category||''}</span></div>
         <div class="adm-ev-msg">${ev.message||''}</div>
         ${ev.athlete_name?`<div class="adm-ev-who">${ev.athlete_name}</div>`:''}`;
       list.appendChild(d);
