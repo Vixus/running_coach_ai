@@ -39,13 +39,14 @@ services:
       - -c
       - "pip install --no-cache-dir 'garth==0.6.3' 'requests>=2.32.0' && python /app/refresh_and_push_tokens.py"
     restart: unless-stopped
-    # Synology's default docker bridge sometimes ships with no usable
-    # resolver, producing "Temporary failure in name resolution" on every
-    # outbound call. Pin Cloudflare + Google so DNS works regardless of
-    # what the host has configured.
-    dns:
-      - 1.1.1.1
-      - 8.8.8.8
+    # Use the NAS's network stack directly. Synology's default Docker
+    # bridge network can't resolve external hostnames (DSM uses a local
+    # resolver that isn't reachable from the bridge, and outbound UDP/53
+    # to public DNS is blocked by the router/ISP). Host networking
+    # bypasses both — the container uses the same DNS path that DSM
+    # itself uses for package updates. Safe here because the worker
+    # only makes outbound HTTPS calls; it binds no ports.
+    network_mode: host
     env_file: .env
     environment:
       # Container-side path; overrides any value from .env.
