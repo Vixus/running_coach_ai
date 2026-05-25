@@ -95,7 +95,9 @@
       "Bash(tee /tmp/seed_export.txt)",
       "Bash(railway ssh *)",
       "Bash(railway run *)",
-      "Bash(railway logs *)"
+      "Bash(railway logs *)",
+      "Skill(superpowers:test-driven-development)",
+      "Bash(git commit *)"
     ]
   }
 }

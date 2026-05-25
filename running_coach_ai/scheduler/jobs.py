@@ -110,10 +110,8 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
     # so the day's first real Garmin call doesn't have to refresh under load.
     #
     # Disabled when DISABLE_GARMIN_TOKEN_REFRESH is set — used in deployments
-    # where a residential-IP refresher container (see docker-compose.refresher.yml
-    # and scripts/refresh_and_push_tokens.py) handles token refresh externally
-    # and pushes fresh tokens to this host. Running both causes Garmin to 429
-    # the cloud-IP refresh attempts.
+    # where token refresh is handled externally and pushed to this host.
+    # Running both causes Garmin to 429 the cloud-IP refresh attempts.
     import os
     if os.environ.get("DISABLE_GARMIN_TOKEN_REFRESH"):
         logger.info(
