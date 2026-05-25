@@ -106,3 +106,83 @@ def test_cooldown_seconds_respects_env_var(monkeypatch):
     # Reload back to default so subsequent tests aren't affected
     monkeypatch.delenv("GARMIN_RATE_LIMIT_COOLDOWN_SECONDS")
     importlib.reload(_client)
+
+
+def test_ensure_fresh_oauth2_short_circuits_when_cached_429(monkeypatch):
+    """When oauth_exchange is in cooldown, _ensure_fresh_oauth2 raises
+    GarminRateLimited immediately with zero retries / zero network calls."""
+    from unittest.mock import MagicMock
+    from running_coach_ai.garmin.client import (
+        _ensure_fresh_oauth2,
+        _mark_rate_limited,
+        GarminRateLimited,
+    )
+
+    # Pre-set cooldown
+    _mark_rate_limited("oauth_exchange")
+
+    # Build a mock garmin client whose oauth2 token is expired
+    garmin = MagicMock()
+    garmin.garth.oauth2_token = MagicMock(expired=True)
+    garmin.garth.refresh_oauth2 = MagicMock(side_effect=AssertionError(
+        "refresh_oauth2 must NOT be called when cooldown is active"
+    ))
+
+    # Patch sleep so test is fast (defensive — short-circuit shouldn't sleep)
+    monkeypatch.setattr("running_coach_ai.garmin.client.time.sleep", lambda s: None)
+
+    with pytest.raises(GarminRateLimited) as exc_info:
+        _ensure_fresh_oauth2(garmin, athlete_id=1)
+    assert "oauth_exchange" in str(exc_info.value)
+    # refresh_oauth2 was never invoked
+    garmin.garth.refresh_oauth2.assert_not_called()
+
+
+def test_ensure_fresh_oauth2_marks_cache_on_429_after_retries(monkeypatch):
+    """A real 429 from refresh_oauth2 (after all retries exhausted) sets the
+    oauth_exchange cooldown so subsequent calls short-circuit."""
+    from unittest.mock import MagicMock
+    from running_coach_ai.garmin.client import (
+        _ensure_fresh_oauth2,
+        _rate_limited,
+    )
+
+    garmin = MagicMock()
+    garmin.garth.oauth2_token = MagicMock(expired=True)
+    # Every retry raises 429
+    garmin.garth.refresh_oauth2 = MagicMock(
+        side_effect=Exception("429 Client Error: Too Many Requests for url: ...")
+    )
+
+    monkeypatch.setattr("running_coach_ai.garmin.client.time.sleep", lambda s: None)
+
+    with pytest.raises(Exception) as exc_info:
+        _ensure_fresh_oauth2(garmin, athlete_id=1)
+    assert "429" in str(exc_info.value)
+
+    # Cooldown is now active
+    is_limited, until = _rate_limited("oauth_exchange")
+    assert is_limited is True
+    assert until is not None
+
+
+def test_ensure_fresh_oauth2_clears_cache_on_success(monkeypatch):
+    """A successful refresh_oauth2 clears any prior cooldown."""
+    from unittest.mock import MagicMock
+    from running_coach_ai.garmin.client import _ensure_fresh_oauth2
+    from running_coach_ai.garmin import client as _client
+
+    # Stash a cooldown in the past so _rate_limited returns False but the dict
+    # entry still exists — verify _clear_rate_limit is called on success.
+    _client._rate_limit_until["oauth_exchange"] = datetime.utcnow() - timedelta(seconds=1)
+
+    garmin = MagicMock()
+    garmin.garth.oauth2_token = MagicMock(expired=True)
+    garmin.garth.refresh_oauth2 = MagicMock(return_value=None)
+
+    monkeypatch.setattr("running_coach_ai.garmin.client.time.sleep", lambda s: None)
+
+    _ensure_fresh_oauth2(garmin, athlete_id=1)
+
+    # No cooldown entry remains
+    assert "oauth_exchange" not in _client._rate_limit_until

@@ -169,6 +169,11 @@ def _ensure_fresh_oauth2(garmin: Garmin, athlete_id: int, max_attempts: int = 4)
 
     If the OAuth2 token is still valid, returns immediately without any
     network call. Raises on non-429 errors or after all retries exhausted.
+
+    Rate-limit cache: if a prior call already received a 429 within the
+    cooldown window (default 15 min), raise GarminRateLimited immediately
+    without any network attempt. This prevents the retry storm from
+    prolonging Garmin's per-IP throttle.
     """
     from garth.auth_tokens import OAuth2Token as _OAuth2Token
 
@@ -176,11 +181,20 @@ def _ensure_fresh_oauth2(garmin: Garmin, athlete_id: int, max_attempts: int = 4)
     if isinstance(tok, _OAuth2Token) and not tok.expired:
         return  # already fresh
 
+    # NEW: short-circuit if we're in a known cooldown
+    limited, until = _rate_limited("oauth_exchange")
+    if limited:
+        raise GarminRateLimited(
+            f"oauth_exchange suppressed until {until.isoformat(timespec='seconds')} UTC "
+            f"(cached 429; tune via GARMIN_RATE_LIMIT_COOLDOWN_SECONDS)"
+        )
+
     delays = [3, 8, 20]
     last_exc: Exception | None = None
     for attempt in range(max_attempts):
         try:
             garmin.garth.refresh_oauth2()
+            _clear_rate_limit("oauth_exchange")  # NEW: success clears prior cooldown
             logger.info(
                 "Garmin OAuth2 refreshed for athlete %s (attempt %d/%d)",
                 athlete_id, attempt + 1, max_attempts,
@@ -191,6 +205,8 @@ def _ensure_fresh_oauth2(garmin: Garmin, athlete_id: int, max_attempts: int = 4)
             err = str(e)
             is_429 = "429" in err or "too many requests" in err.lower()
             if not is_429 or attempt == max_attempts - 1:
+                if is_429:
+                    _mark_rate_limited("oauth_exchange")  # NEW: cache before raising
                 break
             wait = delays[attempt] if attempt < len(delays) else delays[-1]
             logger.warning(
