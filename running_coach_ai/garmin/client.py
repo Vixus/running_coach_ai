@@ -226,16 +226,29 @@ def _login_with_rate_limit_retry(garmin: Garmin, athlete_id: int, max_attempts: 
     hours — retrying immediately doesn't help. We do one short retry (30s) for
     transient errors, then fail fast so the scheduler can retry naturally on
     the next 30-minute job tick.
-    All other exceptions are re-raised immediately.
+
+    Rate-limit cache: if a prior call already received a 429 within the
+    cooldown window (default 15 min), raise GarminRateLimited immediately
+    without attempting login. SSO 429s typically last hours, so even our
+    fail-fast retry adds to Garmin's per-IP counter; the cache prevents it.
     """
+    # NEW: short-circuit if we're in a known cooldown
+    limited, until = _rate_limited("sso_login")
+    if limited:
+        raise GarminRateLimited(
+            f"sso_login suppressed until {until.isoformat(timespec='seconds')} UTC "
+            f"(cached 429; tune via GARMIN_RATE_LIMIT_COOLDOWN_SECONDS)"
+        )
+
     for attempt in range(max_attempts):
         try:
             garmin.login()
+            _clear_rate_limit("sso_login")  # NEW: success clears prior cooldown
             return
         except Exception as e:
             is_rate_limited = "429" in str(e) or "too many requests" in str(e).lower()
             if is_rate_limited:
-                # IP-based rate limits last hours — fail fast, let scheduler retry later
+                _mark_rate_limited("sso_login")  # NEW: cache before raising
                 logger.warning(
                     "Garmin SSO rate limited (429) for athlete %s — "
                     "Railway IP may be blocked. Skipping re-auth until next scheduler tick.",

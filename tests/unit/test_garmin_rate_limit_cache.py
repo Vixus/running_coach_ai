@@ -186,3 +186,65 @@ def test_ensure_fresh_oauth2_clears_cache_on_success(monkeypatch):
 
     # No cooldown entry remains
     assert "oauth_exchange" not in _client._rate_limit_until
+
+
+def test_login_short_circuits_when_cached_429(monkeypatch):
+    from unittest.mock import MagicMock
+    from running_coach_ai.garmin.client import (
+        _login_with_rate_limit_retry,
+        _mark_rate_limited,
+        GarminRateLimited,
+    )
+
+    _mark_rate_limited("sso_login")
+
+    garmin = MagicMock()
+    garmin.login = MagicMock(side_effect=AssertionError(
+        "garmin.login must NOT be called when sso_login is in cooldown"
+    ))
+
+    monkeypatch.setattr("running_coach_ai.garmin.client.time.sleep", lambda s: None)
+
+    with pytest.raises(GarminRateLimited) as exc_info:
+        _login_with_rate_limit_retry(garmin, athlete_id=1)
+    assert "sso_login" in str(exc_info.value)
+    garmin.login.assert_not_called()
+
+
+def test_login_marks_cache_on_429(monkeypatch):
+    from unittest.mock import MagicMock
+    from running_coach_ai.garmin.client import (
+        _login_with_rate_limit_retry,
+        _rate_limited,
+    )
+
+    garmin = MagicMock()
+    garmin.login = MagicMock(
+        side_effect=Exception("429 Client Error: Too Many Requests")
+    )
+
+    monkeypatch.setattr("running_coach_ai.garmin.client.time.sleep", lambda s: None)
+
+    with pytest.raises(Exception) as exc_info:
+        _login_with_rate_limit_retry(garmin, athlete_id=1)
+    assert "429" in str(exc_info.value)
+
+    is_limited, _ = _rate_limited("sso_login")
+    assert is_limited is True
+
+
+def test_login_clears_cache_on_success(monkeypatch):
+    from unittest.mock import MagicMock
+    from running_coach_ai.garmin import client as _client
+    from running_coach_ai.garmin.client import _login_with_rate_limit_retry
+
+    _client._rate_limit_until["sso_login"] = datetime.utcnow() - timedelta(seconds=1)
+
+    garmin = MagicMock()
+    garmin.login = MagicMock(return_value=None)
+
+    monkeypatch.setattr("running_coach_ai.garmin.client.time.sleep", lambda s: None)
+
+    _login_with_rate_limit_retry(garmin, athlete_id=1)
+
+    assert "sso_login" not in _client._rate_limit_until
