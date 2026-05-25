@@ -109,14 +109,18 @@ def register_jobs(scheduler: BlockingScheduler) -> None:
     # Primes the OAuth2 access token (expired after the 22:00 -> 06:00 overnight gap)
     # so the day's first real Garmin call doesn't have to refresh under load.
     #
-    # Disabled when DISABLE_GARMIN_TOKEN_REFRESH is set — used in deployments
-    # where token refresh is handled externally and pushed to this host.
-    # Running both causes Garmin to 429 the cloud-IP refresh attempts.
+    # Disabled when DISABLE_GARMIN_TOKEN_REFRESH is set. On Railway, Garmin
+    # 429s the cloud-IP OAuth refresh endpoint persistently; the proactive
+    # job just adds to that. Token refresh runs lazily inside
+    # garmin/client.py:get_garmin_client when an actual API call needs fresh
+    # tokens, gated by a module-level rate-limit cache that short-circuits
+    # subsequent calls during a known 429 cooldown
+    # (GARMIN_RATE_LIMIT_COOLDOWN_SECONDS, default 900).
     import os
     if os.environ.get("DISABLE_GARMIN_TOKEN_REFRESH"):
         logger.info(
             "Skipping garmin_token_refresh job registration "
-            "(DISABLE_GARMIN_TOKEN_REFRESH is set — tokens expected from external refresher)"
+            "(DISABLE_GARMIN_TOKEN_REFRESH is set — refresh runs lazily with rate-limit cache)"
         )
     else:
         scheduler.add_job(
