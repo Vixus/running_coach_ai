@@ -3,7 +3,9 @@
 import functools
 import logging
 import os
+import threading
 import time
+from datetime import datetime, timedelta
 
 from cryptography.fernet import Fernet
 from garminconnect import Garmin
@@ -11,6 +13,55 @@ from garminconnect import Garmin
 from running_coach_ai.config import settings
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# OAuth rate-limit cache
+#
+# Garmin's oauth/exchange endpoint and SSO login both rate-limit shared cloud
+# IPs (Railway etc) with 429s. Each retry stamps the per-IP counter and
+# prolongs the throttle window. This module-level cache lets us fail fast on
+# subsequent calls within a known cooldown so the rate limiter has a chance
+# to drain. In-memory only — resets on every Railway redeploy, which is fine
+# because a fresh deploy gets a fresh start at Garmin's window.
+# ---------------------------------------------------------------------------
+_rate_limit_until: dict[str, datetime] = {}
+_rate_limit_lock = threading.Lock()
+_COOLDOWN_SECONDS = int(os.environ.get("GARMIN_RATE_LIMIT_COOLDOWN_SECONDS", "900"))
+
+
+class GarminRateLimited(Exception):
+    """Raised when an OAuth endpoint is in a known-rate-limited cooldown."""
+
+
+def _rate_limited(endpoint: str) -> tuple[bool, datetime | None]:
+    """Return (is_limited, until_utc) for the named endpoint."""
+    with _rate_limit_lock:
+        until = _rate_limit_until.get(endpoint)
+        if until is None or datetime.utcnow() >= until:
+            # Clean up stale entries lazily so the dict doesn't grow.
+            if until is not None:
+                _rate_limit_until.pop(endpoint, None)
+            return False, None
+        return True, until
+
+
+def _mark_rate_limited(endpoint: str) -> None:
+    """Record a 429 on the named endpoint; cooldown set from env (default 15 min)."""
+    until = datetime.utcnow() + timedelta(seconds=_COOLDOWN_SECONDS)
+    with _rate_limit_lock:
+        _rate_limit_until[endpoint] = until
+    logger.warning(
+        "Garmin %s endpoint rate-limited; suppressing further calls until %s UTC",
+        endpoint, until.isoformat(timespec="seconds"),
+    )
+
+
+def _clear_rate_limit(endpoint: str) -> None:
+    """Clear cooldown after a successful call (Garmin cleared the IP block)."""
+    with _rate_limit_lock:
+        existed = _rate_limit_until.pop(endpoint, None) is not None
+    if existed:
+        logger.info("Garmin %s endpoint recovered from rate limit", endpoint)
 
 
 # ---------------------------------------------------------------------------
