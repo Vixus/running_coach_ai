@@ -266,16 +266,22 @@ def test_upsert_morning_checkin_inserts_when_none_today(in_memory_db):
 
 def test_upsert_morning_checkin_updates_when_today_row_exists(in_memory_db):
     """Second call today UPDATES the same row — no second insert."""
-    from datetime import date
+    from datetime import date, timedelta
     from running_coach_ai.coach.notify import upsert_morning_checkin
     from running_coach_ai.database.models import Notification
+
+    # Use real current date so Notification.created_at (auto-set to utcnow on
+    # insert) falls inside today_local's UTC bounds — otherwise the upsert
+    # lookup misses the freshly-inserted row.
+    today_real = date.today()
+    yesterday_real = today_real - timedelta(days=1)
 
     db, athlete = in_memory_db
     first = upsert_morning_checkin(
         db, athlete,
         body="Stale-data body",
-        morning_snapshot_date=date(2026, 5, 20),
-        today_local=date(2026, 5, 21),
+        morning_snapshot_date=yesterday_real,
+        today_local=today_real,
     )
     db.commit()
     first_id = first.id
@@ -283,14 +289,14 @@ def test_upsert_morning_checkin_updates_when_today_row_exists(in_memory_db):
     second = upsert_morning_checkin(
         db, athlete,
         body="Fresh-data body",
-        morning_snapshot_date=date(2026, 5, 21),
-        today_local=date(2026, 5, 21),
+        morning_snapshot_date=today_real,
+        today_local=today_real,
     )
     db.commit()
 
     assert second.id == first_id
     assert second.body == "Fresh-data body"
-    assert second.morning_snapshot_date == date(2026, 5, 21)
+    assert second.morning_snapshot_date == today_real
 
     rows = db.query(Notification).filter(
         Notification.athlete_id == athlete.id, Notification.kind == "morning_checkin"
