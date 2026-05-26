@@ -157,6 +157,11 @@ def admin_push_garmin_tokens(athlete_id: int):
     Railway's IP is persistently 429'd by Garmin's oauth/exchange endpoint.
     Auth: X-Admin-Token header matching ADMIN_PUSH_TOKEN env var.
     Body: raw text of the Fernet ciphertext (starts with "gAAAAAB").
+
+    After writing, attempts a verification fetch via get_full_name() so the
+    caller knows whether the tokens are usable from Railway's IP (the OAuth
+    refresh endpoint is the rate-limited one — actual data endpoints may
+    still work).
     """
     token = request.get_data(as_text=True).strip()
     if not token or not token.startswith("gAAAAAB"):
@@ -168,8 +173,32 @@ def admin_push_garmin_tokens(athlete_id: int):
         a.garmin_oauth_tokens = token
         db.commit()
         email = a.garmin_email
-    logger.info("Admin pushed fresh Garmin tokens for athlete %d (%s)", athlete_id, email)
-    return jsonify({"ok": True, "athlete_id": athlete_id, "garmin_email": email})
+
+        # Verify the tokens actually work for live API calls. Use the same
+        # client factory the scheduler does — this exercises the rate-limit
+        # cache, OAuth2-expiry check, and a real Garmin call (get_full_name).
+        verify_ok = False
+        verify_err = None
+        try:
+            from running_coach_ai.garmin.client import get_garmin_client
+            garmin = get_garmin_client(a.id, a.garmin_email, a.garmin_password_encrypted, db)
+            name = garmin.get_full_name()
+            verify_ok = bool(name)
+            verify_err = None if verify_ok else "get_full_name returned falsy"
+        except Exception as e:
+            verify_err = f"{type(e).__name__}: {e}"
+
+    logger.info(
+        "Admin pushed fresh Garmin tokens for athlete %d (%s); verify_ok=%s err=%s",
+        athlete_id, email, verify_ok, verify_err,
+    )
+    return jsonify({
+        "ok": True,
+        "athlete_id": athlete_id,
+        "garmin_email": email,
+        "verify_ok": verify_ok,
+        "verify_error": verify_err,
+    })
 
 
 @bp.route("/api/admin/morning-diagnostic")
