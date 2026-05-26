@@ -1,6 +1,8 @@
 """Admin endpoints — events, athlete management, Garmin ops, invites."""
 
 import logging
+import os
+from functools import wraps
 
 from flask import Blueprint, jsonify, request, session
 
@@ -125,6 +127,49 @@ def admin_morning_checkin(athlete_id: int):
     force = bool(body.get("force"))
     result = admin_ops.trigger_morning_checkin(athlete_id, force=force)
     return jsonify(result), (200 if result["ok"] else 400)
+
+
+def _push_token_required(view):
+    """Authorize via X-Admin-Token header matching ADMIN_PUSH_TOKEN env var.
+
+    Separate auth path from the Flask-session admin_required because token
+    push happens from automated tooling (CI, scripts) where there's no
+    browser session.
+    """
+    @wraps(view)
+    def inner(*args, **kwargs):
+        expected = os.environ.get("ADMIN_PUSH_TOKEN")
+        if not expected:
+            return jsonify({"error": "ADMIN_PUSH_TOKEN not configured on server"}), 503
+        provided = request.headers.get("X-Admin-Token")
+        if not provided or provided != expected:
+            return jsonify({"error": "unauthorized"}), 401
+        return view(*args, **kwargs)
+    return inner
+
+
+@bp.route("/api/admin/athletes/<int:athlete_id>/garmin-tokens", methods=["POST"])
+@_push_token_required
+def admin_push_garmin_tokens(athlete_id: int):
+    """Push a freshly-refreshed Fernet-encrypted garmin_oauth_tokens blob.
+
+    Used to inject fresh tokens refreshed from a non-rate-limited IP when
+    Railway's IP is persistently 429'd by Garmin's oauth/exchange endpoint.
+    Auth: X-Admin-Token header matching ADMIN_PUSH_TOKEN env var.
+    Body: raw text of the Fernet ciphertext (starts with "gAAAAAB").
+    """
+    token = request.get_data(as_text=True).strip()
+    if not token or not token.startswith("gAAAAAB"):
+        return jsonify({"error": "body must be a Fernet ciphertext starting with gAAAAAB"}), 400
+    with get_session() as db:
+        a = db.get(Athlete, athlete_id)
+        if not a:
+            return jsonify({"error": f"athlete {athlete_id} not found"}), 404
+        a.garmin_oauth_tokens = token
+        db.commit()
+        email = a.garmin_email
+    logger.info("Admin pushed fresh Garmin tokens for athlete %d (%s)", athlete_id, email)
+    return jsonify({"ok": True, "athlete_id": athlete_id, "garmin_email": email})
 
 
 @bp.route("/api/admin/morning-diagnostic")
