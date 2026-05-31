@@ -543,8 +543,11 @@ def _build_no_plan(athlete: Athlete) -> dict:
 def _morning_cover_lines(snap: HealthSnapshot | None, is_stale: bool) -> list[dict]:
     """Four cover lines (HRV / Body Battery / Sleep / RHR) for PRE_RUN and REST_DAY."""
     hrv = snap.hrv_score if (snap and snap.hrv_score is not None) else "—"
-    bb = snap.body_battery_end if (snap and snap.body_battery_end is not None) else (
-        snap.body_battery_start if (snap and snap.body_battery_start is not None) else "—"
+    # Show the morning PEAK (after overnight recovery), matching the morning
+    # check-in prose (adapter.py). body_battery_start = max over the day's values
+    # = wakeup peak; body_battery_end is the depleted current value.
+    bb = snap.body_battery_start if (snap and snap.body_battery_start is not None) else (
+        snap.body_battery_end if (snap and snap.body_battery_end is not None) else "—"
     )
     sleep_h = round(snap.sleep_duration_seconds / 3600.0, 1) if (snap and snap.sleep_duration_seconds) else "—"
     rhr = snap.resting_hr if (snap and snap.resting_hr is not None) else "—"

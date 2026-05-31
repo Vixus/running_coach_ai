@@ -276,6 +276,10 @@ def test_pre_run_state_with_morning_checkin(app_and_db):
     assert len(data["cover_lines"]) == 4
     drill_targets = {c["drill_to"] for c in data["cover_lines"]}
     assert drill_targets == {"morning"}
+    # Body Battery cover shows the morning PEAK (after overnight recovery),
+    # not the depleted current value. Fixture: start(peak)=78, end=68.
+    bb_line = next(c for c in data["cover_lines"] if c["label"] == "Body Bat")
+    assert bb_line["value"] == 78
     # Headline + rationale chat prompts wired
     assert data["actions"]["headline_chat_prompt"] == "Tell me about today's workout."
     assert data["actions"]["rationale_chat_prompt"] == "I have a question about today's plan."
